@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { READY_PROGRAMS } from './starter.js'
 import {
   scoreProgram, matchPrograms, durOf, durBucket, GOALS, EQUIP, LEVELS,
-  fitsEquipment, equipCovered, defaultUseSchedule, hasWeekAssignments, applyProgramToState
+  fitsEquipment, equipCovered, defaultUseSchedule, hasWeekAssignments, applyProgramToState, buildCustomWeek
 } from './program-match.js'
 
 const byId = id => READY_PROGRAMS.find(p => p.id === id)
@@ -145,6 +145,22 @@ describe('applying a program to the plan', () => {
     expect(defaultUseSchedule(st.week)).toBe(true)
     const st2 = { routines: [{ id: 'x' }], week: { 5: 'x' } }
     expect(defaultUseSchedule(st2.week)).toBe(false)
+  })
+})
+
+describe('custom training days (pick the days you train)', () => {
+  it('maps each chosen weekday to a routine, cycling for A/B programs', () => {
+    expect(buildCustomWeek([2, 4, 6], [{ id: 'A' }, { id: 'B' }])).toEqual({ 2: 'A', 4: 'B', 6: 'A' })
+    expect(buildCustomWeek([1, 4], [{ id: 'A' }, { id: 'B' }])).toEqual({ 1: 'A', 4: 'B' })
+    expect(buildCustomWeek([1], [{ id: 'A' }])).toEqual({ 1: 'A' })
+  })
+
+  it('applies the user-chosen days to the plan — only those days are written', () => {
+    const st = { routines: [{ id: 'old' }], week: { 3: 'old' } }
+    const loaded = { name: 'x', routines: [{ id: 'r1' }, { id: 'r2' }], week: buildCustomWeek([2, 5], [{ id: 'r1' }, { id: 'r2' }]) }
+    applyProgramToState(st, loaded, { schedule: true })
+    expect(st.week).toEqual({ 2: 'r1', 5: 'r2' })
+    expect(st.week[3]).toBeUndefined()
   })
 })
 

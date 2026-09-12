@@ -773,4 +773,8 @@ export default {
   '3–4 days · mixed push / pull / legs + conditioning': '3–4天 · 推/拉/腿 + 体能',
   '3 days · easy runs + one full-body circuit': '3天 · 轻松跑 + 全身循环',
   '2–3 days · short bodyweight full-body sessions': '2–3天 · 短时自重全身训练',
-}
+
+  // --- program wizard: training days ---
+  'Pick the days you train': '选择训练日',
+  'Pick {0} days': '选择 {0} 天'
+,}

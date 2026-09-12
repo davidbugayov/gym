@@ -773,4 +773,8 @@ export default {
   '3–4 days · mixed push / pull / legs + conditioning': '3–4일 · 밀기/당기기/하체 + 컨디셔닝',
   '3 days · easy runs + one full-body circuit': '3일 · 가벼운 달리기 + 전신 서킷',
   '2–3 days · short bodyweight full-body sessions': '2–3일 · 짧은 맨몸 전신 세션',
-}
+
+  // --- program wizard: training days ---
+  'Pick the days you train': '훈련 요일 선택',
+  'Pick {0} days': '{0}일 선택'
+,}

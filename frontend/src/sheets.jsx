@@ -8,7 +8,7 @@ import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, getLang, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
 import { READY_PROGRAMS, readyProgram, starterRoutines } from './lib/starter.js'
-import { matchPrograms, applyProgramToState, defaultUseSchedule } from './lib/program-match.js'
+import { matchPrograms, applyProgramToState, defaultUseSchedule, buildCustomWeek } from './lib/program-match.js'
 import Media, { Thumb } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
 import Icon from './components/Icon.jsx'
@@ -115,6 +115,16 @@ function ProgramPreview({ program, sessions, onAdd, close }) {
   const S = useStore(s => s.S)
   const loaded = readyProgram(program.id, sessions)
   const [useSchedule, setUseSchedule] = useState(() => defaultUseSchedule(S.week))
+  // Which weekdays each session runs on — starts from the program's default slots and can be
+  // re-picked (Freeletics-style), so the plan lands on the days you actually train.
+  const [days, setDays] = useState(() => Object.keys(loaded.week).map(Number))
+  const dayOrder = d => (d === 0 ? 7 : d)
+  const sortedDays = () => days.slice().sort((a, b) => dayOrder(a) - dayOrder(b))
+  const pick = d => {
+    if (days.includes(d)) setDays(days.filter(x => x !== d))
+    else if (days.length < sessions) setDays([...days, d])
+  }
+  const daysReady = !useSchedule || days.length === sessions
   const line = e => {
     const mode = modeOf(e)
     if (mode === 'cardio') return `${exOr(e.id).n} · ${e.sets} × ${e.min || 0} min @ ${fmtNum(e.speed || 0)} km/h`
@@ -138,11 +148,21 @@ function ProgramPreview({ program, sessions, onAdd, close }) {
         {r.ex.map(e => <div key={e.id} className="small dim" style={{ padding: '2px 0 2px 44px' }}>{line(e)}</div>)}
       </div>)}
     </div>
-    <div className="row between" style={{ padding: '10px 2px', borderTop: '1px solid var(--sep)', borderBottom: '1px solid var(--sep)', margin: '12px 0 16px', gap: 12 }}>
+    <div className="row between" style={{ padding: '10px 2px', borderTop: '1px solid var(--sep)', borderBottom: '1px solid var(--sep)', margin: '12px 0 6px', gap: 12 }}>
       <div><div className="tt" style={{ fontSize: 15 }}>{t('Use this weekly schedule')}</div><div className="small dim">{t('Replaces your current week. Days this plan leaves empty become rest days.')}</div></div>
       <Switch checked={useSchedule} onChange={setUseSchedule} />
     </div>
-    <Button variant="primary" onClick={() => { onAdd(loaded, useSchedule); close() }}>{t('Add to my plan')}</Button>
+    {useSchedule && <>
+      <div className="tt" style={{ margin: '12px 0 8px' }}>{t('Pick the days you train')}</div>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 7 }}>
+        {[1, 2, 3, 4, 5, 6, 0].map(d => <button key={d} className={'chip' + (days.includes(d) ? ' on' : '')} onClick={() => pick(d)}>{t(DAYN[d])}</button>)}
+      </div>
+      {!daysReady && <div className="muted small" style={{ marginTop: 8 }}>{t('Pick {0} days', sessions)}</div>}
+    </>}
+    <Button variant="primary" disabled={!daysReady}
+      onClick={() => { onAdd(useSchedule ? { ...loaded, week: buildCustomWeek(sortedDays(), loaded.routines) } : loaded, useSchedule); close() }}>
+      {t('Add to my plan')}
+    </Button>
     <div style={{ height: 8 }} />
     <Button variant="ghost" className="dim" onClick={close}>{t('Cancel')}</Button>
   </>

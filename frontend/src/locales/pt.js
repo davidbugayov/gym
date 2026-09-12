@@ -773,4 +773,8 @@ export default {
   '3–4 days · mixed push / pull / legs + conditioning': '3–4 días · empuxe/remo/pernas + condición',
   '3 days · easy runs + one full-body circuit': '3 días · carreira suave + circuíto de corpo completo',
   '2–3 days · short bodyweight full-body sessions': '2–3 días · sesións curtas de peso corporal',
-}
+
+  // --- program wizard: training days ---
+  'Pick the days you train': 'Escolle os días de adestramento',
+  'Pick {0} days': 'Escolle {0} días'
+,}

@@ -773,4 +773,8 @@ export default {
   '3–4 days · mixed push / pull / legs + conditioning': '3–4 gün · it/çek/bacak + kondisyon',
   '3 days · easy runs + one full-body circuit': '3 gün · kolay koşular + tüm vücut devresi',
   '2–3 days · short bodyweight full-body sessions': '2–3 gün · kısa vücut ağırlığı seansları',
-}
+
+  // --- program wizard: training days ---
+  'Pick the days you train': 'Antrenman günlerini seç',
+  'Pick {0} days': '{0} gün seç'
+,}

@@ -773,4 +773,8 @@ export default {
   '3–4 days · mixed push / pull / legs + conditioning': '3–4 दिन · धकेलें/खींचें/पैर + कंडिशनिंग',
   '3 days · easy runs + one full-body circuit': '3 दिन · आसान दौड़ + पूरा-शरीर सर्किट',
   '2–3 days · short bodyweight full-body sessions': '2–3 दिन · छोटे शरीर-भार सत्र',
-}
+
+  // --- program wizard: training days ---
+  'Pick the days you train': 'ट्रेनिंग के दिन चुनें',
+  'Pick {0} days': '{0} दिन चुनें'
+,}

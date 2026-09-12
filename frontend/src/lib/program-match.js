@@ -43,6 +43,15 @@ export function fitsEquipment(program, picks) {
    schedule is only touched when the user explicitly opts in. */
 export const hasWeekAssignments = week => !!week && Object.values(week).some(Boolean)
 
+// Build a week mapping from an ordered list of weekdays (1=Mon … 5=Fri, 6=Sat, 0=Sun) onto
+// the program's routines, cycling when the program has fewer routines than sessions (an A/B
+// program alternates across the chosen days). Lets the user pick their own training days.
+export function buildCustomWeek(days, routines) {
+  const week = {}
+  days.forEach((day, i) => { week[day] = routines[i % routines.length].id })
+  return week
+}
+
 // Default for the preview's "Use this weekly schedule" switch: on for an empty plan,
 // off as soon as anything is already assigned — an existing schedule is never replaced
 // behind the user's back.
