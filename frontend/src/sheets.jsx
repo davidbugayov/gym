@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { EXDB, EXIDX, BODYPARTS, isCardio, allExercises, equipmentOf } from './lib/exercises.js'
+import { EXDB, EXIDX, BODYPARTS, isCardio, allExercises, equipmentOf, exOr } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG, ACCENTS } from './lib/format.js'
-import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf } from './lib/history.js'
+import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, exLine } from './lib/history.js'
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, getLang, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
-import { starterRoutines } from './lib/starter.js'
+import { READY_PROGRAMS, readyProgram, starterRoutines } from './lib/starter.js'
+import { matchPrograms, applyProgramToState, defaultUseSchedule } from './lib/program-match.js'
 import Media, { Thumb } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
 import Icon from './components/Icon.jsx'
@@ -50,6 +51,213 @@ export function loadStarterPlan() {
     st.week[1] = push.id; st.week[3] = pull.id; st.week[5] = legs.id
   })
   toast(t('Starter plan loaded — Mon Push · Wed Pull · Fri Legs'))
+}
+
+function ReadyProgramsSheet({ close }) {
+  // "Show all programs" routes through the same ProgramPreview as the wizard, so the
+  // weekly schedule is only ever changed when the user explicitly keeps the switch on.
+  const add = (loaded, schedule) => {
+    update(st => applyProgramToState(st, loaded, { schedule }))
+    close()
+    toast(t('Program loaded — {0}', t(loaded.name)))
+  }
+  const preview = program =>
+    ui().openSheet(close => <ProgramPreview program={program} sessions={program.freq[1]} onAdd={add} close={close} />)
+  return <>
+    <h3>{t('Ready-made programs')}</h3>
+    <div className="muted small" style={{ marginBottom: 14 }}>{t('Choose a program to add to your plan.')}</div>
+    <div className="list">
+      {READY_PROGRAMS.map(program => <button key={program.id} className="item" style={{ width: '100%', textAlign: 'left' }} onClick={() => preview(program)}>
+        <span className="lrow-i"><Icon name="sparkles" /></span>
+        <div className="grow"><div className="tt">{t(program.name)}</div><div className="ss">{t(program.detail)}</div></div>
+        <Icon name="chevronRight" className="chev" />
+      </button>)}
+    </div>
+  </>
+}
+
+export function readyProgramsSheet() {
+  return ui().openSheet(close => <ReadyProgramsSheet close={close} />)
+}
+
+/* ============================ program wizard ============================ */
+// A local questionnaire that matches the user onto the ready-made programs in
+// starter.js. Everything runs on-device: no network, no accounts, no generation —
+// lib/program-match.js filters and scores READY_PROGRAMS against the answers, and
+// nothing is written into the plan until the user taps "Add to my plan".
+const WIZ_GOALS = [
+  ['muscle', 'Build muscle'],
+  ['fatloss', 'Burn fat'],
+  ['fitness', 'General fitness'],
+  ['endurance', 'Improve endurance'],
+  ['stress', 'Stress relief & recovery']
+]
+const WIZ_EQUIP = [
+  ['bodyweight', 'Bodyweight'],
+  ['dumbbell', 'Dumbbells'],
+  ['barbell', 'Barbell'],
+  ['kettlebell', 'Kettlebells'],
+  ['run', 'Running'],
+  ['gym', 'Gym / mixed equipment']
+]
+const WIZ_LEVELS = [
+  ['beginner', 'New to training'],
+  ['returning', 'Getting back into it'],
+  ['regular', 'Train regularly'],
+  ['advanced', 'Advanced']
+]
+const WIZ_STEPS = ['goal', 'equip', 'level', 'time', 'results']
+
+// One program preview: the week's routines with exercises, sets and reps. "Add" pushes
+// NEW routines; the weekly schedule is only applied when the switch is on — an existing
+// schedule is never replaced behind the user's back.
+function ProgramPreview({ program, sessions, onAdd, close }) {
+  const S = useStore(s => s.S)
+  const loaded = readyProgram(program.id, sessions)
+  const [useSchedule, setUseSchedule] = useState(() => defaultUseSchedule(S.week))
+  const line = e => {
+    const mode = modeOf(e)
+    if (mode === 'cardio') return `${exOr(e.id).n} · ${e.sets} × ${e.min || 0} min @ ${fmtNum(e.speed || 0)} km/h`
+    return exLine(e, S.unit) + ' · ' + exOr(e.id).n
+  }
+  return <>
+    <h3>{t(program.name)}</h3>
+    <div className="muted small" style={{ marginBottom: 10 }}>{t(program.detail)}</div>
+    <div className="row" style={{ gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
+      <span className="tag">{t('{0}× per week', loaded.sessions)}</span>
+      <span className="tag">{t('{0} min per session', program.minutes)}</span>
+      <span className="tag">{t('Equipment')}: {program.equip.map(e => t(WIZ_EQUIP.find(x => x[0] === e)[1])).join(' · ')}</span>
+      <span className="tag">{t('Level')}: {program.levels.map(l => t(WIZ_LEVELS.find(x => x[0] === l)[1])).join(' · ')}</span>
+    </div>
+    <div className="list">
+      {loaded.routines.map(r => <div key={r.id} className="item" style={{ display: 'block' }}>
+        <div className="row" style={{ gap: 9, marginBottom: 4 }}>
+          <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+          <div className="tt">{r.name}</div>
+        </div>
+        {r.ex.map(e => <div key={e.id} className="small dim" style={{ padding: '2px 0 2px 44px' }}>{line(e)}</div>)}
+      </div>)}
+    </div>
+    <div className="row between" style={{ padding: '10px 2px', borderTop: '1px solid var(--sep)', borderBottom: '1px solid var(--sep)', margin: '12px 0 16px', gap: 12 }}>
+      <div><div className="tt" style={{ fontSize: 15 }}>{t('Use this weekly schedule')}</div><div className="small dim">{t('Replaces your current week. Days this plan leaves empty become rest days.')}</div></div>
+      <Switch checked={useSchedule} onChange={setUseSchedule} />
+    </div>
+    <Button variant="primary" onClick={() => { onAdd(loaded, useSchedule); close() }}>{t('Add to my plan')}</Button>
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" className="dim" onClick={close}>{t('Cancel')}</Button>
+  </>
+}
+
+function ProgramWizard({ close }) {
+  const [step, setStep] = useState(0)
+  const [prefs, setPrefs] = useState({ goals: [], equip: [], level: null, sessions: 3, duration: 'mid' })
+  const key = WIZ_STEPS[step]
+  const last = key === 'results'
+  const set = patch => setPrefs(p => ({ ...p, ...patch }))
+
+  const toggleGoal = g => set({
+    goals: prefs.goals.includes(g) ? prefs.goals.filter(x => x !== g)
+      : prefs.goals.length >= 3 ? prefs.goals : [...prefs.goals, g]
+  })
+  const toggleEquip = e => set({
+    equip: prefs.equip.includes(e) ? prefs.equip.filter(x => x !== e) : [...prefs.equip, e]
+  })
+
+  // goal and equipment need at least one answer; the rest have defaults.
+  const canNext = key === 'goal' ? prefs.goals.length > 0 : key === 'equip' ? prefs.equip.length > 0 : true
+  const matches = last ? matchPrograms(READY_PROGRAMS, prefs) : []
+
+  const add = (loaded, schedule) => {
+    update(st => applyProgramToState(st, loaded, { schedule }))
+    close()
+    toast(t('Program loaded — {0}', t(loaded.name)))
+  }
+  const preview = program => ui().openSheet(close => <ProgramPreview program={program} sessions={prefs.sessions} onAdd={add} close={close} />)
+
+  return <>
+    {key === 'goal' && <>
+      <h3>{t('Find your program')}</h3>
+      <div className="muted small" style={{ marginBottom: 14 }}>{t('Answer a few questions and get ready-made programs that fit you. Nothing is added until you choose.')}</div>
+      <div className="tt" style={{ marginBottom: 8 }}>{t('What is your goal?')}</div>
+      <div className="muted small" style={{ marginBottom: 8 }}>{t('Pick up to three.')}</div>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 7 }}>
+        {WIZ_GOALS.map(([id, label]) => <button key={id} className={'chip' + (prefs.goals.includes(id) ? ' on' : '')} onClick={() => toggleGoal(id)}>{t(label)}</button>)}
+      </div>
+    </>}
+
+    {key === 'equip' && <>
+      <h3>{t('What can you train with?')}</h3>
+      <div className="muted small" style={{ marginBottom: 8 }}>{t('Pick everything you have — the first pick matters most.')}</div>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 7 }}>
+        {WIZ_EQUIP.map(([id, label]) => <button key={id} className={'chip' + (prefs.equip.includes(id) ? ' on' : '')} onClick={() => toggleEquip(id)}>
+          {prefs.equip.includes(id) ? (prefs.equip.indexOf(id) + 1) + '. ' : ''}{t(label)}
+        </button>)}
+      </div>
+      <div className="muted small" style={{ marginTop: 10 }}>{t('Only programs that fit at least one pick are shown.')}</div>
+    </>}
+
+    {key === 'level' && <>
+      <h3>{t('What is your level?')}</h3>
+      <div className="list">
+        {WIZ_LEVELS.map(([id, label]) => <div key={id} className="item" onClick={() => set({ level: id })}>
+          <div className="grow"><div className="tt">{t(label)}</div></div>
+          {prefs.level === id && <Icon name="check" className="accent" />}
+        </div>)}
+      </div>
+    </>}
+
+    {key === 'time' && <>
+      <h3>{t('How often can you train?')}</h3>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 7, marginBottom: 18 }}>
+        {[2, 3, 4, 5].map(n => <button key={n} className={'chip' + (prefs.sessions === n ? ' on' : '')} onClick={() => set({ sessions: n })}>{t('{0}× per week', n)}</button>)}
+      </div>
+      <div className="tt" style={{ marginBottom: 8 }}>{t('How long is one session?')}</div>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 7 }}>
+        {[['short', '20–30 min'], ['mid', '35–45 min'], ['long', '50–70 min']].map(([id, label]) =>
+          <button key={id} className={'chip' + (prefs.duration === id ? ' on' : '')} onClick={() => set({ duration: id })}>{t(label)}</button>)}
+      </div>
+    </>}
+
+    {last && <>
+      <h3>{t('Good matches for you')}</h3>
+      <div className="muted small" style={{ marginBottom: 12 }}>{t('These fit your answers. Nothing changes until you tap Add.')}</div>
+      <div className="list">
+        {matches.map(p => <div key={p.id} className="item" style={{ display: 'block' }}>
+          <div className="row" style={{ gap: 9, alignItems: 'flex-start' }} onClick={() => preview(p)}>
+            <span className="lrow-i"><Icon name="sparkles" /></span>
+            <div className="grow" style={{ minWidth: 0 }}>
+              <div className="tt">{t(p.name)}</div>
+              <div className="ss">{t(p.detail)}</div>
+              <div className="row" style={{ gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
+                <span className="tag acc">{t('{0}× per week', p.freq[0] === p.freq[1] ? p.freq[0] : p.freq[0] + '–' + p.freq[1])}</span>
+                <span className="tag">{t('{0} min per session', p.minutes)}</span>
+                <span className="tag">{p.goals.map(g => t(WIZ_GOALS.find(x => x[0] === g)[1])).join(' · ')}</span>
+                <span className="tag dim">{p.equip.map(e => t(WIZ_EQUIP.find(x => x[0] === e)[1])).join(' · ')}</span>
+                <span className="tag dim">{p.levels.map(l => t(WIZ_LEVELS.find(x => x[0] === l)[1])).join(' · ')}</span>
+              </div>
+            </div>
+            <Icon name="chevronRight" className="chev" />
+          </div>
+          <Button size="sm" variant="primary" onClick={() => preview(p)}>{t('Preview')}</Button>
+        </div>)}
+      </div>
+      <div style={{ height: 10 }} />
+      <Button variant="ghost" className="dim" onClick={() => { close(); readyProgramsSheet() }}>{t('Show all programs')}</Button>
+    </>}
+
+    <div className="row" style={{ gap: 10, marginTop: 14 }}>
+      {step > 0 && <Button onClick={() => setStep(step - 1)} style={{ flex: 1 }}>{t('Back')}</Button>}
+      {!last && <Button variant="primary" style={{ flex: 1 }} disabled={!canNext} onClick={() => setStep(step + 1)}>
+        {key === 'time' ? t('Show matches') : t('Next')}
+      </Button>}
+    </div>
+    {!canNext && <div className="dim small" style={{ textAlign: 'center', marginTop: 10 }}>{t('Pick at least one to continue.')}</div>}
+    <div style={{ height: 8 }} />
+  </>
+}
+
+export function programWizardSheet() {
+  return ui().openSheet(close => <ProgramWizard close={close} />)
 }
 
 /* ============================ weight picker (shared: body weight + goal) ============================ */
