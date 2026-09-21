@@ -2,7 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useStore } from '../store/useStore.js'
 import { exOr } from '../lib/exercises.js'
-import { uid } from '../lib/format.js'
+import { uid, DAYN } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import { supersetUnits, cleanupSg, exLine } from '../lib/history.js'
 import { Thumb } from '../components/Media.jsx'
@@ -54,6 +54,34 @@ export default function RoutineEdit() {
     </div>
     <div className="small dim" style={{ margin: '-10px 2px 16px' }}>
       {t('Applies to every exercise in this routine that does not set its own rule.')}
+    </div>
+
+    {/* Weekly schedule for this routine */}
+    <div className="sect-b" style={{ marginBottom: 16, padding: '12px 14px' }}>
+      <div className="row between" style={{ marginBottom: 8 }}>
+        <div style={{ fontWeight: 600, fontSize: 14 }}>{t('Weekly schedule')}</div>
+        <div className="small dim">{t('Schedule this routine on:')}</div>
+      </div>
+      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+        {[1, 2, 3, 4, 5, 6, 0].map(d => {
+          const active = S.week[d] === id
+          return (
+            <button
+              key={d}
+              className={'chip' + (active ? ' on' : '')}
+              style={{ padding: '6px 12px', fontSize: 13 }}
+              onClick={() => {
+                update(s => {
+                  if (s.week[d] === id) delete s.week[d]
+                  else s.week[d] = id
+                })
+              }}
+            >
+              {t(DAYN[d])}
+            </button>
+          )
+        })}
+      </div>
     </div>
 
     {r.ex.length ? <div className="list">{r.ex.map((e, i) => {

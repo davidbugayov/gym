@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { EXDB, EXIDX, BODYPARTS, isCardio, allExercises, equipmentOf, exOr } from './lib/exercises.js'
+import { EXDB, EXIDX, BODYPARTS, isCardio, allExercises, equipmentOf, exOr, EQUIPMENT_GROUPS, getEquipmentGroup, equipmentGroupsOf, groupExercisesByEquipment } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG, ACCENTS } from './lib/format.js'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, exLine } from './lib/history.js'
 import { beep, vibrate } from './lib/sound.js'
@@ -641,7 +641,10 @@ function ExercisePicker({ onPick, close }) {
   const usage = usageMap(st)
   const [q, setQ] = useState('')
   const [bp, setBp] = useState('')          // '' = all, '★' = chosen, else a body part
+  const [eqGroup, setEqGroup] = useState('')
   const [eq, setEq] = useState('')          // '' = any equipment
+  const [groupByEq, setGroupByEq] = useState(false)
+  const [collapsedGroups, setCollapsedGroups] = useState({})
   const [shown, setShown] = useState(50)
   const ql = q.toLowerCase().trim()
   const all = allExercises(st)
@@ -649,36 +652,134 @@ function ExercisePicker({ onPick, close }) {
     (bp === '★' ? usage[e.id] : (!bp || e.bp === bp)) &&
     (!ql || e.n.toLowerCase().includes(ql) || e.tg.includes(ql) || e.eq.includes(ql) || (e.desc || '').toLowerCase().includes(ql)))
   if (bp === '★') base = [...base].sort((a, b) => (usage[b.id] - usage[a.id]) || (a.n < b.n ? -1 : 1))
-  const eqOpts = equipmentOf(base)
+
+  const availGroups = equipmentGroupsOf(base)
+  const activeEqGroup = availGroups.some(g => g.name === eqGroup) ? eqGroup : ''
+  const byGroup = activeEqGroup ? base.filter(e => getEquipmentGroup(e.eq) === activeEqGroup) : base
+
+  const eqOpts = equipmentOf(byGroup)
   // Drop the equipment filter if the search narrowed it away, so you never hit a dead end.
   const eqOn = eqOpts.includes(eq) ? eq : ''
-  const f = eqOn ? base.filter(e => e.eq === eqOn) : base
+  const f = eqOn ? byGroup.filter(e => e.eq === eqOn) : byGroup
   const chosenCount = Object.keys(usage).length
+  const grouped = groupExercisesByEquipment(f)
+
+  const toggleGroup = name => setCollapsedGroups(p => ({ ...p, [name]: !p[name] }))
+
+  const renderExItem = e => {
+    const eqG = getEquipmentGroup(e.eq)
+    return (
+      <div key={e.id} className="item" onClick={() => onPick(e)}>
+        <Thumb ex={e} />
+        <div className="grow">
+          <div className="tt capitalize">{e.n}</div>
+          <div className="ss capitalize">
+            {t(e.tg || e.bp)} · <span style={{ color: 'var(--accent)' }}>{t(eqG)}</span> {e.eq && e.eq !== eqG.toLowerCase() ? `(${t(e.eq)})` : ''}
+          </div>
+        </div>
+        {usage[e.id] && <span className="tag acc"><Icon name="starFill" /></span>}
+        <Icon name="plus" className="chev" />
+      </div>
+    )
+  }
+
   return <>
-    <h3>{t('Add exercise')}</h3>
-    <div className="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-      <input className="input" placeholder={t('Search {0} exercises…', all.length)} value={q} onChange={e => { setQ(e.target.value); setShown(50) }} /></div>
-    <div className="chips" style={{ margin: eqOpts.length > 1 ? '10px 0 6px' : '10px 0' }}>
-      {chosenCount > 0 && <button className={'chip' + (bp === '★' ? ' on' : '')} onClick={() => { setBp('★'); setEq(''); setShown(50) }}><Icon name="starFill" style={{ fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }} />{t('Chosen')} ({chosenCount})</button>}
-      <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(50) }}>{t('All')}</button>
-      {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setEq(''); setShown(50) }}>{t(b)}</button>)}
+    <div className="row between" style={{ marginBottom: 6 }}>
+      <h3 style={{ margin: 0 }}>{t('Add exercise')}</h3>
+      <button
+        className={'iconbtn' + (groupByEq ? ' on-ss' : '')}
+        style={{ borderRadius: 8, padding: '4px 8px', width: 'auto', gap: 5, fontSize: 12 }}
+        onClick={() => setGroupByEq(v => !v)}
+        title={t('Group by equipment')}
+      >
+        <Icon name="folder" />
+        <span>{groupByEq ? t('Grouped view') : t('Flat list')}</span>
+      </button>
     </div>
+
+    <div className="search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+      <input className="input" placeholder={t('Search {0} exercises…', all.length)} value={q} onChange={e => { setQ(e.target.value); setShown(50) }} />
+    </div>
+
+    {/* Body part filter */}
+    <div className="chips" style={{ margin: '8px 0 6px' }}>
+      {chosenCount > 0 && <button className={'chip' + (bp === '★' ? ' on' : '')} onClick={() => { setBp('★'); setEqGroup(''); setEq(''); setShown(50) }}><Icon name="starFill" style={{ fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }} />{t('Chosen')} ({chosenCount})</button>}
+      <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEqGroup(''); setEq(''); setShown(50) }}>{t('All')}</button>
+      {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setEqGroup(''); setEq(''); setShown(50) }}>{t(b)}</button>)}
+    </div>
+
+    {/* Equipment group filter */}
+    <div className="chips" style={{ marginBottom: eqOpts.length > 1 ? 6 : 10 }}>
+      <button className={'chip nocap' + (!activeEqGroup ? ' on' : '')} onClick={() => { setEqGroup(''); setEq(''); setShown(50) }}>
+        <Icon name="list" style={{ fontSize: 12, marginRight: 4, verticalAlign: '-1px' }} />
+        {t('All equipment')}
+      </button>
+      {availGroups.map(g => (
+        <button
+          key={g.name}
+          className={'chip' + (activeEqGroup === g.name ? ' on' : '')}
+          onClick={() => { setEqGroup(activeEqGroup === g.name ? '' : g.name); setEq(''); setShown(50) }}
+        >
+          <Icon name={g.icon} style={{ fontSize: 12, marginRight: 4, verticalAlign: '-1px' }} />
+          {t(g.name)} ({g.count})
+        </button>
+      ))}
+    </div>
+
+    {/* Sub-equipment filter */}
     {eqOpts.length > 1 && <div className="chips" style={{ marginBottom: 10 }}>
       <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(50) }}>{t('Any equipment')}</button>
       {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(50) }}>{t(x)}</button>)}
     </div>}
+
     <div className="list">
       {bp !== '★' && <div className="item" onClick={() => customExSheet(null, ex => onPick(ex), q.trim())}>
         <div className="thumb thumb-x"><Icon name="sparkles" /></div>
         <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name + body part, no animation')}</div></div><Icon name="plus" className="chev" />
       </div>}
-      {f.slice(0, shown).map(e => <div key={e.id} className="item" onClick={() => onPick(e)}>
-        <Thumb ex={e} /><div className="grow"><div className="tt capitalize">{e.n}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div></div>
-        {usage[e.id] && <span className="tag acc"><Icon name="starFill" /></span>}<Icon name="plus" className="chev" />
-      </div>)}
+
+      {groupByEq ? (
+        grouped.length > 0 ? (
+          grouped.map(grp => {
+            const isCollapsed = !!collapsedGroups[grp.name]
+            return (
+              <div key={grp.name} style={{ marginBottom: 10 }}>
+                <div
+                  className="row between"
+                  style={{
+                    padding: '6px 10px',
+                    background: 'var(--surface-2)',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    marginBottom: isCollapsed ? 0 : 4
+                  }}
+                  onClick={() => toggleGroup(grp.name)}
+                >
+                  <div className="row" style={{ gap: 6, fontWeight: 600 }}>
+                    <span className="tag acc" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <Icon name={grp.icon} />
+                      {t(grp.name)}
+                    </span>
+                    <span className="small dim">{grp.exercises.length} {t('exercises')}</span>
+                  </div>
+                  <Icon name={isCollapsed ? 'chevronRight' : 'chevronDown'} className="chev" />
+                </div>
+                {!isCollapsed && <div className="list">{grp.exercises.map(renderExItem)}</div>}
+              </div>
+            )
+          })
+        ) : (
+          <div className="empty">{t('Nothing chosen yet — add exercises and they’ll show up here.')}</div>
+        )
+      ) : (
+        f.slice(0, shown).map(renderExItem)
+      )}
+
       {f.length === 0 && bp === '★' && <div className="empty">{t('Nothing chosen yet — add exercises and they’ll show up here.')}</div>}
     </div>
-    {f.length > shown && <><div style={{ height: 8 }} /><Button onClick={() => setShown(s => s + 50)}>{t('Show more')}</Button></>}
+    {!groupByEq && f.length > shown && <><div style={{ height: 8 }} /><Button onClick={() => setShown(s => s + 50)}>{t('Show more')}</Button></>}
   </>
 }
 export const exercisePicker = onPick => ui().openSheet(close => <ExercisePicker onPick={onPick} close={close} />)
@@ -907,15 +1008,254 @@ export const dayOverrideSheet = iso => ui().openSheet(close => <DayOverride iso=
 
 function DayAssign({ day, close }) {
   const st = useStore(s => s.S)
-  const set = v => { update(s => { if (v) s.week[day] = v; else delete s.week[day] }); close() }
+  const [expandedId, setExpandedId] = useState(null)
+  const [schedulingId, setSchedulingId] = useState(null)
+
+  const set = v => {
+    update(s => {
+      if (v) s.week[day] = v
+      else delete s.week[day]
+    })
+    close()
+  }
+
+  const toggleDayForRoutine = (routineId, targetDay) => {
+    update(s => {
+      if (s.week[targetDay] === routineId) {
+        delete s.week[targetDay]
+      } else {
+        s.week[targetDay] = routineId
+      }
+    })
+  }
+
+  const swapRoutines = (r1Id, r2Id) => {
+    update(s => {
+      const daysR1 = []
+      const daysR2 = []
+      for (const [d, rid] of Object.entries(s.week)) {
+        if (rid === r1Id) daysR1.push(Number(d))
+        if (rid === r2Id) daysR2.push(Number(d))
+      }
+      daysR1.forEach(d => { s.week[d] = r2Id })
+      daysR2.forEach(d => { s.week[d] = r1Id })
+    })
+    toast(t('Updated schedule'))
+  }
+
   return <>
-    <h3>{t(DAYN[day])}</h3>
+    <div className="row between" style={{ marginBottom: 12 }}>
+      <div>
+        <h3 style={{ margin: 0 }}>{t(DAYN[day])}</h3>
+        <div className="small dim" style={{ marginTop: 2 }}>{t('Assign workout or adjust weekly schedule')}</div>
+      </div>
+    </div>
+
     <div className="list">
-      <div className="item" onClick={() => set('')}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="moon" /></span><div className="grow"><div className="tt">{t('Rest day')}</div></div>{!st.week[day] && <Icon name="check" className="accent" />}</div>
-      {st.routines.map(r => <div key={r.id} className="item" onClick={() => set(r.id)}>
-        <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
-        <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
-        {st.week[day] === r.id && <Icon name="check" className="accent" />}</div>)}
+      {/* Rest day option */}
+      <div className={'item' + (!st.week[day] ? ' on-s' : '')} onClick={() => set('')}>
+        <span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="moon" /></span>
+        <div className="grow">
+          <div className="tt">{t('Rest day')}</div>
+          <div className="ss">{t('No workout scheduled for {0}', t(DAYN[day]))}</div>
+        </div>
+        {!st.week[day] && <Icon name="check" className="accent" />}
+      </div>
+
+      {/* Routine options (Aphrodite, Morpheus, etc.) */}
+      {st.routines.map(r => {
+        const isSelectedForDay = st.week[day] === r.id
+        const scheduledDays = [1, 2, 3, 4, 5, 6, 0].filter(d => st.week[d] === r.id)
+        const isExpanded = expandedId === r.id
+        const isScheduling = schedulingId === r.id
+
+        return (
+          <div
+            key={r.id}
+            style={{
+              marginBottom: 10,
+              border: isSelectedForDay ? '1px solid var(--accent)' : '1px solid var(--sep)',
+              borderRadius: 12,
+              background: isSelectedForDay ? 'var(--accent-tint)' : 'var(--surface-1)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Header row */}
+            <div
+              className="item"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: '12px 14px',
+                cursor: 'pointer'
+              }}
+              onClick={() => set(r.id)}
+            >
+              <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+              <div className="grow">
+                <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                  <div className="tt" style={{ fontWeight: 600 }}>{r.name}</div>
+                  {isSelectedForDay && <span className="tag acc" style={{ fontSize: 11 }}>{t('Current')}</span>}
+                </div>
+                <div className="ss" style={{ marginTop: 2 }}>
+                  {exCount(r.ex.length)}
+                  {' · '}
+                  <span style={{ color: scheduledDays.length ? 'var(--text-1)' : 'var(--text-3)' }}>
+                    {scheduledDays.length > 0
+                      ? t('Scheduled: {0}', scheduledDays.map(d => t(DAYN[d])).join(', '))
+                      : t('Not scheduled')}
+                  </span>
+                </div>
+              </div>
+              {isSelectedForDay && <Icon name="check" className="accent" />}
+            </div>
+
+            {/* Quick Action Toolbar */}
+            <div
+              className="row between"
+              style={{
+                padding: '6px 12px 10px',
+                borderTop: '1px solid var(--sep-soft)',
+                background: 'var(--surface-2)',
+                gap: 8,
+                flexWrap: 'wrap'
+              }}
+            >
+              <div className="row" style={{ gap: 6 }}>
+                <button
+                  className={'chip' + (isExpanded ? ' on' : '')}
+                  style={{ fontSize: 12, padding: '4px 10px' }}
+                  onClick={ev => {
+                    ev.stopPropagation()
+                    setExpandedId(prev => (prev === r.id ? null : r.id))
+                  }}
+                >
+                  <Icon name="list" style={{ fontSize: 12, marginRight: 4, verticalAlign: '-1px' }} />
+                  {isExpanded ? t('Hide exercises') : t('View exercises')} ({r.ex.length})
+                </button>
+
+                <button
+                  className={'chip' + (isScheduling ? ' on' : '')}
+                  style={{ fontSize: 12, padding: '4px 10px' }}
+                  onClick={ev => {
+                    ev.stopPropagation()
+                    setSchedulingId(prev => (prev === r.id ? null : r.id))
+                  }}
+                >
+                  <Icon name="calendar" style={{ fontSize: 12, marginRight: 4, verticalAlign: '-1px' }} />
+                  {t('Change days')}
+                </button>
+              </div>
+
+              <div className="row" style={{ gap: 6 }}>
+                <Button
+                  size="sm"
+                  variant={isSelectedForDay ? 'tinted' : 'primary'}
+                  onClick={ev => {
+                    ev.stopPropagation()
+                    set(r.id)
+                  }}
+                >
+                  {isSelectedForDay ? t('Keep for {0}', t(DAYN[day])) : t('Assign to {0}', t(DAYN[day]))}
+                </Button>
+              </div>
+            </div>
+
+            {/* Exercise preview section */}
+            {isExpanded && (
+              <div style={{ padding: '10px 14px 14px', background: 'var(--surface-1)', borderTop: '1px solid var(--sep-soft)' }}>
+                <div className="row between" style={{ marginBottom: 8 }}>
+                  <div className="small dim" style={{ fontWeight: 600 }}>
+                    {t('Exercises in this routine')} ({r.ex.length})
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon="pencil"
+                    onClick={ev => {
+                      ev.stopPropagation()
+                      close()
+                      nav('/plan/r/' + r.id)
+                    }}
+                  >
+                    {t('Edit routine')}
+                  </Button>
+                </div>
+
+                <div className="list" style={{ gap: 4 }}>
+                  {r.ex.map((e, idx) => {
+                    const ex = exOr(e.id)
+                    const eqG = getEquipmentGroup(ex.eq)
+                    return (
+                      <div key={idx} className="item" style={{ padding: '6px 8px', background: 'var(--surface-2)', borderRadius: 8 }}>
+                        <Thumb ex={ex} style={{ width: 36, height: 36 }} />
+                        <div className="grow">
+                          <div className="tt capitalize" style={{ fontSize: 13, fontWeight: 500 }}>{ex.n}</div>
+                          <div className="ss capitalize" style={{ fontSize: 11 }}>
+                            {t(ex.tg || ex.bp)} · <span style={{ color: 'var(--accent)' }}>{t(eqG)}</span> {ex.eq && ex.eq !== eqG.toLowerCase() ? `(${t(ex.eq)})` : ''} · {exLine(e, st.unit)}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Day Scheduler section */}
+            {isScheduling && (
+              <div style={{ padding: '10px 14px 14px', background: 'var(--surface-2)', borderTop: '1px solid var(--sep-soft)' }}>
+                <div className="small dim" style={{ marginBottom: 6, fontWeight: 600 }}>
+                  {t('Schedule this routine on:')}
+                </div>
+                <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                  {[1, 2, 3, 4, 5, 6, 0].map(d => {
+                    const isActive = st.week[d] === r.id
+                    return (
+                      <button
+                        key={d}
+                        className={'chip' + (isActive ? ' on' : '')}
+                        style={{ padding: '5px 12px', fontSize: 12 }}
+                        onClick={ev => {
+                          ev.stopPropagation()
+                          toggleDayForRoutine(r.id, d)
+                        }}
+                      >
+                        {t(DAYN[d])}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Swap with another routine (e.g. Aphrodite vs Morpheus) */}
+                {st.routines.filter(o => o.id !== r.id).length > 0 && (
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--sep-soft)' }}>
+                    <div className="small dim" style={{ marginBottom: 6 }}>
+                      {t('Swap with another routine')}
+                    </div>
+                    <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                      {st.routines.filter(o => o.id !== r.id).map(other => (
+                        <button
+                          key={other.id}
+                          className="chip"
+                          style={{ fontSize: 12, padding: '4px 10px' }}
+                          onClick={ev => {
+                            ev.stopPropagation()
+                            swapRoutines(r.id, other.id)
+                          }}
+                        >
+                          <Icon name="shuffle" style={{ fontSize: 11, marginRight: 4 }} />
+                          {t('Swap with…')} {other.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   </>
 }
