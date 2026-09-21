@@ -40,7 +40,7 @@ export default function Heatmap({ S, onDay }) {
         title={key + (a ? ` · ${t(a.n === 1 ? '{0} workout' : '{0} workouts', a.n)} · ${a.min} min · ${fmtVol(a.vol, S.unit)}` : '')}
         onClick={a ? () => onDay(key) : undefined} />)
     }
-    cols.push(<div key={wk} className="hm-col">{cells}</div>)
+    cols.push(<div key={wk} className="hm-col" style={{ '--col-i': wk }}>{cells}</div>)
   }
 
   return <>

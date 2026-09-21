@@ -776,28 +776,5 @@ export default {
 
   // --- program wizard: training days ---
   'Pick the days you train': 'Выберите дни тренировок',
-  'Pick {0} days': 'Выберите {0} дней',
-
-  // --- equipment grouping & routine preview ---
-  'Group by equipment': 'Группировать по оборудованию',
-  'Grouped view': 'По группам',
-  'Flat list': 'Общий список',
-  'All equipment': 'Всё оборудование',
-  'Equipment group': 'Группа оборудования',
-  'Machines': 'Тренажёры',
-  'Bands & Balls': 'Эспандеры и мячи',
-  'Kettlebells & Other': 'Гири и другое',
-  'View exercises': 'Посмотреть упражнения',
-  'Hide exercises': 'Скрыть упражнения',
-  'Scheduled: {0}': 'Запланировано: {0}',
-  'Scheduled on: {0}': 'Запланировано на: {0}',
-  'Not scheduled': 'Не запланировано',
-  'Change days': 'Изменить дни',
-  'Edit routine': 'Редактировать',
-  'Swap with…': 'Поменять местами…',
-  'Swap with another routine': 'Поменять с другой программой',
-  'Assign to {0}': 'Назначить на {0}',
-  'Exercises in this routine': 'Упражнения в этой программе',
-  'Weekly schedule': 'Расписание на неделю',
-  'Schedule this routine on:': 'Запланировать на дни:'
-}
+  'Pick {0} days': 'Выберите {0} дней'
+,}

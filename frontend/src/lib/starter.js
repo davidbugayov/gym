@@ -95,8 +95,17 @@ const HOME_BASE_SPEC = [
   ['Stronger', 'bodyweight', [['0251', 3, 8], ['1460', 3, 12], ['0662', 3, 12], ['0464', 3, 20], ['1473', 2, 15]]]
 ]
 
-const makeRoutines = spec =>
+// Freeletics Bodyweight — 3 days, iconic high-intensity God workouts with structured set rounds
+export const FREELETICS_SPEC = [
+  ['Aphrodite', 'bodyweight', [{ id: '1160', sets: 5, sec: 40, weight: 0, mode: 'time' }, ['0514', 5, 25], ['0001', 5, 25]]],
+  ['Morpheus', 'bodyweight', [['0662', 5, 20], { id: '2612', sets: 5, min: 1, speed: 10 }, ['1460', 5, 20]]],
+  ['Athena', 'bodyweight', [{ id: '0630', sets: 5, sec: 40, weight: 0, mode: 'time' }, ['0001', 5, 25], ['0514', 5, 20]]]
+]
+
+export const makeRoutines = spec =>
   spec.map(([name, emoji, list]) => ({ id: uid(), name, emoji, ex: list.map(e => Array.isArray(e) ? { id: e[0], sets: e[1], reps: e[2], weight: 0 } : { ...e, weight: e.weight || 0 }) }))
+
+export const freeleticsRoutines = () => makeRoutines(FREELETICS_SPEC)
 
 // Ready-made programs with the metadata the Program Wizard matches on:
 //   name / detail      — t() keys, translated in every locale
@@ -117,6 +126,7 @@ export const READY_PROGRAMS = [
   { id: 'five-by-five', name: '5×5 strength', detail: '3 days · barbell-focused', spec: FIVE_BY_FIVE_SPEC, days: [1, 3, 5, 1, 5], goals: ['muscle', 'fitness'], equip: ['barbell'], requiredEquip: ['barbell'], altEquipGroups: [], levels: ['regular', 'advanced'], freq: [3, 3], minutes: 60, alt: true },
   { id: 'upper-lower', name: 'Upper / Lower', detail: '4 days · strength and size', spec: UPPER_LOWER_SPEC, days: [1, 2, 4, 5], goals: ['muscle'], equip: ['barbell', 'gym', 'dumbbell'], requiredEquip: ['barbell', 'gym'], altEquipGroups: [], levels: ['regular', 'advanced'], freq: [4, 4], minutes: 60 },
   { id: 'bodyweight-hiit', name: 'Bodyweight circuits', detail: '3 days · high-intensity', spec: BODYWEIGHT_HIIT_SPEC, days: [1, 3, 5], goals: ['fatloss', 'endurance'], equip: ['bodyweight'], requiredEquip: ['bodyweight'], altEquipGroups: [], levels: ['returning', 'regular', 'advanced'], freq: [3, 3], minutes: 35 },
+  { id: 'freeletics', name: 'Freeletics Bodyweight', detail: '3 days · iconic God workouts & high-intensity rounds', spec: FREELETICS_SPEC, days: [1, 3, 5], goals: ['fitness', 'endurance'], equip: ['bodyweight'], requiredEquip: ['bodyweight'], altEquipGroups: [], levels: ['beginner', 'returning', 'regular', 'advanced'], freq: [3, 3], minutes: 30 },
   { id: 'athletic', name: 'Athletic performance', detail: '4 days · power and conditioning', spec: ATHLETIC_SPEC, days: [1, 2, 4, 5], goals: ['fitness', 'endurance', 'muscle'], equip: ['barbell', 'bodyweight', 'dumbbell', 'gym'], requiredEquip: ['barbell', 'gym'], altEquipGroups: [], levels: ['regular', 'advanced'], freq: [4, 4], minutes: 60 },
   { id: 'core-mobility', name: 'Core & Mobility', detail: '2 days · recovery and stability', spec: CORE_MOBILITY_SPEC, days: [2, 5], goals: ['stress', 'fitness'], equip: ['bodyweight'], requiredEquip: ['bodyweight'], altEquipGroups: [], levels: ['beginner', 'returning', 'regular', 'advanced'], freq: [2, 2], minutes: 25 },
   { id: 'strong-start', name: 'Strong Start', detail: '3 days · beginner full body A/B/C', spec: STRONG_START_SPEC, days: [1, 3, 5], goals: ['muscle', 'fitness'], equip: ['bodyweight', 'dumbbell'], requiredEquip: [], altEquipGroups: [['dumbbell', 'bodyweight']], levels: ['beginner', 'returning'], freq: [3, 3], minutes: 40 },

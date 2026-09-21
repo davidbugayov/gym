@@ -9,11 +9,12 @@ import { beep, vibrate } from '../lib/sound.js'
 import { t } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import Media from '../components/Media.jsx'
-import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet } from '../sheets.jsx'
+import { startFlow, startFreeleticsFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, changeExerciseSheet, showProgramSheet, switchTrainingSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
-import { Button, Check, NumberField } from '../components/ui.jsx'
+import { Button, Check, NumberField, Segmented } from '../components/ui.jsx'
 import { nextPrescription, applyPrescription } from '../lib/progression.js'
 import { glyphOf } from '../lib/glyphs.js'
+import { FREELETICS_SPEC } from '../lib/starter.js'
 
 /* ---------- start chooser (no active workout) ---------- */
 function StartChooser() {
@@ -23,7 +24,29 @@ function StartChooser() {
   const todayOvr = S.dayPlan[todayISO()] !== undefined
   const others = S.routines.filter(r => r !== todayR)
   return <div className="narrow">
-    <div className="hdr"><div><h1>{t('Start workout')}</h1><div className="sub">{t(DAYN[new Date().getDay()])} — {todayR ? t('today is {0}', todayR.name) : t('rest day, but no one’s stopping you')}</div></div></div>
+    <div className="hdr">
+      <div>
+        <h1>{t('Start workout')}</h1>
+        <div className="sub">{t(DAYN[new Date().getDay()])} — {todayR ? t('today is {0}', todayR.name) : t('rest day, but no one’s stopping you')}</div>
+      </div>
+      <button className="iconbtn" onClick={showProgramSheet} aria-label={t('Show program')} title={t('Show program')}>
+        <Icon name="clipboard" />
+      </button>
+    </div>
+
+    {/* Quick program info & switch banner */}
+    <div className="card" style={{ padding: '10px 14px', marginBottom: 12 }}>
+      <div className="row between" style={{ alignItems: 'center' }}>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <Icon name="sparkles" style={{ color: 'var(--acc)' }} />
+          <span style={{ fontWeight: 600, fontSize: 13 }}>{t('Training Program & Schedule')}</span>
+        </div>
+        <div className="row" style={{ gap: 6 }}>
+          <Button size="sm" variant="tinted" icon="clipboard" onClick={showProgramSheet}>{t('Show program')}</Button>
+        </div>
+      </div>
+    </div>
+
     {todayR && <div className="card" style={{ borderColor: 'var(--acc)' }}>
       <h2 className="accent">{t("Today's plan")}{todayOvr ? ' · ' + t('rescheduled') : ''}</h2>
       <div className="row between" style={{ marginBottom: 12 }}>
@@ -32,6 +55,28 @@ function StartChooser() {
       </div>
       <Button variant="primary" icon="play" onClick={() => startFlow(todayR.id)}>{t('Start {0}', todayR.name)}</Button>
     </div>}
+
+    {/* Freeletics Training Section */}
+    <div className="fl-card" style={{ borderColor: 'var(--acc)', marginTop: 14 }}>
+      <div className="fl-badge"><Icon name="bolt" /> {t('Freeletics Training')}</div>
+      <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>{t('Freeletics God Workouts')}</div>
+      <div className="muted small">{t('High-intensity bodyweight rounds with rapid set transitions.')}</div>
+      <div className="fl-grid">
+        <button type="button" className="fl-god-btn" onClick={() => startFreeleticsFlow('Aphrodite', FREELETICS_SPEC[0][2])}>
+          <div className="fl-god-name">⚡ Aphrodite</div>
+          <div className="fl-god-desc">Burpees · Jump Squats · Sit-ups · 5 rounds</div>
+        </button>
+        <button type="button" className="fl-god-btn" onClick={() => startFreeleticsFlow('Morpheus', FREELETICS_SPEC[1][2])}>
+          <div className="fl-god-name">⚡ Morpheus</div>
+          <div className="fl-god-desc">Push-ups · Jumping Jacks · Lunges · 5 rounds</div>
+        </button>
+        <button type="button" className="fl-god-btn" onClick={() => startFreeleticsFlow('Athena', FREELETICS_SPEC[2][2])}>
+          <div className="fl-god-name">⚡ Athena</div>
+          <div className="fl-god-desc">Climbers · Sit-ups · Jump Squats · 5 rounds</div>
+        </button>
+      </div>
+    </div>
+
     {others.length > 0 && <><h4 className="sec">{t('Other routines')}</h4>
       <div className="list">{others.map(r => <div key={r.id} className="item" onClick={() => startFlow(r.id)}>
         <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
@@ -40,6 +85,392 @@ function StartChooser() {
     <div style={{ height: 14 }} />
     <Button icon="shuffle" onClick={() => startFlow(null)}>{t('Freestyle workout (pick as you go)')}</Button>
     {!S.routines.length && <><div style={{ height: 10 }} /><Button variant="primary" onClick={() => nav('/plan')}>{t('Build a plan first')}</Button></>}
+  </div>
+}
+
+/* ---------- quick change set sheet ---------- */
+function ChangeSetSheet({ entryIdx, setIdx, close }) {
+  const S = useStore(s => s.S)
+  const update = useStore(s => s.update)
+  const A = S.active
+  if (!A || !A.entries[entryIdx] || !A.entries[entryIdx].sets[setIdx]) {
+    close()
+    return null
+  }
+  const entry = A.entries[entryIdx]
+  const ex = exOr(entry.id)
+  const s = entry.sets[setIdx]
+  const mode = modeOf({ ...(entry.target || {}), id: entry.id })
+  const cardio = mode === 'cardio'
+  const timed = mode === 'time'
+  const isWorking = entry.activeSetIdx === setIdx || (entry.activeSetIdx === undefined && entry.sets.findIndex(x => !x.done) === setIdx)
+
+  const mut = fn => update(st => {
+    const e = st.active.entries[entryIdx]
+    if (e && e.sets[setIdx]) fn(e.sets[setIdx], e)
+  }, true)
+
+  const setTag = tag => mut(setObj => {
+    if (!tag || tag === 'N') delete setObj.tag
+    else setObj.tag = tag
+  })
+
+  const setAsActiveWorking = () => {
+    update(st => {
+      st.active.cur = entryIdx
+      st.active.entries[entryIdx].activeSetIdx = setIdx
+    })
+    close()
+  }
+
+  const deleteSet = () => {
+    if (entry.sets.length <= 1) return
+    update(st => {
+      st.active.entries[entryIdx].sets.splice(setIdx, 1)
+      if (st.active.entries[entryIdx].activeSetIdx >= st.active.entries[entryIdx].sets.length) {
+        delete st.active.entries[entryIdx].activeSetIdx
+      }
+    })
+    close()
+  }
+
+  const duplicateSet = () => {
+    update(st => {
+      const copy = { ...st.active.entries[entryIdx].sets[setIdx], done: false }
+      st.active.entries[entryIdx].sets.splice(setIdx + 1, 0, copy)
+    })
+    close()
+  }
+
+  return <div style={{ padding: '4px 0' }}>
+    <div className="row between" style={{ alignItems: 'center', marginBottom: 12 }}>
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 18, textTransform: 'capitalize' }}>{ex.n}</div>
+        <div className="muted small">{t('Set {0} of {1}', setIdx + 1, entry.sets.length)}</div>
+      </div>
+      <button type="button" className="iconbtn" onClick={close}><Icon name="xmark" /></button>
+    </div>
+
+    {/* Working Set Status & Jump */}
+    <div className="card" style={{ padding: 12, marginBottom: 14 }}>
+      <div className="row between" style={{ alignItems: 'center' }}>
+        <div>
+          <div style={{ fontWeight: 600 }}>{isWorking ? t('Active Working Set') : t('Working Set Target')}</div>
+          <div className="muted small">{isWorking ? t('This set is currently highlighted and active.') : t('Focus and log this set next.')}</div>
+        </div>
+        {!isWorking && (
+          <Button size="sm" variant="primary" onClick={setAsActiveWorking}>{t('Work on this set')}</Button>
+        )}
+      </div>
+    </div>
+
+    {/* Set Type / Tag */}
+    <div style={{ marginBottom: 16 }}>
+      <div className="small muted" style={{ marginBottom: 6, fontWeight: 600, textTransform: 'uppercase' }}>{t('Set Type')}</div>
+      <div className="row" style={{ gap: 6 }}>
+        <button type="button" className={'btn ' + (!s.tag ? 'primary' : 'ghost')} style={{ flex: 1, padding: '8px 4px', fontSize: 13 }} onClick={() => setTag('N')}>
+          {t('Normal')}
+        </button>
+        <button type="button" className={'btn ' + (s.tag === 'W' ? 'primary' : 'ghost')} style={{ flex: 1, padding: '8px 4px', fontSize: 13, color: s.tag === 'W' ? undefined : 'var(--yellow)' }} onClick={() => setTag('W')}>
+          {t('Warm-up (W)')}
+        </button>
+        <button type="button" className={'btn ' + (s.tag === 'D' ? 'primary' : 'ghost')} style={{ flex: 1, padding: '8px 4px', fontSize: 13, color: s.tag === 'D' ? undefined : '#a855f7' }} onClick={() => setTag('D')}>
+          {t('Drop (D)')}
+        </button>
+        <button type="button" className={'btn ' + (s.tag === 'F' ? 'primary' : 'ghost')} style={{ flex: 1, padding: '8px 4px', fontSize: 13, color: s.tag === 'F' ? undefined : 'var(--red)' }} onClick={() => setTag('F')}>
+          {t('Failure (F)')}
+        </button>
+      </div>
+    </div>
+
+    {/* Set Values */}
+    <div className="card" style={{ padding: 12, marginBottom: 16 }}>
+      <div className="small muted" style={{ marginBottom: 10, fontWeight: 600, textTransform: 'uppercase' }}>{t('Set Values')}</div>
+      {cardio ? (
+        <div className="row" style={{ gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <div className="small dim" style={{ marginBottom: 4 }}>{t('Duration (min)')}</div>
+            <div className="stp">
+              <button type="button" onClick={() => mut(x => { x.min = Math.max(1, (x.min || 1) - 1) })}><Icon name="minus" /></button>
+              <span className="val"><NumberField value={s.min ?? 20} onChange={v => mut(x => { x.min = v })} /></span>
+              <button type="button" onClick={() => mut(x => { x.min = (x.min || 1) + 1 })}><Icon name="plus" /></button>
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="small dim" style={{ marginBottom: 4 }}>{t('Speed (km/h)')}</div>
+            <div className="stp">
+              <button type="button" onClick={() => mut(x => { x.speed = Math.max(1, Math.round(((x.speed || 8) - 0.5) * 10) / 10) })}><Icon name="minus" /></button>
+              <span className="val"><NumberField decimal value={s.speed ?? 8} onChange={v => mut(x => { x.speed = v })} /></span>
+              <button type="button" onClick={() => mut(x => { x.speed = Math.round(((x.speed || 8) + 0.5) * 10) / 10 })}><Icon name="plus" /></button>
+            </div>
+          </div>
+        </div>
+      ) : timed ? (
+        <div className="row" style={{ gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <div className="small dim" style={{ marginBottom: 4 }}>{t('Seconds')}</div>
+            <div className="stp">
+              <button type="button" onClick={() => mut(x => { x.sec = Math.max(5, (x.sec || 45) - 5) })}><Icon name="minus" /></button>
+              <span className="val"><NumberField value={s.sec ?? 45} onChange={v => mut(x => { x.sec = v })} /></span>
+              <button type="button" onClick={() => mut(x => { x.sec = (x.sec || 45) + 5 })}><Icon name="plus" /></button>
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="small dim" style={{ marginBottom: 4 }}>{t('Weight ({0})', S.unit)}</div>
+            <div className="stp">
+              <button type="button" onClick={() => mut(x => { x.w = Math.max(0, Math.round(((x.w || 0) - 2.5) * 10) / 10) })}><Icon name="minus" /></button>
+              <span className="val"><NumberField decimal value={s.w ?? 0} onChange={v => mut(x => { x.w = v })} /></span>
+              <button type="button" onClick={() => mut(x => { x.w = Math.round(((x.w || 0) + 2.5) * 10) / 10 })}><Icon name="plus" /></button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="row" style={{ gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <div className="small dim" style={{ marginBottom: 4 }}>{t('Weight ({0})', S.unit)}</div>
+            <div className="stp">
+              <button type="button" onClick={() => mut(x => { x.w = Math.max(0, Math.round(((x.w || 0) - 2.5) * 10) / 10) })}><Icon name="minus" /></button>
+              <span className="val"><NumberField decimal value={s.w ?? 0} onChange={v => mut(x => { x.w = v })} /></span>
+              <button type="button" onClick={() => mut(x => { x.w = Math.round(((x.w || 0) + 2.5) * 10) / 10 })}><Icon name="plus" /></button>
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="small dim" style={{ marginBottom: 4 }}>{t('Reps')}</div>
+            <div className="stp">
+              <button type="button" onClick={() => mut(x => { x.r = Math.max(1, (x.r || 10) - 1) })}><Icon name="minus" /></button>
+              <span className="val"><NumberField value={s.r ?? 10} onChange={v => mut(x => { x.r = v })} /></span>
+              <button type="button" onClick={() => mut(x => { x.r = (x.r || 10) + 1 })}><Icon name="plus" /></button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+
+    {/* Quick actions */}
+    <div className="row" style={{ gap: 8, marginBottom: 12 }}>
+      <Button icon="play" onClick={() => mut(x => { x.done = !x.done })}>
+        {s.done ? t('Mark as not done') : t('Mark as completed')}
+      </Button>
+      <Button icon="plus" onClick={duplicateSet}>{t('Duplicate set')}</Button>
+    </div>
+
+    <div style={{ marginBottom: 12 }}>
+      <Button variant="tinted" icon="shuffle" onClick={() => {
+        close()
+        changeExerciseSheet(ex, newEx => {
+          update(st => {
+            const ent = st.active?.entries[entryIdx]
+            if (!ent) return
+            ent.id = newEx.id
+            ent.target = { ...(ent.target || {}), id: newEx.id }
+            const r = st.routines.find(x => x.id === st.active.routineId)
+            ent.plan = nextPrescription(st, { ...ent.target, id: newEx.id }, r)
+          })
+          useUI.getState().toast(t('Swapped to {0}', newEx.n))
+        })
+      }}>
+        {t('Change / Swap this exercise')}
+      </Button>
+    </div>
+
+    {entry.sets.length > 1 && (
+      <Button variant="danger" icon="trash" onClick={deleteSet}>{t('Delete this set')}</Button>
+    )}
+  </div>
+}
+
+/* ---------- working sets & rounds overview sheet ---------- */
+function WorkingSetsSheet({ close }) {
+  const S = useStore(s => s.S)
+  const update = useStore(s => s.update)
+  const A = S.active
+  const [viewMode, setViewMode] = useState(A?.isFreeletics ? 'round' : 'ex')
+
+  if (!A || !A.entries.length) {
+    close()
+    return null
+  }
+
+  const totalSets = A.entries.reduce((n, e) => n + e.sets.length, 0)
+  const doneSets = setsDoneActive(A)
+  const maxSets = Math.max(...A.entries.map(e => e.sets.length), 0)
+
+  const jumpToSet = (entryIdx, setIdx) => {
+    update(st => {
+      st.active.cur = entryIdx
+      st.active.entries[entryIdx].activeSetIdx = setIdx
+    })
+    close()
+  }
+
+  const toggleDone = (entryIdx, setIdx) => {
+    update(st => {
+      const s = st.active.entries[entryIdx].sets[setIdx]
+      if (s) s.done = !s.done
+    }, true)
+  }
+
+  const openChange = (entryIdx, setIdx) => {
+    close()
+    useUI.getState().openSheet(cl => <ChangeSetSheet entryIdx={entryIdx} setIdx={setIdx} close={cl} />)
+  }
+
+  return <div style={{ padding: '4px 0' }}>
+    <div className="row between" style={{ alignItems: 'center', marginBottom: 12 }}>
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 19 }}>{t('Working Sets & Rounds')}</div>
+        <div className="muted small">{doneSets} / {totalSets} {t('sets completed')}</div>
+      </div>
+      <button type="button" className="iconbtn" onClick={close}><Icon name="xmark" /></button>
+    </div>
+
+    {/* Mode toggle */}
+    <div style={{ marginBottom: 14 }}>
+      <Segmented value={viewMode} onChange={setViewMode} options={[
+        { value: 'ex', label: t('By Exercise') },
+        { value: 'round', label: A?.isFreeletics ? t('⚡ Freeletics Rounds ({0})', maxSets) : t('By Round ({0})', maxSets) }
+      ]} />
+    </div>
+
+    {viewMode === 'ex' ? (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {A.entries.map((entry, eIdx) => {
+          const ex = exOr(entry.id)
+          const isCurrentEx = A.cur === eIdx
+          const exDoneCount = entry.sets.filter(s => s.done).length
+          const workingIdx = entry.activeSetIdx !== undefined ? entry.activeSetIdx : Math.max(0, entry.sets.findIndex(s => !s.done))
+
+          return <div key={eIdx} className={'set-overview-item' + (isCurrentEx ? ' active-ex' : '')}>
+            <div className="row between" style={{ alignItems: 'center', marginBottom: 8 }}>
+              <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                <span style={{ fontWeight: 700, textTransform: 'capitalize', fontSize: 15 }}>{eIdx + 1}. {ex.n}</span>
+                {isCurrentEx && <span className="round-badge active">{t('Active')}</span>}
+              </div>
+              <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                <button type="button" className="btn-swap-ex" onClick={() => {
+                  close()
+                  changeExerciseSheet(ex, newEx => {
+                    update(st => {
+                      const ent = st.active?.entries[eIdx]
+                      if (!ent) return
+                      ent.id = newEx.id
+                      ent.target = { ...(ent.target || {}), id: newEx.id }
+                      const r = st.routines.find(x => x.id === st.active.routineId)
+                      ent.plan = nextPrescription(st, { ...ent.target, id: newEx.id }, r)
+                    })
+                    useUI.getState().toast(t('Swapped to {0}', newEx.n))
+                  })
+                }} title={t('Change / Swap this exercise')}>
+                  <Icon name="shuffle" style={{ fontSize: 11 }} />
+                  <span>{t('Change')}</span>
+                </button>
+                <span className="small muted">{exDoneCount}/{entry.sets.length}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {entry.sets.map((s, sIdx) => {
+                const isWorking = isCurrentEx && sIdx === workingIdx && !s.done
+                const tag = s.tag === 'W' ? 'W' : s.tag === 'D' ? 'D' : s.tag === 'F' ? 'F' : (sIdx + 1)
+                const desc = s.min !== undefined ? `${s.min}m` : s.sec !== undefined ? `${s.sec}s` : `${s.w ? s.w + 'k×' : ''}${s.r}`
+
+                return <div key={sIdx}
+                  onClick={() => jumpToSet(eIdx, sIdx)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '5px 9px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    border: isWorking ? '2px solid var(--acc)' : '1px solid var(--sep)',
+                    background: s.done ? 'var(--surface-3)' : isWorking ? 'color-mix(in srgb, var(--acc) 15%, var(--surface))' : 'var(--surface)',
+                    opacity: s.done ? 0.6 : 1
+                  }}
+                  title={t('Set {0}: {1} · Click to jump or change', sIdx + 1, desc)}>
+                  <span style={{
+                    width: 18, height: 18, borderRadius: '50%',
+                    background: s.done ? 'var(--acc)' : isWorking ? 'var(--acc)' : 'var(--surface-2)',
+                    color: s.done || isWorking ? 'var(--on-acc)' : 'var(--label-2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10
+                  }}>
+                    {s.done ? <Icon name="check" style={{ fontSize: 11 }} /> : tag}
+                  </span>
+                  <span>{desc}</span>
+                  <button type="button" className="iconbtn" style={{ width: 18, height: 18, fontSize: 10, padding: 0 }}
+                    onClick={ev => { ev.stopPropagation(); openChange(eIdx, sIdx) }}
+                    title={t('Change set')}>
+                    <Icon name="pencil" />
+                  </button>
+                </div>
+              })}
+            </div>
+          </div>
+        })}
+      </div>
+    ) : (
+      /* Round view (Freeletics style) */
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {Array.from({ length: maxSets }).map((_, rIdx) => {
+          const roundSets = A.entries.map((e, eIdx) => ({ entry: e, eIdx, set: e.sets[rIdx], sIdx: rIdx })).filter(x => x.set)
+          const roundDone = roundSets.filter(x => x.set.done).length
+          const isComplete = roundDone === roundSets.length
+
+          return <div key={rIdx} className="set-overview-item" style={{ borderColor: isComplete ? 'var(--acc)' : undefined }}>
+            <div className="row between" style={{ alignItems: 'center', marginBottom: 8 }}>
+              <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                <span className={'round-badge ' + (roundDone > 0 && !isComplete ? 'active' : '')}>
+                  <Icon name="bolt" style={{ fontSize: 12 }} /> {t('Round {0}', rIdx + 1)}
+                </span>
+                {isComplete && <span className="tag acc small">{t('Complete ✓')}</span>}
+              </div>
+              <span className="small muted">{roundDone}/{roundSets.length} {t('done')}</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {roundSets.map(({ entry, eIdx, set, sIdx }) => {
+                const ex = exOr(entry.id)
+                const isWorking = A.cur === eIdx && (entry.activeSetIdx === sIdx || (entry.activeSetIdx === undefined && sIdx === entry.sets.findIndex(x => !x.done)))
+                const desc = set.min !== undefined ? `${set.min} min` : set.sec !== undefined ? `${set.sec} sec` : `${set.w ? set.w + ' ' + S.unit + ' × ' : ''}${set.r} reps`
+
+                return <div key={eIdx}
+                  onClick={() => jumpToSet(eIdx, sIdx)}
+                  className="row between"
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    background: set.done ? 'var(--surface-3)' : isWorking ? 'color-mix(in srgb, var(--acc) 12%, var(--surface))' : 'var(--surface)',
+                    border: isWorking ? '1px solid var(--acc)' : '1px solid var(--sep)',
+                    cursor: 'pointer',
+                    alignItems: 'center'
+                  }}>
+                  <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                    <Check checked={set.done} onChange={() => toggleDone(eIdx, sIdx)} />
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 13, textTransform: 'capitalize' }}>{ex.n}</div>
+                      <div className="small dim">{desc} {set.tag ? `(${set.tag})` : ''}</div>
+                    </div>
+                  </div>
+                  <div className="row" style={{ gap: 4 }}>
+                    <button type="button" className="iconbtn" style={{ width: 28, height: 28, fontSize: 12 }}
+                      onClick={ev => { ev.stopPropagation(); openChange(eIdx, sIdx) }} title={t('Change set')}>
+                      <Icon name="pencil" />
+                    </button>
+                    {isWorking && <span className="tag acc small">{t('Working')}</span>}
+                  </div>
+                </div>
+              })}
+            </div>
+          </div>
+        })}
+      </div>
+    )}
+    <div style={{ height: 14 }} />
+    <Button variant="tinted" icon="shuffle" onClick={() => { close(); switchTrainingSheet() }}>
+      {t('Change training / Switch workout')}
+    </Button>
   </div>
 }
 
@@ -54,7 +485,7 @@ function Elapsed({ start }) {
 }
 
 /* ---------- one exercise block (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemoveSet, onStartTimed }) {
+function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemoveSet, onStartTimed, onChangeSet, onChangeExercise }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
@@ -81,6 +512,11 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
   const kind = effortOf(S)
   const eff = EFFORT[kind]
   const col3 = mode === 'reps' && eff ? { ...eff, eff: kind, dec: true, opt: true, hd: t(eff.hd) } : null
+
+  const workingSetIdx = entry.activeSetIdx !== undefined
+    ? Math.min(entry.activeSetIdx, entry.sets.length - 1)
+    : Math.max(0, entry.sets.findIndex(s => !s.done))
+
   // The effort column walks its own scale — see stepEffort. Weight and reps step up from 0
   // with no ceiling, as they always did.
   const bump = (s, i, col, dir) => {
@@ -100,9 +536,15 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
   )
   return <>
     <Media ex={ex} key={entry.id} compact={compact} minimizable />
-    <div className="row between" style={{ marginBottom: 6 }}>
+    <div className="row between" style={{ marginBottom: 6, alignItems: 'center' }}>
       <div style={{ fontSize: compact ? 17 : 20, fontWeight: 600, letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{ex.n}</div>
-      <button className="iconbtn" aria-label={t('Details')} onClick={() => exerciseDetailSheet(ex)}><Icon name="info" /></button>
+      <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+        <button type="button" className="btn-swap-ex" onClick={() => onChangeExercise && onChangeExercise(entryIdx)} title={t('Change / Swap exercise')}>
+          <Icon name="shuffle" style={{ fontSize: 12 }} />
+          <span>{t('Change')}</span>
+        </button>
+        <button className="iconbtn" aria-label={t('Details')} onClick={() => exerciseDetailSheet(ex)}><Icon name="info" /></button>
+      </div>
     </div>
     <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
       {cardio && <span className="tag acc"><Icon name="figureRun" />{t('Cardio')}</span>}
@@ -115,20 +557,45 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
       <Icon name={plan.kind === 'up' ? 'arrowUp' : plan.kind === 'deload' ? 'arrowDown' : 'lightbulb'} />
       <span>{t(...plan.why)}</span>
     </div>}
-    <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
+
+    {/* Working set indicator banner */}
+    <div className="ws-bar">
+      <div className="ws-pill">
+        <span className="ws-dot" />
+        <span>{t('Set {0} of {1} · Working', workingSetIdx + 1, entry.sets.length)}</span>
+        {entry.sets[workingSetIdx]?.tag && (
+          <span className="tag small" style={{ marginLeft: 4 }}>
+            {entry.sets[workingSetIdx].tag === 'W' ? t('Warm-up') : entry.sets[workingSetIdx].tag === 'D' ? t('Drop') : t('Failure')}
+          </span>
+        )}
+      </div>
+      <button type="button" className="btn-ws-change" onClick={() => onChangeSet?.(workingSetIdx)}>
+        <Icon name="pencil" style={{ fontSize: 13 }} />
+        <span>{t('Change set')}</span>
+      </button>
+    </div>
+
+    <div className="card" style={{ marginTop: 0, marginBottom: 0 }}>
       {/* the header carries the same eff3 sizing as the rows, or the labels drift off their columns */}
       <div className={'sethead' + (col3 ? ' eff3' : '')}><span className="n-sp" /><span className="w-sp">{col1.hd}</span><span className="r-sp">{col2.hd}</span>{col3 && <span className="eff-sp">{col3.hd}</span>}{timed && <span className="ck-sp" />}<span className="ck-sp" /></div>
-      {entry.sets.map((s, i) => <div key={i} className={'setrow' + (s.done ? ' done' : '') + (col3 ? ' eff3' : '')}>
-        <div className="n">{i + 1}</div>
-        {cell(s, i, col1, 'w')}
-        {cell(s, i, col2, 'r')}
-        {col3 && cell(s, i, col3, 'eff')}
-        {/* A timed set is started, not typed: the timer counts the hold down and checks the
-            set off itself. The checkbox stays for anyone who timed it on their own watch. */}
-        {timed && <button className="setgo" aria-label={t('Start set')} disabled={s.done || !!working}
-          onClick={() => onStartTimed(i)}><Icon name="play" /></button>}
-        <Check checked={s.done} onChange={() => onToggle(i)} />
-      </div>)}
+      {entry.sets.map((s, i) => {
+        const isWorking = i === workingSetIdx && !s.done
+        const tagClass = s.tag === 'W' ? ' tag-w' : s.tag === 'D' ? ' tag-d' : s.tag === 'F' ? ' tag-f' : (isWorking ? ' working' : '')
+        const tagLabel = s.tag === 'W' ? 'W' : s.tag === 'D' ? 'D' : s.tag === 'F' ? 'F' : (i + 1)
+        return <div key={i} className={'setrow' + (s.done ? ' done' : '') + (isWorking ? ' is-working' : '') + (col3 ? ' eff3' : '')}>
+          <button type="button" className={'n' + tagClass} onClick={() => onChangeSet?.(i)} title={t('Set {0} · Tap to change set', i + 1)} aria-label={t('Set {0}', i + 1)}>
+            {tagLabel}
+          </button>
+          {cell(s, i, col1, 'w')}
+          {cell(s, i, col2, 'r')}
+          {col3 && cell(s, i, col3, 'eff')}
+          {/* A timed set is started, not typed: the timer counts the hold down and checks the
+              set off itself. The checkbox stays for anyone who timed it on their own watch. */}
+          {timed && <button className="setgo" aria-label={t('Start set')} disabled={s.done || !!working}
+            onClick={() => onStartTimed(i)}><Icon name="play" /></button>}
+          <Check checked={s.done} onChange={() => onToggle(i)} />
+        </div>
+      })}
       <div style={{ height: 8 }} />
       <div className="row">
         <Button size="sm" icon="minus" disabled={entry.sets.length <= 1} onClick={onRemoveSet}>{t('Remove set')}</Button>
@@ -153,6 +620,15 @@ function ActiveWorkout() {
 
   const total = A.entries.reduce((n, e) => n + e.sets.length, 0)
   const done = setsDoneActive(A)
+
+  const currentRound = (() => {
+    if (!A || !A.entries.length) return 1
+    const maxS = Math.max(...A.entries.map(e => e.sets.length), 1)
+    for (let r = 0; r < maxS; r++) {
+      if (A.entries.some(e => e.sets[r] && !e.sets[r].done)) return r + 1
+    }
+    return maxS
+  })()
 
   const mutEntry = (idx, fn) => update(s => { fn(s.active.entries[idx]) }, true)
   // Clearing an optional field drops the key rather than storing null, so a set only carries
@@ -191,6 +667,10 @@ function ActiveWorkout() {
       e.sets[i].done = !e.sets[i].done
       if (e.sets[i].done) {
         beep(S.sound, 1040, 0.12); vibrate(30)
+        const nextIncomplete = e.sets.findIndex((x, sIdx) => sIdx > i && !x.done)
+        if (nextIncomplete !== -1) e.activeSetIdx = nextIncomplete
+        else delete e.activeSetIdx
+
         const isLastExInUnit = idx === unit[unit.length - 1]
         const unitDone = unit.every(ui => (ui === idx ? e : A.entries[ui]).sets.every(x => x.done))
         if (isLastExInUnit && !unitDone) startRest(S.restSec)
@@ -199,6 +679,8 @@ function ActiveWorkout() {
         // Only reps training has a "working weight" worth confirming — a bodyweight plank
         // has nothing to put in that slider.
         if (e.sets.every(x => x.done)) { exJustDone = true; if (m === 'reps' && !e.asked) { e.asked = true; askTop = true } }
+      } else {
+        e.activeSetIdx = i
       }
     })
     // reps: topWeight first (it chains into the finish/continue prompt on the last unit).
@@ -207,6 +689,23 @@ function ActiveWorkout() {
     else if (workoutDone) workoutCompleteSheet()
     else if (exJustDone && cardioEntry) useUI.getState().toast(t('Cardio logged'))
     else if (exJustDone && m === 'time') useUI.getState().toast(t('Hold logged'))
+  }
+
+  const handleSwapExercise = entryIdx => {
+    const entry = A.entries[entryIdx]
+    if (!entry) return
+    const curEx = exOr(entry.id)
+    changeExerciseSheet(curEx, newEx => {
+      update(s => {
+        const ent = s.active?.entries[entryIdx]
+        if (!ent) return
+        ent.id = newEx.id
+        ent.target = { ...(ent.target || {}), id: newEx.id }
+        const r = s.routines.find(x => x.id === s.active.routineId)
+        ent.plan = nextPrescription(s, { ...ent.target, id: newEx.id }, r)
+      })
+      useUI.getState().toast(t('Swapped to {0}', newEx.n))
+    })
   }
 
   // Live-presence heartbeat so the admin dashboard can show who's training now. Signed-in only —
@@ -245,18 +744,38 @@ function ActiveWorkout() {
     <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
 
     {A.entries.length ? <>
-      <div className="muted small" style={{ marginBottom: 6 }}>{isSuperset ? t('Superset {0} / {1}', unitIdx + 1, units.length) : t('Exercise {0} / {1}', unitIdx + 1, units.length)}</div>
+      <div className="row between" style={{ alignItems: 'center', marginTop: 8, marginBottom: 8, gap: 6, flexWrap: 'wrap' }}>
+        <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {A.isFreeletics && <span className="fl-badge" style={{ margin: 0 }}><Icon name="bolt" /> Freeletics</span>}
+          <span>{isSuperset ? t('Superset {0} / {1}', unitIdx + 1, units.length) : t('Exercise {0} / {1}', unitIdx + 1, units.length)}</span>
+          {A.isFreeletics && <span className="round-badge active">{t('Round {0}', currentRound)}</span>}
+        </div>
+        <div className="row" style={{ gap: 6 }}>
+          <button type="button" className="set-chip-btn" onClick={() => switchTrainingSheet()} title={t('Change training')}>
+            <Icon name="shuffle" />
+            <span>{t('Change training')}</span>
+          </button>
+          <button type="button" className="set-chip-btn" onClick={() => useUI.getState().openSheet(cl => <WorkingSetsSheet close={cl} />)}>
+            <Icon name="list" />
+            <span>{t('Show sets & change')}</span>
+          </button>
+        </div>
+      </div>
       {isSuperset ? (
         <div className="ss-card">
           <div className="ss-hd"><Icon name="link" />{t('Superset · do these back-to-back, rest after both')}</div>
           {unit.map((idx, k) => <div key={idx} className="ss-ex">
             {k > 0 && <div className="ss-amp">+</div>}
             <ExerciseBlock entryIdx={idx} compact
-              onToggle={i => toggle(idx, i)} onField={(i, f, v) => setField(idx, i, f, v)} onAddSet={() => addSet(idx)} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)} />
+              onToggle={i => toggle(idx, i)} onField={(i, f, v) => setField(idx, i, f, v)} onAddSet={() => addSet(idx)} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)}
+              onChangeSet={i => useUI.getState().openSheet(cl => <ChangeSetSheet entryIdx={idx} setIdx={i} close={cl} />)}
+              onChangeExercise={handleSwapExercise} />
           </div>)}
         </div>
       ) : (
-        <ExerciseBlock entryIdx={cur} onToggle={i => toggle(cur, i)} onField={(i, f, v) => setField(cur, i, f, v)} onAddSet={() => addSet(cur)} onRemoveSet={() => removeSet(cur)} onStartTimed={i => startTimed(cur, i)} />
+        <ExerciseBlock entryIdx={cur} onToggle={i => toggle(cur, i)} onField={(i, f, v) => setField(cur, i, f, v)} onAddSet={() => addSet(cur)} onRemoveSet={() => removeSet(cur)} onStartTimed={i => startTimed(cur, i)}
+          onChangeSet={i => useUI.getState().openSheet(cl => <ChangeSetSheet entryIdx={cur} setIdx={i} close={cl} />)}
+          onChangeExercise={handleSwapExercise} />
       )}
     </> : <div className="empty"><div className="ico"><Icon name="shuffle" /></div>{t('Freestyle workout — add your first exercise.')}</div>}
 

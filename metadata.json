@@ -1,6 +1,6 @@
 {
   "name": "openGym",
-  "description": "Free, open-source gym & body-weight tracker with guided workouts, exercise library, routines, and progress tracking.",
+  "description": "Free, open-source gym & body-weight tracker with exercise library, workout planning, and stats",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

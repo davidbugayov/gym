@@ -2,11 +2,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useStore } from '../store/useStore.js'
 import { exOr } from '../lib/exercises.js'
-import { uid, DAYN } from '../lib/format.js'
+import { uid } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import { supersetUnits, cleanupSg, exLine } from '../lib/history.js'
 import { Thumb } from '../components/Media.jsx'
-import { glyphPicker, exercisePicker, exConfigSheet, confirmSheet } from '../sheets.jsx'
+import { glyphPicker, exercisePicker, exConfigSheet, confirmSheet, changeExerciseSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { glyphOf } from '../lib/glyphs.js'
 import { Button, SelectRow } from '../components/ui.jsx'
@@ -56,34 +56,6 @@ export default function RoutineEdit() {
       {t('Applies to every exercise in this routine that does not set its own rule.')}
     </div>
 
-    {/* Weekly schedule for this routine */}
-    <div className="sect-b" style={{ marginBottom: 16, padding: '12px 14px' }}>
-      <div className="row between" style={{ marginBottom: 8 }}>
-        <div style={{ fontWeight: 600, fontSize: 14 }}>{t('Weekly schedule')}</div>
-        <div className="small dim">{t('Schedule this routine on:')}</div>
-      </div>
-      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-        {[1, 2, 3, 4, 5, 6, 0].map(d => {
-          const active = S.week[d] === id
-          return (
-            <button
-              key={d}
-              className={'chip' + (active ? ' on' : '')}
-              style={{ padding: '6px 12px', fontSize: 13 }}
-              onClick={() => {
-                update(s => {
-                  if (s.week[d] === id) delete s.week[d]
-                  else s.week[d] = id
-                })
-              }}
-            >
-              {t(DAYN[d])}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-
     {r.ex.length ? <div className="list">{r.ex.map((e, i) => {
       // An unresolvable id is shown rather than skipped — hiding it left an entry you
       // could neither see nor delete, but that still turned up in the workout.
@@ -92,15 +64,24 @@ export default function RoutineEdit() {
       return <div key={i}>
         {unitFirst.has(i) && <div className="ss-label"><Icon name="link" />{t('Superset')}</div>}
         <div className={'item' + (inSS.has(i) ? ' in-ss' : '')} onClick={() => {
-          exConfigSheet(ex, e, cfg => edit(x => { x[i] = { id: x[i].id, sg: x[i].sg, ...cfg } }), () => edit(x => { x.splice(i, 1); cleanupSg(x) }), r)
+          exConfigSheet(ex, e, cfg => edit(x => { x[i] = { id: x[i].id, sg: x[i].sg, ...cfg } }), () => edit(x => { x.splice(i, 1); cleanupSg(x) }), r, newEx => edit(x => { x[i] = { ...x[i], id: newEx.id } }))
         }}>
           <Thumb ex={ex} />
           <div className="grow"><div className="tt capitalize">{ex.n}</div><div className="ss">{exLine(e, S.unit)}</div></div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 'none', alignItems: 'center' }}>
-            {i > 0 && <button className={'iconbtn' + (linkedPrev ? ' on-ss' : '')} title={t('Superset with exercise above')} style={{ width: 32, height: 28, borderRadius: 8, fontSize: 15 }} onClick={ev => { ev.stopPropagation(); toggleLink(i) }}><Icon name="link" /></button>}
-            <div style={{ display: 'flex', gap: 2 }}>
-              <button className="iconbtn" aria-label="Move up" style={{ width: 28, height: 24, borderRadius: 7, fontSize: 12 }} onClick={ev => { ev.stopPropagation(); move(i, -1) }}><Icon name="chevronUp" /></button>
-              <button className="iconbtn" aria-label="Move down" style={{ width: 28, height: 24, borderRadius: 7, fontSize: 12 }} onClick={ev => { ev.stopPropagation(); move(i, 1) }}><Icon name="chevronDown" /></button>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <button type="button" className="btn-swap-ex" style={{ padding: '3px 7px', fontSize: 11 }} onClick={ev => {
+              ev.stopPropagation()
+              changeExerciseSheet(ex, newEx => edit(x => { x[i] = { ...x[i], id: newEx.id } }))
+            }} title={t('Change / Swap exercise')}>
+              <Icon name="shuffle" style={{ fontSize: 11 }} />
+              <span>{t('Change')}</span>
+            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 'none', alignItems: 'center' }}>
+              {i > 0 && <button className={'iconbtn' + (linkedPrev ? ' on-ss' : '')} title={t('Superset with exercise above')} style={{ width: 32, height: 28, borderRadius: 8, fontSize: 15 }} onClick={ev => { ev.stopPropagation(); toggleLink(i) }}><Icon name="link" /></button>}
+              <div style={{ display: 'flex', gap: 2 }}>
+                <button className="iconbtn" aria-label="Move up" style={{ width: 28, height: 24, borderRadius: 7, fontSize: 12 }} onClick={ev => { ev.stopPropagation(); move(i, -1) }}><Icon name="chevronUp" /></button>
+                <button className="iconbtn" aria-label="Move down" style={{ width: 28, height: 24, borderRadius: 7, fontSize: 12 }} onClick={ev => { ev.stopPropagation(); move(i, 1) }}><Icon name="chevronDown" /></button>
+              </div>
             </div>
           </div>
         </div>

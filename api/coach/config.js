@@ -15,7 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { unprivilegedIds } from './adapters/spawn.js';
 
-const DATA = process.env.DATA_DIR || '/data';
+const DATA = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const FILE = path.join(DATA, 'coach.json');
 const coachCodexHome = process.env.COACH_CODEX_HOME || path.join(DATA, 'codex');
 // This file is deliberately owned by OpenGym, not a person's normal Codex configuration. It

@@ -9,13 +9,14 @@ import {
   generateAuthenticationOptions, verifyAuthenticationResponse
 } from '@simplewebauthn/server';
 import webpush from 'web-push';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as coachConfig from './coach/config.js';
 import * as coachJobs from './coach/jobs.js';
 import { coachRoutes } from './coach/routes.js';
 import { startCadence } from './coach/cadence.js';
 
-const PORT = +(process.env.PORT || 3000);
-const DATA = process.env.DATA_DIR || '/data';
+const PORT = 3000;
+const DATA = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const RP_ID = process.env.RP_ID || 'localhost';
 const ORIGIN = process.env.ORIGIN || 'http://localhost:8080';
 const RP_NAME = process.env.RP_NAME || 'openGym';
@@ -582,14 +583,25 @@ coachJobs.setProposalHook((uid, pending) => {
 });
 startCadence({ users: () => db.users, userNow });
 
-http.createServer(async (req, res) => {
-  const url = new URL(req.url, 'http://x');
+export async function handleApi(req, res) {
+  const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
   const key = req.method + ' ' + url.pathname;
   const handler = routes[key];
-  if (!handler) return json(res, 404, { error: 'not found' });
-  try { await handler(req, res); }
-  catch (e) {
+  if (!handler) return false;
+  try {
+    await handler(req, res);
+  } catch (e) {
     console.error(key, e);
     if (!res.headersSent) json(res, 500, { error: 'server error' });
   }
-}).listen(PORT, () => console.log(`gym-api on :${PORT} (rpID=${RP_ID}, origin=${ORIGIN})`));
+  return true;
+}
+
+const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isDirectRun) {
+  http.createServer(async (req, res) => {
+    const handled = await handleApi(req, res);
+    if (!handled) json(res, 404, { error: 'not found' });
+  }).listen(PORT, '0.0.0.0', () => console.log(`gym-api on :${PORT} (rpID=${RP_ID}, origin=${ORIGIN})`));
+}
+

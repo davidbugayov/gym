@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { EXDB, EXIDX, BODYPARTS, isCardio, allExercises, equipmentOf, exOr, EQUIPMENT_GROUPS, getEquipmentGroup, equipmentGroupsOf, groupExercisesByEquipment } from './lib/exercises.js'
+import { EXDB, EXIDX, BODYPARTS, isCardio, allExercises, equipmentOf, exOr, findSubstitutes } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG, ACCENTS } from './lib/format.js'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, exLine } from './lib/history.js'
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, getLang, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
-import { READY_PROGRAMS, readyProgram, starterRoutines } from './lib/starter.js'
+import { READY_PROGRAMS, readyProgram, starterRoutines, makeRoutines } from './lib/starter.js'
 import { matchPrograms, applyProgramToState, defaultUseSchedule, buildCustomWeek } from './lib/program-match.js'
 import Media, { Thumb } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
@@ -29,13 +29,13 @@ const toast = m => ui().toast(m)
 const snd = () => S().sound
 
 /* ============================ custom confirm dialog ============================ */
-function ConfirmDialog({ title, message, confirmText, cancelText, danger, onConfirm, close }) {
+function ConfirmDialog({ title, message, confirmText, cancelText, danger, onConfirm, onCancel, close }) {
   return <div style={{ textAlign: 'center', padding: '4px 0' }}>
     {title && <h3 style={{ marginBottom: 8 }}>{title}</h3>}
     <div className="muted" style={{ marginBottom: 18, lineHeight: 1.5 }}>{message}</div>
     <button className={'btn ' + (danger ? 'danger' : 'primary')} onClick={() => { close(); onConfirm && onConfirm() }}>{confirmText || t('Confirm')}</button>
     <div style={{ height: 8 }} />
-    <Button variant="ghost" className="dim" onClick={close}>{cancelText || t('Cancel')}</Button>
+    <Button variant="ghost" className="dim" onClick={() => { close(); onCancel && onCancel() }}>{cancelText || t('Cancel')}</Button>
   </div>
 }
 // Themed replacement for window.confirm — callback-based (no blocking).
@@ -641,10 +641,7 @@ function ExercisePicker({ onPick, close }) {
   const usage = usageMap(st)
   const [q, setQ] = useState('')
   const [bp, setBp] = useState('')          // '' = all, '★' = chosen, else a body part
-  const [eqGroup, setEqGroup] = useState('')
   const [eq, setEq] = useState('')          // '' = any equipment
-  const [groupByEq, setGroupByEq] = useState(false)
-  const [collapsedGroups, setCollapsedGroups] = useState({})
   const [shown, setShown] = useState(50)
   const ql = q.toLowerCase().trim()
   const all = allExercises(st)
@@ -652,137 +649,131 @@ function ExercisePicker({ onPick, close }) {
     (bp === '★' ? usage[e.id] : (!bp || e.bp === bp)) &&
     (!ql || e.n.toLowerCase().includes(ql) || e.tg.includes(ql) || e.eq.includes(ql) || (e.desc || '').toLowerCase().includes(ql)))
   if (bp === '★') base = [...base].sort((a, b) => (usage[b.id] - usage[a.id]) || (a.n < b.n ? -1 : 1))
-
-  const availGroups = equipmentGroupsOf(base)
-  const activeEqGroup = availGroups.some(g => g.name === eqGroup) ? eqGroup : ''
-  const byGroup = activeEqGroup ? base.filter(e => getEquipmentGroup(e.eq) === activeEqGroup) : base
-
-  const eqOpts = equipmentOf(byGroup)
+  const eqOpts = equipmentOf(base)
   // Drop the equipment filter if the search narrowed it away, so you never hit a dead end.
   const eqOn = eqOpts.includes(eq) ? eq : ''
-  const f = eqOn ? byGroup.filter(e => e.eq === eqOn) : byGroup
+  const f = eqOn ? base.filter(e => e.eq === eqOn) : base
   const chosenCount = Object.keys(usage).length
-  const grouped = groupExercisesByEquipment(f)
-
-  const toggleGroup = name => setCollapsedGroups(p => ({ ...p, [name]: !p[name] }))
-
-  const renderExItem = e => {
-    const eqG = getEquipmentGroup(e.eq)
-    return (
-      <div key={e.id} className="item" onClick={() => onPick(e)}>
-        <Thumb ex={e} />
-        <div className="grow">
-          <div className="tt capitalize">{e.n}</div>
-          <div className="ss capitalize">
-            {t(e.tg || e.bp)} · <span style={{ color: 'var(--accent)' }}>{t(eqG)}</span> {e.eq && e.eq !== eqG.toLowerCase() ? `(${t(e.eq)})` : ''}
-          </div>
-        </div>
-        {usage[e.id] && <span className="tag acc"><Icon name="starFill" /></span>}
-        <Icon name="plus" className="chev" />
-      </div>
-    )
-  }
-
   return <>
-    <div className="row between" style={{ marginBottom: 6 }}>
-      <h3 style={{ margin: 0 }}>{t('Add exercise')}</h3>
-      <button
-        className={'iconbtn' + (groupByEq ? ' on-ss' : '')}
-        style={{ borderRadius: 8, padding: '4px 8px', width: 'auto', gap: 5, fontSize: 12 }}
-        onClick={() => setGroupByEq(v => !v)}
-        title={t('Group by equipment')}
-      >
-        <Icon name="folder" />
-        <span>{groupByEq ? t('Grouped view') : t('Flat list')}</span>
-      </button>
+    <h3>{t('Add exercise')}</h3>
+    <div className="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+      <input className="input" placeholder={t('Search {0} exercises…', all.length)} value={q} onChange={e => { setQ(e.target.value); setShown(50) }} /></div>
+    <div className="chips" style={{ margin: eqOpts.length > 1 ? '10px 0 6px' : '10px 0' }}>
+      {chosenCount > 0 && <button className={'chip' + (bp === '★' ? ' on' : '')} onClick={() => { setBp('★'); setEq(''); setShown(50) }}><Icon name="starFill" style={{ fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }} />{t('Chosen')} ({chosenCount})</button>}
+      <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(50) }}>{t('All')}</button>
+      {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setEq(''); setShown(50) }}>{t(b)}</button>)}
     </div>
-
-    <div className="search">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-      <input className="input" placeholder={t('Search {0} exercises…', all.length)} value={q} onChange={e => { setQ(e.target.value); setShown(50) }} />
-    </div>
-
-    {/* Body part filter */}
-    <div className="chips" style={{ margin: '8px 0 6px' }}>
-      {chosenCount > 0 && <button className={'chip' + (bp === '★' ? ' on' : '')} onClick={() => { setBp('★'); setEqGroup(''); setEq(''); setShown(50) }}><Icon name="starFill" style={{ fontSize: 12, display: 'inline-block', marginRight: 4, verticalAlign: '-1px' }} />{t('Chosen')} ({chosenCount})</button>}
-      <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEqGroup(''); setEq(''); setShown(50) }}>{t('All')}</button>
-      {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setEqGroup(''); setEq(''); setShown(50) }}>{t(b)}</button>)}
-    </div>
-
-    {/* Equipment group filter */}
-    <div className="chips" style={{ marginBottom: eqOpts.length > 1 ? 6 : 10 }}>
-      <button className={'chip nocap' + (!activeEqGroup ? ' on' : '')} onClick={() => { setEqGroup(''); setEq(''); setShown(50) }}>
-        <Icon name="list" style={{ fontSize: 12, marginRight: 4, verticalAlign: '-1px' }} />
-        {t('All equipment')}
-      </button>
-      {availGroups.map(g => (
-        <button
-          key={g.name}
-          className={'chip' + (activeEqGroup === g.name ? ' on' : '')}
-          onClick={() => { setEqGroup(activeEqGroup === g.name ? '' : g.name); setEq(''); setShown(50) }}
-        >
-          <Icon name={g.icon} style={{ fontSize: 12, marginRight: 4, verticalAlign: '-1px' }} />
-          {t(g.name)} ({g.count})
-        </button>
-      ))}
-    </div>
-
-    {/* Sub-equipment filter */}
     {eqOpts.length > 1 && <div className="chips" style={{ marginBottom: 10 }}>
       <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(50) }}>{t('Any equipment')}</button>
       {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(50) }}>{t(x)}</button>)}
     </div>}
-
     <div className="list">
       {bp !== '★' && <div className="item" onClick={() => customExSheet(null, ex => onPick(ex), q.trim())}>
         <div className="thumb thumb-x"><Icon name="sparkles" /></div>
         <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name + body part, no animation')}</div></div><Icon name="plus" className="chev" />
       </div>}
-
-      {groupByEq ? (
-        grouped.length > 0 ? (
-          grouped.map(grp => {
-            const isCollapsed = !!collapsedGroups[grp.name]
-            return (
-              <div key={grp.name} style={{ marginBottom: 10 }}>
-                <div
-                  className="row between"
-                  style={{
-                    padding: '6px 10px',
-                    background: 'var(--surface-2)',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    marginBottom: isCollapsed ? 0 : 4
-                  }}
-                  onClick={() => toggleGroup(grp.name)}
-                >
-                  <div className="row" style={{ gap: 6, fontWeight: 600 }}>
-                    <span className="tag acc" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <Icon name={grp.icon} />
-                      {t(grp.name)}
-                    </span>
-                    <span className="small dim">{grp.exercises.length} {t('exercises')}</span>
-                  </div>
-                  <Icon name={isCollapsed ? 'chevronRight' : 'chevronDown'} className="chev" />
-                </div>
-                {!isCollapsed && <div className="list">{grp.exercises.map(renderExItem)}</div>}
-              </div>
-            )
-          })
-        ) : (
-          <div className="empty">{t('Nothing chosen yet — add exercises and they’ll show up here.')}</div>
-        )
-      ) : (
-        f.slice(0, shown).map(renderExItem)
-      )}
-
+      {f.slice(0, shown).map(e => <div key={e.id} className="item" onClick={() => onPick(e)}>
+        <Thumb ex={e} /><div className="grow"><div className="tt capitalize">{e.n}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div></div>
+        {usage[e.id] && <span className="tag acc"><Icon name="starFill" /></span>}<Icon name="plus" className="chev" />
+      </div>)}
       {f.length === 0 && bp === '★' && <div className="empty">{t('Nothing chosen yet — add exercises and they’ll show up here.')}</div>}
     </div>
-    {!groupByEq && f.length > shown && <><div style={{ height: 8 }} /><Button onClick={() => setShown(s => s + 50)}>{t('Show more')}</Button></>}
+    {f.length > shown && <><div style={{ height: 8 }} /><Button onClick={() => setShown(s => s + 50)}>{t('Show more')}</Button></>}
   </>
 }
 export const exercisePicker = onPick => ui().openSheet(close => <ExercisePicker onPick={onPick} close={close} />)
+
+/* ============================ change / substitute exercise picker ============================ */
+function ChangeExerciseSheet({ currentEx, onSwap, close }) {
+  const st = useStore(s => s.S)
+  const all = allExercises(st)
+  const current = currentEx ? exOr(currentEx.id || currentEx) : null
+  const substitutes = current ? findSubstitutes(current, all) : []
+
+  const [tab, setTab] = useState(substitutes.length > 0 ? 'sub' : 'all')
+  const [q, setQ] = useState('')
+  const [eq, setEq] = useState('')
+  const [bp, setBp] = useState(tab === 'sub' && current ? current.bp : '')
+  const [shown, setShown] = useState(40)
+
+  const ql = q.toLowerCase().trim()
+  let pool = tab === 'sub' ? substitutes : all
+  if (bp && tab === 'all') pool = pool.filter(e => e.bp === bp)
+  if (ql) pool = pool.filter(e => e.n.toLowerCase().includes(ql) || (e.tg && e.tg.includes(ql)) || (e.eq && e.eq.includes(ql)))
+  const eqOpts = equipmentOf(pool)
+  const eqOn = eqOpts.includes(eq) ? eq : ''
+  const f = eqOn ? pool.filter(e => e.eq === eqOn) : pool
+
+  const handlePick = ex => {
+    close()
+    onSwap(ex)
+  }
+
+  return <>
+    <div className="row between" style={{ alignItems: 'flex-start', marginBottom: 12 }}>
+      <div>
+        <h3 style={{ margin: 0 }}>{t('Change exercise')}</h3>
+        {current && <div className="muted small" style={{ marginTop: 2 }}>
+          {t('Replace “{0}”', current.n)}
+        </div>}
+      </div>
+      <button type="button" className="iconbtn" onClick={close}><Icon name="xmark" /></button>
+    </div>
+
+    {current && (
+      <div className="card" style={{ padding: '8px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Thumb ex={current} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="small muted" style={{ textTransform: 'uppercase', fontSize: 10, fontWeight: 700 }}>{t('Currently selected')}</div>
+          <div style={{ fontWeight: 700, fontSize: 14, textTransform: 'capitalize' }}>{current.n}</div>
+          <div className="small dim">{t(current.tg || current.bp)} · {t(current.eq)}</div>
+        </div>
+      </div>
+    )}
+
+    {substitutes.length > 0 && (
+      <div style={{ marginBottom: 10 }}>
+        <Segmented value={tab} onChange={v => { setTab(v); setShown(40) }} options={[
+          { value: 'sub', label: t('Substitutes ({0})', substitutes.length) },
+          { value: 'all', label: t('All exercises') }
+        ]} />
+      </div>
+    )}
+
+    <div className="search" style={{ marginBottom: 8 }}>
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+      <input className="input" placeholder={t('Search replacement…')} value={q} onChange={e => { setQ(e.target.value); setShown(40) }} />
+    </div>
+
+    {tab === 'all' && (
+      <div className="chips" style={{ marginBottom: 8 }}>
+        <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(40) }}>{t('All muscles')}</button>
+        {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setEq(''); setShown(40) }}>{t(b)}</button>)}
+      </div>
+    )}
+
+    {eqOpts.length > 1 && (
+      <div className="chips" style={{ marginBottom: 10 }}>
+        <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(40) }}>{t('Any equipment')}</button>
+        {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(40) }}>{t(x)}</button>)}
+      </div>
+    )}
+
+    <div className="list">
+      {f.slice(0, shown).map(e => <div key={e.id} className="item" onClick={() => handlePick(e)}>
+        <Thumb ex={e} />
+        <div className="grow">
+          <div className="tt capitalize">{e.n}</div>
+          <div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div>
+        </div>
+        <span className="tag acc">{t('Select')}</span>
+      </div>)}
+      {f.length === 0 && <div className="empty">{t('No matching exercises found.')}</div>}
+    </div>
+    {f.length > shown && <><div style={{ height: 8 }} /><Button onClick={() => setShown(s => s + 40)}>{t('Show more')}</Button></>}
+  </>
+}
+export const changeExerciseSheet = (currentEx, onSwap) => ui().openSheet(close => <ChangeExerciseSheet currentEx={currentEx} onSwap={onSwap} close={close} />)
 
 /* ============================ exercise config ============================ */
 // Progression settings for one exercise (issue #17). Shown inside the config sheet because
@@ -811,7 +802,7 @@ function ProgressionFields({ ex, mode, c, setC, routine, unit }) {
   </>
 }
 
-function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
+function ExConfig({ ex, existing, onSave, onDelete, onSwap, close, routine }) {
   const st = useStore(s => s.S)
   const cardio = isCardio(ex.id)
   const [c, setC] = useState(existing || defaultConfig(ex.id))
@@ -869,11 +860,12 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
     </div>}
     <ProgressionFields ex={ex} mode={mode} c={c} setC={setC} routine={routine} unit={st.unit} />
     <Button variant="primary" onClick={save}>{existing ? t('Save') : t('Add to routine')}</Button>
+    {onSwap && <><div style={{ height: 8 }} /><Button variant="tinted" icon="shuffle" onClick={() => { close(); changeExerciseSheet(ex, onSwap) }}>{t('Swap / Change exercise')}</Button></>}
     {ex.custom && <><div style={{ height: 8 }} /><Button icon="pencil" onClick={() => { close(); customExSheet(ex) }}>{t('Edit or delete this exercise')}</Button></>}
     {onDelete && <><div style={{ height: 8 }} /><Button variant="danger" onClick={() => { close(); onDelete() }}>{t('Remove from routine')}</Button></>}
   </>
 }
-export const exConfigSheet = (ex, existing, onSave, onDelete, routine) => ui().openSheet(close => <ExConfig ex={ex} existing={existing} onSave={onSave} onDelete={onDelete} routine={routine} close={close} />)
+export const exConfigSheet = (ex, existing, onSave, onDelete, routine, onSwap) => ui().openSheet(close => <ExConfig ex={ex} existing={existing} onSave={onSave} onDelete={onDelete} routine={routine} onSwap={onSwap} close={close} />)
 
 /* ============================ glyph picker ============================ */
 // Grouped by what the glyph means for a training day, so picking one is a scan
@@ -1008,254 +1000,15 @@ export const dayOverrideSheet = iso => ui().openSheet(close => <DayOverride iso=
 
 function DayAssign({ day, close }) {
   const st = useStore(s => s.S)
-  const [expandedId, setExpandedId] = useState(null)
-  const [schedulingId, setSchedulingId] = useState(null)
-
-  const set = v => {
-    update(s => {
-      if (v) s.week[day] = v
-      else delete s.week[day]
-    })
-    close()
-  }
-
-  const toggleDayForRoutine = (routineId, targetDay) => {
-    update(s => {
-      if (s.week[targetDay] === routineId) {
-        delete s.week[targetDay]
-      } else {
-        s.week[targetDay] = routineId
-      }
-    })
-  }
-
-  const swapRoutines = (r1Id, r2Id) => {
-    update(s => {
-      const daysR1 = []
-      const daysR2 = []
-      for (const [d, rid] of Object.entries(s.week)) {
-        if (rid === r1Id) daysR1.push(Number(d))
-        if (rid === r2Id) daysR2.push(Number(d))
-      }
-      daysR1.forEach(d => { s.week[d] = r2Id })
-      daysR2.forEach(d => { s.week[d] = r1Id })
-    })
-    toast(t('Updated schedule'))
-  }
-
+  const set = v => { update(s => { if (v) s.week[day] = v; else delete s.week[day] }); close() }
   return <>
-    <div className="row between" style={{ marginBottom: 12 }}>
-      <div>
-        <h3 style={{ margin: 0 }}>{t(DAYN[day])}</h3>
-        <div className="small dim" style={{ marginTop: 2 }}>{t('Assign workout or adjust weekly schedule')}</div>
-      </div>
-    </div>
-
+    <h3>{t(DAYN[day])}</h3>
     <div className="list">
-      {/* Rest day option */}
-      <div className={'item' + (!st.week[day] ? ' on-s' : '')} onClick={() => set('')}>
-        <span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="moon" /></span>
-        <div className="grow">
-          <div className="tt">{t('Rest day')}</div>
-          <div className="ss">{t('No workout scheduled for {0}', t(DAYN[day]))}</div>
-        </div>
-        {!st.week[day] && <Icon name="check" className="accent" />}
-      </div>
-
-      {/* Routine options (Aphrodite, Morpheus, etc.) */}
-      {st.routines.map(r => {
-        const isSelectedForDay = st.week[day] === r.id
-        const scheduledDays = [1, 2, 3, 4, 5, 6, 0].filter(d => st.week[d] === r.id)
-        const isExpanded = expandedId === r.id
-        const isScheduling = schedulingId === r.id
-
-        return (
-          <div
-            key={r.id}
-            style={{
-              marginBottom: 10,
-              border: isSelectedForDay ? '1px solid var(--accent)' : '1px solid var(--sep)',
-              borderRadius: 12,
-              background: isSelectedForDay ? 'var(--accent-tint)' : 'var(--surface-1)',
-              overflow: 'hidden'
-            }}
-          >
-            {/* Header row */}
-            <div
-              className="item"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                padding: '12px 14px',
-                cursor: 'pointer'
-              }}
-              onClick={() => set(r.id)}
-            >
-              <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
-              <div className="grow">
-                <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-                  <div className="tt" style={{ fontWeight: 600 }}>{r.name}</div>
-                  {isSelectedForDay && <span className="tag acc" style={{ fontSize: 11 }}>{t('Current')}</span>}
-                </div>
-                <div className="ss" style={{ marginTop: 2 }}>
-                  {exCount(r.ex.length)}
-                  {' · '}
-                  <span style={{ color: scheduledDays.length ? 'var(--text-1)' : 'var(--text-3)' }}>
-                    {scheduledDays.length > 0
-                      ? t('Scheduled: {0}', scheduledDays.map(d => t(DAYN[d])).join(', '))
-                      : t('Not scheduled')}
-                  </span>
-                </div>
-              </div>
-              {isSelectedForDay && <Icon name="check" className="accent" />}
-            </div>
-
-            {/* Quick Action Toolbar */}
-            <div
-              className="row between"
-              style={{
-                padding: '6px 12px 10px',
-                borderTop: '1px solid var(--sep-soft)',
-                background: 'var(--surface-2)',
-                gap: 8,
-                flexWrap: 'wrap'
-              }}
-            >
-              <div className="row" style={{ gap: 6 }}>
-                <button
-                  className={'chip' + (isExpanded ? ' on' : '')}
-                  style={{ fontSize: 12, padding: '4px 10px' }}
-                  onClick={ev => {
-                    ev.stopPropagation()
-                    setExpandedId(prev => (prev === r.id ? null : r.id))
-                  }}
-                >
-                  <Icon name="list" style={{ fontSize: 12, marginRight: 4, verticalAlign: '-1px' }} />
-                  {isExpanded ? t('Hide exercises') : t('View exercises')} ({r.ex.length})
-                </button>
-
-                <button
-                  className={'chip' + (isScheduling ? ' on' : '')}
-                  style={{ fontSize: 12, padding: '4px 10px' }}
-                  onClick={ev => {
-                    ev.stopPropagation()
-                    setSchedulingId(prev => (prev === r.id ? null : r.id))
-                  }}
-                >
-                  <Icon name="calendar" style={{ fontSize: 12, marginRight: 4, verticalAlign: '-1px' }} />
-                  {t('Change days')}
-                </button>
-              </div>
-
-              <div className="row" style={{ gap: 6 }}>
-                <Button
-                  size="sm"
-                  variant={isSelectedForDay ? 'tinted' : 'primary'}
-                  onClick={ev => {
-                    ev.stopPropagation()
-                    set(r.id)
-                  }}
-                >
-                  {isSelectedForDay ? t('Keep for {0}', t(DAYN[day])) : t('Assign to {0}', t(DAYN[day]))}
-                </Button>
-              </div>
-            </div>
-
-            {/* Exercise preview section */}
-            {isExpanded && (
-              <div style={{ padding: '10px 14px 14px', background: 'var(--surface-1)', borderTop: '1px solid var(--sep-soft)' }}>
-                <div className="row between" style={{ marginBottom: 8 }}>
-                  <div className="small dim" style={{ fontWeight: 600 }}>
-                    {t('Exercises in this routine')} ({r.ex.length})
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    icon="pencil"
-                    onClick={ev => {
-                      ev.stopPropagation()
-                      close()
-                      nav('/plan/r/' + r.id)
-                    }}
-                  >
-                    {t('Edit routine')}
-                  </Button>
-                </div>
-
-                <div className="list" style={{ gap: 4 }}>
-                  {r.ex.map((e, idx) => {
-                    const ex = exOr(e.id)
-                    const eqG = getEquipmentGroup(ex.eq)
-                    return (
-                      <div key={idx} className="item" style={{ padding: '6px 8px', background: 'var(--surface-2)', borderRadius: 8 }}>
-                        <Thumb ex={ex} style={{ width: 36, height: 36 }} />
-                        <div className="grow">
-                          <div className="tt capitalize" style={{ fontSize: 13, fontWeight: 500 }}>{ex.n}</div>
-                          <div className="ss capitalize" style={{ fontSize: 11 }}>
-                            {t(ex.tg || ex.bp)} · <span style={{ color: 'var(--accent)' }}>{t(eqG)}</span> {ex.eq && ex.eq !== eqG.toLowerCase() ? `(${t(ex.eq)})` : ''} · {exLine(e, st.unit)}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Day Scheduler section */}
-            {isScheduling && (
-              <div style={{ padding: '10px 14px 14px', background: 'var(--surface-2)', borderTop: '1px solid var(--sep-soft)' }}>
-                <div className="small dim" style={{ marginBottom: 6, fontWeight: 600 }}>
-                  {t('Schedule this routine on:')}
-                </div>
-                <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                  {[1, 2, 3, 4, 5, 6, 0].map(d => {
-                    const isActive = st.week[d] === r.id
-                    return (
-                      <button
-                        key={d}
-                        className={'chip' + (isActive ? ' on' : '')}
-                        style={{ padding: '5px 12px', fontSize: 12 }}
-                        onClick={ev => {
-                          ev.stopPropagation()
-                          toggleDayForRoutine(r.id, d)
-                        }}
-                      >
-                        {t(DAYN[d])}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                {/* Swap with another routine (e.g. Aphrodite vs Morpheus) */}
-                {st.routines.filter(o => o.id !== r.id).length > 0 && (
-                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--sep-soft)' }}>
-                    <div className="small dim" style={{ marginBottom: 6 }}>
-                      {t('Swap with another routine')}
-                    </div>
-                    <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                      {st.routines.filter(o => o.id !== r.id).map(other => (
-                        <button
-                          key={other.id}
-                          className="chip"
-                          style={{ fontSize: 12, padding: '4px 10px' }}
-                          onClick={ev => {
-                            ev.stopPropagation()
-                            swapRoutines(r.id, other.id)
-                          }}
-                        >
-                          <Icon name="shuffle" style={{ fontSize: 11, marginRight: 4 }} />
-                          {t('Swap with…')} {other.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )
-      })}
+      <div className="item" onClick={() => set('')}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="moon" /></span><div className="grow"><div className="tt">{t('Rest day')}</div></div>{!st.week[day] && <Icon name="check" className="accent" />}</div>
+      {st.routines.map(r => <div key={r.id} className="item" onClick={() => set(r.id)}>
+        <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+        <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
+        {st.week[day] === r.id && <Icon name="check" className="accent" />}</div>)}
     </div>
   </>
 }
@@ -1338,6 +1091,22 @@ export function WorkoutRow({ w, onClick }) {
 /* ============================ workout lifecycle ============================ */
 export function startFlow(routineId) {
   bwSheet({ required: true, onDone: bw => beginWorkout(routineId, bw) })
+}
+export function beginFreeleticsWorkout(name, specList, bw) {
+  const st = S()
+  const entries = specList.map(raw => {
+    const cfg = Array.isArray(raw) ? { id: raw[0], sets: raw[1], reps: raw[2], weight: 0 } : raw
+    const plan = nextPrescription(st, cfg, null)
+    return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, sets: applyPrescription(buildSets(st, cfg), plan) }
+  })
+  update(s => {
+    s.active = { id: uid(), d: todayISO(), start: Date.now(), routineId: null, isFreeletics: true, name: `Freeletics · ${name}`, bw: bw || null, cur: 0, entries }
+  })
+  useUI.getState().stopRest()
+  nav('/workout')
+}
+export function startFreeleticsFlow(name, specList) {
+  bwSheet({ required: true, onDone: bw => beginFreeleticsWorkout(name, specList, bw) })
 }
 export function beginWorkout(routineId, bw) {
   const st = S()
@@ -1515,3 +1284,477 @@ function doFinishWorkout() {
   beep(snd(), 880, 0.15); beep(snd(), 1100, 0.15, 0.18); beep(snd(), 1320, 0.3, 0.36)
   ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: true })
 }
+
+/* ============================ change set sheet ============================ */
+function ChangeSet({ entryIdx, setIdx, onSave, onDelete, close }) {
+  const st = useStore(s => s.S)
+  const update = useStore(s => s.update)
+  const A = st.active
+  const entry = A?.entries?.[entryIdx]
+  const curSet = entry?.sets?.[setIdx]
+  const ex = entry && exOr(entry.id)
+  const mode = entry && modeOf({ ...(entry.target || {}), id: entry.id })
+
+  const [reps, setReps] = useState(curSet?.r ?? entry?.target?.reps ?? 10)
+  const [weight, setWeight] = useState(curSet?.w ?? entry?.target?.weight ?? 0)
+  const [sec, setSec] = useState(curSet?.sec ?? entry?.target?.sec ?? 45)
+  const [min, setMin] = useState(curSet?.min ?? entry?.target?.min ?? 20)
+  const [speed, setSpeed] = useState(curSet?.speed ?? entry?.target?.speed ?? 8)
+  const [tag, setTag] = useState(curSet?.tag || 'working')
+  const [done, setDone] = useState(!!curSet?.done)
+  const [applyAll, setApplyAll] = useState(false)
+
+  if (!entry || !curSet) return null
+
+  const handleSave = () => {
+    update(s => {
+      const e = s.active?.entries?.[entryIdx]
+      if (!e) return
+      const startIdx = applyAll ? setIdx : setIdx
+      const endIdx = applyAll ? e.sets.length : setIdx + 1
+      for (let i = startIdx; i < endIdx; i++) {
+        const targetSet = e.sets[i]
+        if (!targetSet) continue
+        if (mode === 'cardio') {
+          targetSet.min = min
+          targetSet.speed = speed
+        } else if (mode === 'time') {
+          targetSet.sec = sec
+          targetSet.w = weight
+        } else {
+          targetSet.r = reps
+          targetSet.w = weight
+        }
+        if (tag === 'working') delete targetSet.tag
+        else targetSet.tag = tag
+        if (i === setIdx) targetSet.done = done
+      }
+    }, true)
+    onSave && onSave()
+    close()
+  }
+
+  const handleDuplicate = () => {
+    update(s => {
+      const e = s.active?.entries?.[entryIdx]
+      if (!e) return
+      const clone = { ...e.sets[setIdx], done: false }
+      e.sets.splice(setIdx + 1, 0, clone)
+    }, true)
+    close()
+  }
+
+  const handleDelete = () => {
+    update(s => {
+      const e = s.active?.entries?.[entryIdx]
+      if (!e || e.sets.length <= 1) return
+      e.sets.splice(setIdx, 1)
+    }, true)
+    onDelete && onDelete()
+    close()
+  }
+
+  return (
+    <div style={{ padding: '4px 0 16px' }}>
+      <div className="row between" style={{ marginBottom: 12 }}>
+        <div>
+          <h3 style={{ margin: 0 }}>{t('Change set {0}', setIdx + 1)}</h3>
+          <div className="sub" style={{ textTransform: 'capitalize' }}>{ex.n}</div>
+        </div>
+        <button className="iconbtn" onClick={close} aria-label={t('Close')}><Icon name="xmark" /></button>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <div className="small dim" style={{ marginBottom: 6 }}>{t('Set type')}</div>
+        <Segmented
+          value={tag}
+          onChange={setTag}
+          options={[
+            { value: 'working', label: t('Working') },
+            { value: 'warmup', label: t('Warm-up') },
+            { value: 'drop', label: t('Drop set') },
+            { value: 'failure', label: t('Failure') }
+          ]}
+        />
+      </div>
+
+      {mode === 'reps' && (
+        <>
+          <div style={{ marginBottom: 14 }}>
+            <div className="small dim" style={{ marginBottom: 6 }}>{t('Target reps')}</div>
+            <div style={{ marginBottom: 8 }}>
+              <Stepper value={reps} onChange={setReps} step={1} min={1} />
+            </div>
+            <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+              {[5, 8, 10, 12, 15, 20, 25, 30].map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  className={'tag tappable' + (reps === v ? ' acc' : '')}
+                  onClick={() => setReps(v)}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <div className="small dim" style={{ marginBottom: 6 }}>{t('Weight ({0})', st.unit)}</div>
+            <div style={{ marginBottom: 8 }}>
+              <Stepper value={weight} onChange={setWeight} step={2.5} min={0} />
+            </div>
+            <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+              {[0, 10, 20, 40, 60, 80, 100].map(w => (
+                <button
+                  key={w}
+                  type="button"
+                  className={'tag tappable' + (weight === w ? ' acc' : '')}
+                  onClick={() => setWeight(w)}
+                >
+                  {w === 0 ? t('Bodyweight') : `${w} ${st.unit}`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {mode === 'time' && (
+        <>
+          <div style={{ marginBottom: 14 }}>
+            <div className="small dim" style={{ marginBottom: 6 }}>{t('Hold time (seconds)')}</div>
+            <div style={{ marginBottom: 8 }}>
+              <Stepper value={sec} onChange={setSec} step={5} min={5} />
+            </div>
+            <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+              {[15, 30, 45, 60, 90, 120].map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  className={'tag tappable' + (sec === s ? ' acc' : '')}
+                  onClick={() => setSec(s)}
+                >
+                  {s}s
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <div className="small dim" style={{ marginBottom: 6 }}>{t('Added weight ({0})', st.unit)}</div>
+            <Stepper value={weight} onChange={setWeight} step={2.5} min={0} />
+          </div>
+        </>
+      )}
+
+      {mode === 'cardio' && (
+        <>
+          <div style={{ marginBottom: 14 }}>
+            <div className="small dim" style={{ marginBottom: 6 }}>{t('Duration (minutes)')}</div>
+            <Stepper value={min} onChange={setMin} step={1} min={1} />
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <div className="small dim" style={{ marginBottom: 6 }}>{t('Speed (km/h)')}</div>
+            <Stepper value={speed} onChange={setSpeed} step={0.5} min={1} />
+          </div>
+        </>
+      )}
+
+      <div className="card" style={{ padding: '10px 12px', margin: '12px 0 16px', background: 'var(--surface-2)' }}>
+        <div className="row between" style={{ alignItems: 'center' }}>
+          <div>
+            <div style={{ fontWeight: 500, fontSize: 14 }}>{t('Apply to all remaining sets')}</div>
+            <div className="small dim">{t('Update upcoming sets in this exercise to match')}</div>
+          </div>
+          <Switch value={applyAll} onChange={setApplyAll} />
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: '10px 12px', margin: '0 0 16px', background: 'var(--surface-2)' }}>
+        <div className="row between" style={{ alignItems: 'center' }}>
+          <div>
+            <div style={{ fontWeight: 500, fontSize: 14 }}>{t('Mark completed')}</div>
+            <div className="small dim">{done ? t('Set is logged as done') : t('Set is pending')}</div>
+          </div>
+          <Switch value={done} onChange={setDone} />
+        </div>
+      </div>
+
+      <Button variant="primary" icon="check" onClick={handleSave} style={{ marginBottom: 8 }}>
+        {t('Save changes')}
+      </Button>
+
+      <div className="row" style={{ gap: 8 }}>
+        <Button variant="ghost" icon="plus" onClick={handleDuplicate} style={{ flex: 1 }}>
+          {t('Duplicate')}
+        </Button>
+        {entry.sets.length > 1 && (
+          <Button variant="ghost" danger icon="trash" onClick={handleDelete} style={{ flex: 1 }}>
+            {t('Remove')}
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export const changeSetSheet = (entryIdx, setIdx, onSave, onDelete) =>
+  ui().openSheet(close => <ChangeSet entryIdx={entryIdx} setIdx={setIdx} onSave={onSave} onDelete={onDelete} close={close} />)
+
+export function startFreeleticsWorkout(routineName = 'Aphrodite') {
+  const p = READY_PROGRAMS.find(x => x.id === 'freeletics')
+  if (!p) return
+  const routines = makeRoutines(p.spec)
+  const targetRoutine = routines.find(r => r.name.toLowerCase() === routineName.toLowerCase()) || routines[0]
+  const st = S()
+  let existing = st.routines.find(r => r.name === targetRoutine.name)
+  if (!existing) {
+    existing = targetRoutine
+    update(s => { s.routines.push(targetRoutine) })
+  }
+  startFlow(existing.id)
+}
+
+/* ============================ show program sheet ============================ */
+function ShowProgramSheet({ close }) {
+  const st = useStore(s => s.S)
+  const [expandedRoutine, setExpandedRoutine] = useState(null)
+
+  const matched = READY_PROGRAMS.find(p =>
+    p.spec && p.spec.length === st.routines.length &&
+    st.routines.every(r => p.spec.some(ps => ps.name.toLowerCase() === r.name.toLowerCase() || ps.id === r.id))
+  )
+
+  const totalExercises = st.routines.reduce((sum, r) => sum + r.ex.length, 0)
+  const activeDaysCount = Object.keys(st.week).filter(k => st.week[k]).length
+
+  return <>
+    <div className="row between" style={{ alignItems: 'flex-start', marginBottom: 12 }}>
+      <div>
+        <h3 style={{ margin: 0 }}>{t('Training Program')}</h3>
+        <div className="muted small" style={{ marginTop: 2 }}>
+          {matched ? t(matched.name) : t('Weekly training schedule & routines')}
+        </div>
+      </div>
+      <button type="button" className="iconbtn" onClick={close}><Icon name="xmark" /></button>
+    </div>
+
+    {/* Program summary card */}
+    <div className="card" style={{ padding: '12px 14px', marginBottom: 14 }}>
+      <div className="row between" style={{ alignItems: 'center' }}>
+        <div className="row" style={{ gap: 9, alignItems: 'center' }}>
+          <span className="lrow-i" style={{ background: 'var(--acc)', color: 'var(--on-acc)', width: 36, height: 36, borderRadius: 8, fontSize: 18 }}>
+            <Icon name="clipboard" />
+          </span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>{matched ? t(matched.name) : t('Current Program')}</div>
+            <div className="small muted">
+              {activeDaysCount} {t('days/week')} · {st.routines.length} {t('routines')} · {totalExercises} {t('exercises')}
+            </div>
+          </div>
+        </div>
+        <Button size="sm" variant="tinted" icon="sparkles" onClick={() => { close(); readyProgramsSheet() }}>
+          {t('Change')}
+        </Button>
+      </div>
+    </div>
+
+    {/* Weekly schedule overview */}
+    <div className="sect-t" style={{ padding: '0 2px 8px', fontWeight: 600 }}>{t('Weekly Schedule')}</div>
+    <div className="list" style={{ marginBottom: 16 }}>
+      {[1, 2, 3, 4, 5, 6, 0].map(d => {
+        const r = st.routines.find(x => x.id === st.week[d])
+        return <div key={d} className="item" onClick={() => { close(); dayAssignSheet(d) }}>
+          <div className="grow">
+            <div className="tt">{t(DAYN[d])}</div>
+          </div>
+          {r ? (
+            <span className="tag acc" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <Icon name={glyphOf(r.emoji)} /> {r.name} ({r.ex.length})
+            </span>
+          ) : (
+            <span className="tag">{t('Rest day')}</span>
+          )}
+          <Icon name="pencil" className="chev" style={{ fontSize: 13 }} />
+        </div>
+      })}
+    </div>
+
+    {/* Program routines list */}
+    <div className="sect-t" style={{ padding: '0 2px 8px', fontWeight: 600 }}>{t('Program Routines')}</div>
+    <div className="list" style={{ marginBottom: 16 }}>
+      {st.routines.map(r => {
+        const isExp = expandedRoutine === r.id
+        return <div key={r.id} style={{ background: 'var(--surface)', border: '1px solid var(--sep)', borderRadius: 'var(--r)', marginBottom: 8, overflow: 'hidden' }}>
+          <div className="item" style={{ border: 'none' }} onClick={() => setExpandedRoutine(isExp ? null : r.id)}>
+            <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+            <div className="grow">
+              <div className="tt">{r.name}</div>
+              <div className="ss">{exCount(r.ex.length)} · {t(POLICY_NAME[r.prog || 'linear'])}</div>
+            </div>
+            <div className="row" style={{ gap: 6 }}>
+              <button type="button" className="iconbtn" style={{ width: 28, height: 28, fontSize: 12 }} onClick={ev => { ev.stopPropagation(); close(); nav('/plan/r/' + r.id) }} title={t('Edit routine')}>
+                <Icon name="pencil" />
+              </button>
+              <Icon name={isExp ? 'chevronUp' : 'chevronDown'} className="chev" />
+            </div>
+          </div>
+          {isExp && (
+            <div style={{ padding: '0 12px 12px', borderTop: '1px solid var(--sep)', background: 'var(--surface-2)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                {r.ex.map((e, idx) => {
+                  const ex = exOr(e.id)
+                  return <div key={idx} className="row between" style={{ fontSize: 13, alignItems: 'center' }}>
+                    <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                      <span className="muted">{idx + 1}.</span>
+                      <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{ex.n}</span>
+                    </div>
+                    <span className="small dim">{exLine(e, st.unit)}</span>
+                  </div>
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      })}
+    </div>
+
+    <div className="row" style={{ gap: 8 }}>
+      <Button style={{ flex: 1 }} onClick={() => { close(); nav('/plan') }}>{t('Edit plan')}</Button>
+      <Button style={{ flex: 1 }} variant="primary" icon="sparkles" onClick={() => { close(); programWizardSheet() }}>{t('Program wizard')}</Button>
+    </div>
+  </>
+}
+export const showProgramSheet = () => ui().openSheet(close => <ShowProgramSheet close={close} />)
+
+/* ============================ switch training / change workout sheet ============================ */
+function SwitchTrainingSheet({ close }) {
+  const st = useStore(s => s.S)
+  const A = st.active
+  const hasLogged = A && setsDoneActive(A) > 0
+
+  const handleSelectRoutine = r => {
+    if (!A) {
+      startFlow(r ? r.id : null)
+      close()
+      return
+    }
+    if (hasLogged) {
+      confirmSheet({
+        title: t('Change training?'),
+        message: t('You already have logged sets. Do you want to switch completely to “{0}” or add its exercises to your current session?', r ? r.name : t('Freestyle')),
+        confirmText: t('Switch workout'),
+        cancelText: t('Add exercises'),
+        onConfirm: () => {
+          update(s => { s.active = null })
+          startFlow(r ? r.id : null)
+          close()
+        },
+        onCancel: () => {
+          if (r) {
+            update(s => {
+              r.ex.forEach(e => {
+                const full = { ...e }
+                const plan = nextPrescription(s, full, r)
+                s.active.entries.push({ id: e.id, target: { ...e }, plan, sets: applyPrescription(buildSets(s, full), plan) })
+              })
+            })
+            toast(t('Added exercises from {0}', r.name))
+          }
+          close()
+        }
+      })
+    } else {
+      update(s => { s.active = null })
+      startFlow(r ? r.id : null)
+      close()
+    }
+  }
+
+  const handleSelectFreeletics = godKey => {
+    if (hasLogged) {
+      confirmSheet({
+        title: t('Start Freeletics?'),
+        message: t('This will replace your current workout with the {0} workout.', godKey),
+        confirmText: t('Start Freeletics'),
+        danger: true,
+        onConfirm: () => {
+          update(s => { s.active = null })
+          startFreeleticsWorkout(godKey)
+          close()
+        }
+      })
+    } else {
+      update(s => { s.active = null })
+      startFreeleticsWorkout(godKey)
+      close()
+    }
+  }
+
+  return <>
+    <div className="row between" style={{ alignItems: 'flex-start', marginBottom: 12 }}>
+      <div>
+        <h3 style={{ margin: 0 }}>{t('Change training')}</h3>
+        <div className="muted small" style={{ marginTop: 2 }}>
+          {A ? t('Currently active: {0}', A.name) : t('Pick a workout to start')}
+        </div>
+      </div>
+      <button type="button" className="iconbtn" onClick={close}><Icon name="xmark" /></button>
+    </div>
+
+    {/* Your Routines */}
+    <div className="sect-t" style={{ padding: '0 2px 8px', fontWeight: 600 }}>{t('Your Plan Routines')}</div>
+    <div className="list" style={{ marginBottom: 16 }}>
+      {st.routines.map(r => <div key={r.id} className="item" onClick={() => handleSelectRoutine(r)}>
+        <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+        <div className="grow">
+          <div className="tt">{r.name}</div>
+          <div className="ss">{exCount(r.ex.length)}</div>
+        </div>
+        <span className="tag acc">{t('Start')}</span>
+      </div>)}
+      <div className="item" onClick={() => handleSelectRoutine(null)}>
+        <span className="lrow-i"><Icon name="shuffle" /></span>
+        <div className="grow">
+          <div className="tt">{t('Freestyle workout')}</div>
+          <div className="ss">{t('Pick exercises as you go')}</div>
+        </div>
+        <span className="tag">{t('Start')}</span>
+      </div>
+    </div>
+
+    {/* Freeletics Workouts */}
+    <div className="sect-t" style={{ padding: '0 2px 8px', fontWeight: 600 }}>⚡ {t('Freeletics Workouts')}</div>
+    <div className="list" style={{ marginBottom: 14 }}>
+      <div className="item" onClick={() => handleSelectFreeletics('Aphrodite')}>
+        <span className="lrow-i" style={{ background: 'var(--acc)', color: 'var(--on-acc)' }}><Icon name="bolt" /></span>
+        <div className="grow">
+          <div className="tt">Aphrodite</div>
+          <div className="ss">5 rounds · Burpees, Jump Squats, Sit-ups</div>
+        </div>
+        <span className="tag acc">{t('Start')}</span>
+      </div>
+      <div className="item" onClick={() => handleSelectFreeletics('Morpheus')}>
+        <span className="lrow-i" style={{ background: 'var(--acc)', color: 'var(--on-acc)' }}><Icon name="bolt" /></span>
+        <div className="grow">
+          <div className="tt">Morpheus</div>
+          <div className="ss">5 rounds · Push-ups, Jumping Jacks, Lunges</div>
+        </div>
+        <span className="tag acc">{t('Start')}</span>
+      </div>
+      <div className="item" onClick={() => handleSelectFreeletics('Athena')}>
+        <span className="lrow-i" style={{ background: 'var(--acc)', color: 'var(--on-acc)' }}><Icon name="bolt" /></span>
+        <div className="grow">
+          <div className="tt">Athena</div>
+          <div className="ss">5 rounds · Climbers, Sit-ups, Jump Squats</div>
+        </div>
+        <span className="tag acc">{t('Start')}</span>
+      </div>
+    </div>
+
+    <Button variant="ghost" className="dim" onClick={() => { close(); showProgramSheet() }}>
+      {t('Show full program details')}
+    </Button>
+  </>
+}
+export const switchTrainingSheet = () => ui().openSheet(close => <SwitchTrainingSheet close={close} />)

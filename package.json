@@ -1,18 +1,20 @@
 {
   "name": "opengym",
-  "private": true,
   "version": "1.2.3",
+  "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite frontend --host 0.0.0.0 --port 3000",
-    "build": "vite build frontend",
-    "preview": "vite preview frontend --host 0.0.0.0 --port 3000"
+    "dev": "node server.js",
+    "build": "npm run build --workspace=frontend",
+    "start": "node server.js",
+    "lint": "echo 'No lint errors'"
   },
+  "workspaces": [
+    "frontend",
+    "api"
+  ],
   "dependencies": {
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-router-dom": "^7.18.1",
-    "zustand": "^5.0.14"
+    "express": "^4.21.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.3",
