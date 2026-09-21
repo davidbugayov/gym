@@ -15,7 +15,7 @@ import * as coachJobs from './coach/jobs.js';
 import { coachRoutes } from './coach/routes.js';
 import { startCadence } from './coach/cadence.js';
 
-const PORT = 3000;
+const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const RP_ID = process.env.RP_ID || 'localhost';
 const ORIGIN = process.env.ORIGIN || 'http://localhost:8080';
@@ -604,4 +604,3 @@ if (isDirectRun) {
     if (!handled) json(res, 404, { error: 'not found' });
   }).listen(PORT, '0.0.0.0', () => console.log(`gym-api on :${PORT} (rpID=${RP_ID}, origin=${ORIGIN})`));
 }
-
