@@ -1,0 +1,71 @@
+name: Deploy to gym.emdrbilateral.online
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-gym-online
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to gym.emdrbilateral.online
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install SSH client
+        run: sudo apt-get update && sudo apt-get install -y openssh-client rsync
+
+      - name: Deploy
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.DEV_SSH_KEY }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -t ed25519 144.31.68.9 >> ~/.ssh/known_hosts 2>/dev/null
+
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -l -f ~/.ssh/deploy_key || { echo "ERROR: Key format invalid"; exit 1; }
+
+          SSH_CMD="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o IdentitiesOnly=yes"
+
+          echo "=== Syncing code ==="
+          rsync -az --delete \
+            --exclude node_modules \
+            --exclude .git \
+            --exclude dist \
+            --exclude data \
+            --exclude media \
+            --exclude .github \
+            -e "$SSH_CMD" \
+            $GITHUB_WORKSPACE/ root@144.31.68.9:/opt/gym/gym-online/
+
+          echo "=== Installing and building ==="
+          $SSH_CMD root@144.31.68.9 << 'SCRIPT'
+          set -e
+          cd /opt/gym/gym-online
+          npm install --ignore-scripts
+          npm run build --workspace=frontend
+          systemctl restart gym-online
+          sleep 3
+          SCRIPT
+
+          echo "=== Health check ==="
+          for i in $(seq 1 30); do
+            STATUS=$($SSH_CMD root@144.31.68.9 "systemctl is-active gym-online" 2>/dev/null)
+            if [ "$STATUS" = "active" ]; then
+              echo "Service is running"
+              $SSH_CMD root@144.31.68.9 "curl -s -o /dev/null -w 'HTTP %{http_code}' http://localhost:8091/"
+              exit 0
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          echo "Service failed to start"
+          exit 1
