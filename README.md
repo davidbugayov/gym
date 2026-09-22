@@ -235,3 +235,13 @@ if you run a modified version as a network service, you must offer that version'
 the same license. Nobody can turn openGym into a closed, proprietary product.
 
 Exercise images/GIFs are fetched from the upstream dataset and keep their own terms — see [NOTICE.md](NOTICE.md).
+
+## Deployment (this fork)
+
+This fork is deployed on a private VPS. See **[docs/DEPLOY.md](docs/DEPLOY.md)** for the full
+infrastructure map: server IP, paths, systemd services, ports, and CI/CD workflows.
+
+| Environment | URL | Workflow |
+|---|---|---|
+| gym .online | https://gym.emdrbilateral.online | `deploy-gym-online.yml` |
+| gym .ru | https://gym.emdrbilateral.ru | _(manual for now)_ |

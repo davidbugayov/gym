@@ -2,5 +2,26 @@
   "name": "openGym",
   "description": "Free, open-source gym & body-weight tracker with exercise library, workout planning, and stats",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"],
+  "deployment": {
+    "server": "144.31.68.9",
+    "sshUser": "root",
+    "sshSecret": "DEV_SSH_KEY",
+    "environments": {
+      "gym-online": {
+        "url": "https://gym.emdrbilateral.online",
+        "path": "/opt/gym/gym-online",
+        "service": "gym-online",
+        "port": 8091,
+        "workflow": ".github/workflows/deploy-gym-online.yml"
+      },
+      "gym-ru": {
+        "url": "https://gym.emdrbilateral.ru",
+        "path": "/opt/gym/gym-ru",
+        "service": "gym-ru",
+        "port": 8090,
+        "workflow": null
+      }
+    }
+  }
 }
