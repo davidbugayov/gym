@@ -523,6 +523,29 @@ function ExerciseDetail({ ex, close }) {
     </div>
     {ex.desc && <div className="exnote">{ex.desc}</div>}
     {best > 0 && <div className="small row" style={{ marginBottom: 6, gap: 5 }}><Icon name="trophy" style={{ fontSize: 14, color: 'var(--yellow)' }} />{t('Best:')} <b className="accent">{fmtNum(best)} {st.unit}</b>{last ? ` · ${t('last')} ${fmtDate(last.d)}: ${last.sets.map(s => setLabel(ex.id, s, last.target)).join(', ')}` : ''}</div>}
+    
+    {/* Technique Cues / Personal Note Field */}
+    <div style={{ marginTop: 10, marginBottom: 10, padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 10, border: '1px solid var(--sep-op)' }}>
+      <div className="row between" style={{ alignItems: 'center', marginBottom: 4 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--label)' }}>
+          <Icon name="sparkles" style={{ marginRight: 6, color: 'var(--acc)' }} />
+          {t('Technique cues & notes')}
+        </span>
+        <Button size="sm" variant="ghost" icon="pencil" onClick={() => exerciseNoteSheet(ex.id)}>
+          {st.exNotes?.[ex.id] ? t('Edit note') : t('Add note')}
+        </Button>
+      </div>
+      {st.exNotes?.[ex.id] ? (
+        <div style={{ fontSize: 13, color: 'var(--label-2)', lineHeight: 1.4 }}>
+          {st.exNotes[ex.id]}
+        </div>
+      ) : (
+        <div className="small dim">
+          {t('No personal cues yet. Tap to document form cues or modifications.')}
+        </div>
+      )}
+    </div>
+
     <Button variant="primary" icon="plus" style={{ margin: '10px 0 4px' }} onClick={() => addToRoutineSheet(ex)}>{t('Add to my plan')}</Button>
     {ex.custom && <div className="row" style={{ gap: 8, marginTop: 8 }}>
       <Button icon="pencil" style={{ flex: 1 }} onClick={() => { close(); customExSheet(ex) }}>{t('Edit')}</Button>
@@ -971,9 +994,52 @@ function PlanImport({ bundle, close }) {
   </>
 }
 
+/* ============================ exercise note (technique cues) ============================ */
+export function exerciseNoteSheet(exId) {
+  const ex = exOr(exId)
+  ui().openSheet(close => <ExerciseNote ex={ex} close={close} />)
+}
+
+function ExerciseNote({ ex, close }) {
+  const S = useStore(s => s.S)
+  const [note, setNote] = useState(() => (S.exNotes || {})[ex.id] || '')
+  const save = () => {
+    update(s => {
+      s.exNotes = s.exNotes || {}
+      if (note.trim()) s.exNotes[ex.id] = note.trim()
+      else delete s.exNotes[ex.id]
+    })
+    close()
+    toast(t('Note saved'))
+  }
+  return <>
+    <h3 className="capitalize">{ex.n}</h3>
+    <div className="muted small" style={{ marginBottom: 12 }}>
+      {t('Document technique cues, form reminders or modifications for this exercise.')}
+    </div>
+    <textarea
+      className="field area"
+      style={{ minHeight: 110, marginBottom: 14, width: '100%' }}
+      placeholder={t('e.g. Keep chest high, 2s pause at bottom, slight incline...')}
+      value={note}
+      onChange={e => setNote(e.target.value)}
+      autoFocus
+    />
+    <div className="row" style={{ gap: 8 }}>
+      <Button variant="primary" style={{ flex: 1 }} onClick={save}>{t('Save Note')}</Button>
+      {note && (
+        <Button variant="ghost" className="dim" onClick={() => { setNote(''); update(s => { if (s.exNotes) delete s.exNotes[ex.id] }); close(); toast(t('Note cleared')) }}>
+          {t('Clear')}
+        </Button>
+      )}
+    </div>
+  </>
+}
+
 /* ============================ day override / assign ============================ */
 function DayOverride({ iso, close }) {
   const st = useStore(s => s.S)
+  const [expandedId, setExpandedId] = useState(null)
   const wd = new Date(iso + 'T12:00:00').getDay()
   const weeklyR = st.routines.find(r => r.id === st.week[wd])
   const hasOvr = st.dayPlan[iso] !== undefined
@@ -983,14 +1049,105 @@ function DayOverride({ iso, close }) {
     close()
     toast(v === '' ? t('Back to weekly plan') : v === 'rest' ? t('{0} set to rest', fmtDate(iso)) : t('{0} planned for {1}', (st.routines.find(r => r.id === v) || {}).name, fmtDate(iso)))
   }
+
+  const swapExerciseInRoutine = (routineId, exIdx, curEx) => {
+    changeExerciseSheet(curEx, newEx => {
+      update(s => {
+        const r = s.routines.find(x => x.id === routineId)
+        if (r && r.ex[exIdx]) {
+          r.ex[exIdx] = { ...r.ex[exIdx], id: newEx.id }
+        }
+      })
+      toast(t('Exercise changed to {0}', newEx.n))
+    })
+  }
+
   return <>
     <h3>{fmtDate(iso, true)}</h3>
     <div className="muted small" style={{ marginBottom: 12 }}>{t('Weekly plan:')} {weeklyR ? weeklyR.name : t('Rest')}{hasOvr && <span style={{ color: 'var(--orange)' }}> · {t('changed for this day')}</span>}<br />{t('Sick, missed a day or want a different session? Pick what to train instead.')}</div>
     <div className="list">
-      {st.routines.map(r => <div key={r.id} className="item" onClick={() => set(r.id)}>
-        <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
-        <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
-        {effId === r.id && <Icon name="check" className="accent" />}</div>)}
+      {st.routines.map(r => {
+        const isExp = expandedId === r.id
+        const exPreview = (r.ex || []).slice(0, 3).map(e => exOr(e.id).n).join(' · ')
+        return (
+          <div key={r.id} style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="item" onClick={() => set(r.id)}>
+              <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+              <div className="grow">
+                <div className="tt">{r.name}</div>
+                <div className="ss">
+                  {exCount(r.ex.length)}{exPreview ? ` · ${exPreview}${r.ex.length > 3 ? '…' : ''}` : ''}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="iconbtn"
+                style={{ width: 32, height: 32, fontSize: 13, marginRight: 2 }}
+                onClick={ev => { ev.stopPropagation(); setExpandedId(isExp ? null : r.id) }}
+                title={t('View and change exercises')}
+              >
+                <Icon name={isExp ? 'chevronUp' : 'chevronDown'} />
+              </button>
+              {effId === r.id && <Icon name="check" className="accent" />}
+            </div>
+
+            {/* Expandable Exercise Details & Change */}
+            {isExp && (
+              <div className="day-routine-accordion">
+                <div className="row between" style={{ alignItems: 'center', paddingBottom: 4, borderBottom: '1px solid var(--sep-op)' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{t('Exercises in {0}', r.name)}</span>
+                  <button
+                    type="button"
+                    className="iconbtn"
+                    style={{ width: 26, height: 26, fontSize: 12 }}
+                    onClick={() => { close(); nav('/plan/r/' + r.id) }}
+                    title={t('Edit routine in editor')}
+                  >
+                    <Icon name="pencil" />
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {(r.ex || []).map((e, idx) => {
+                    const ex = exOr(e.id)
+                    const spec = e.min !== undefined ? `${e.min}m` : e.sec !== undefined ? `${e.sec}s` : `${e.sets || 3}×${e.reps || 10}`
+                    return (
+                      <div key={idx} className="day-routine-ex-row">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, width: 18, color: 'var(--label-3)' }}>{idx + 1}</span>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {ex.n}
+                            </div>
+                            <div className="small muted">{spec} · {t(ex.eq)}</div>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="tinted"
+                          icon="shuffle"
+                          onClick={ev => { ev.stopPropagation(); swapExerciseInRoutine(r.id, idx, ex) }}
+                        >
+                          {t('Change')}
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div className="row" style={{ gap: 8, marginTop: 4 }}>
+                  <Button size="sm" variant="primary" style={{ flex: 1 }} onClick={() => set(r.id)}>
+                    {t('Select for this day')}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => { close(); nav('/plan/r/' + r.id) }}>
+                    {t('Edit in editor')}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
       <div className="item" onClick={() => set('rest')}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="moon" /></span><div className="grow"><div className="tt">{t('Rest / skip this day')}</div></div>{effId === null && <Icon name="check" className="accent" />}</div>
       {hasOvr && <div className="item" onClick={() => set('')}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="reset" /></span><div className="grow"><div className="tt">{t('Back to weekly plan')}</div></div></div>}
     </div>
@@ -1000,15 +1157,107 @@ export const dayOverrideSheet = iso => ui().openSheet(close => <DayOverride iso=
 
 function DayAssign({ day, close }) {
   const st = useStore(s => s.S)
+  const [expandedId, setExpandedId] = useState(null)
   const set = v => { update(s => { if (v) s.week[day] = v; else delete s.week[day] }); close() }
+
+  const swapExerciseInRoutine = (routineId, exIdx, curEx) => {
+    changeExerciseSheet(curEx, newEx => {
+      update(s => {
+        const r = s.routines.find(x => x.id === routineId)
+        if (r && r.ex[exIdx]) {
+          r.ex[exIdx] = { ...r.ex[exIdx], id: newEx.id }
+        }
+      })
+      toast(t('Exercise changed to {0}', newEx.n))
+    })
+  }
+
   return <>
     <h3>{t(DAYN[day])}</h3>
     <div className="list">
       <div className="item" onClick={() => set('')}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="moon" /></span><div className="grow"><div className="tt">{t('Rest day')}</div></div>{!st.week[day] && <Icon name="check" className="accent" />}</div>
-      {st.routines.map(r => <div key={r.id} className="item" onClick={() => set(r.id)}>
-        <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
-        <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
-        {st.week[day] === r.id && <Icon name="check" className="accent" />}</div>)}
+      {st.routines.map(r => {
+        const isExp = expandedId === r.id
+        const exPreview = (r.ex || []).slice(0, 3).map(e => exOr(e.id).n).join(' · ')
+        return (
+          <div key={r.id} style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="item" onClick={() => set(r.id)}>
+              <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+              <div className="grow">
+                <div className="tt">{r.name}</div>
+                <div className="ss">
+                  {exCount(r.ex.length)}{exPreview ? ` · ${exPreview}${r.ex.length > 3 ? '…' : ''}` : ''}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="iconbtn"
+                style={{ width: 32, height: 32, fontSize: 13, marginRight: 2 }}
+                onClick={ev => { ev.stopPropagation(); setExpandedId(isExp ? null : r.id) }}
+                title={t('View and change exercises')}
+              >
+                <Icon name={isExp ? 'chevronUp' : 'chevronDown'} />
+              </button>
+              {st.week[day] === r.id && <Icon name="check" className="accent" />}
+            </div>
+
+            {/* Expandable Exercise Details & Change */}
+            {isExp && (
+              <div className="day-routine-accordion">
+                <div className="row between" style={{ alignItems: 'center', paddingBottom: 4, borderBottom: '1px solid var(--sep-op)' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{t('Exercises in {0}', r.name)}</span>
+                  <button
+                    type="button"
+                    className="iconbtn"
+                    style={{ width: 26, height: 26, fontSize: 12 }}
+                    onClick={() => { close(); nav('/plan/r/' + r.id) }}
+                    title={t('Edit routine in editor')}
+                  >
+                    <Icon name="pencil" />
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {(r.ex || []).map((e, idx) => {
+                    const ex = exOr(e.id)
+                    const spec = e.min !== undefined ? `${e.min}m` : e.sec !== undefined ? `${e.sec}s` : `${e.sets || 3}×${e.reps || 10}`
+                    return (
+                      <div key={idx} className="day-routine-ex-row">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, width: 18, color: 'var(--label-3)' }}>{idx + 1}</span>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {ex.n}
+                            </div>
+                            <div className="small muted">{spec} · {t(ex.eq)}</div>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="tinted"
+                          icon="shuffle"
+                          onClick={ev => { ev.stopPropagation(); swapExerciseInRoutine(r.id, idx, ex) }}
+                        >
+                          {t('Change')}
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div className="row" style={{ gap: 8, marginTop: 4 }}>
+                  <Button size="sm" variant="primary" style={{ flex: 1 }} onClick={() => set(r.id)}>
+                    {t('Assign to this day')}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => { close(); nav('/plan/r/' + r.id) }}>
+                    {t('Edit in editor')}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   </>
 }

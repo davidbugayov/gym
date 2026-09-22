@@ -9,7 +9,7 @@ import { beep, vibrate } from '../lib/sound.js'
 import { t } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import Media from '../components/Media.jsx'
-import { startFlow, startFreeleticsFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, changeExerciseSheet, showProgramSheet, switchTrainingSheet } from '../sheets.jsx'
+import { startFlow, startFreeleticsFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, changeExerciseSheet, showProgramSheet, switchTrainingSheet, exerciseNoteSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField, Segmented } from '../components/ui.jsx'
 import { nextPrescription, applyPrescription } from '../lib/progression.js'
@@ -553,6 +553,33 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
       {best > 0 && <span className="tag nocap">{t('Best:')} {fmtNum(best)} {S.unit}</span>}
     </div>
     {last && <div className="small dim" style={{ marginBottom: 4 }}>{t('Last time')} ({fmtDate(last.d)}): {last.sets.map(s => setLabel(entry.id, s, last.target)).join(', ')}</div>}
+    
+    {/* Technique Cues / Exercise Note Banner */}
+    {S.exNotes?.[entry.id] ? (
+      <div className="ex-note-banner">
+        <Icon name="sparkles" style={{ color: 'var(--acc)', flexShrink: 0, marginTop: 2 }} />
+        <div style={{ flex: 1, fontSize: 13 }}>{S.exNotes[entry.id]}</div>
+        <button
+          type="button"
+          className="iconbtn"
+          style={{ width: 22, height: 22, padding: 0 }}
+          onClick={() => exerciseNoteSheet(entry.id)}
+          title={t('Edit technique cue')}
+        >
+          <Icon name="pencil" style={{ fontSize: 11 }} />
+        </button>
+      </div>
+    ) : (
+      <button
+        type="button"
+        className="row"
+        style={{ gap: 4, background: 'none', border: 'none', padding: '2px 0 6px', color: 'var(--label-3)', fontSize: 12, cursor: 'pointer' }}
+        onClick={() => exerciseNoteSheet(entry.id)}
+      >
+        <Icon name="plus" style={{ fontSize: 11 }} />
+        <span>{t('Add technique cue / note')}</span>
+      </button>
+    )}
     {plan && plan.why && plan.kind !== 'off' && <div className={'progline' + (plan.kind === 'deload' ? ' warn' : '')}>
       <Icon name={plan.kind === 'up' ? 'arrowUp' : plan.kind === 'deload' ? 'arrowDown' : 'lightbulb'} />
       <span>{t(...plan.why)}</span>

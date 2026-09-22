@@ -1,5 +1,5 @@
 /* ============================================================================
-   Gymly — design system
+   openGym — design system
    ----------------------------------------------------------------------------
    Rebuilt around four rules, each aimed at a specific "generated" tell in the
    previous sheet:
@@ -949,6 +949,78 @@ h4.sec{
 .cal-legend{display:flex;gap:14px;justify-content:center;margin-top:12px;font-size:12px;color:var(--label-3)}
 .cal-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px}
 
+/* --- Full-Screen Plan Calendar View --- */
+.plan-cal-wrap{display:flex;flex-direction:column;gap:14px;width:100%}
+.plan-cal-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.plan-cal-month-nav{display:flex;align-items:center;gap:6px}
+.plan-cal-stats{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;
+  background:var(--surface);border-radius:var(--r-card);padding:10px 14px;border:1px solid var(--sep-op);
+}
+.plan-cal-stat-item{display:flex;flex-direction:column;gap:2px}
+.plan-cal-stat-num{font-size:18px;font-weight:700;letter-spacing:-.02em;color:var(--label)}
+.plan-cal-stat-lbl{font-size:11px;color:var(--label-2);text-transform:uppercase;letter-spacing:.02em}
+.plan-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.plan-cal-th{text-align:center;font-size:12px;font-weight:600;color:var(--label-2);padding:4px 0;text-transform:uppercase}
+.plan-cal-cell{
+  min-height:64px;border-radius:12px;background:var(--surface);border:1px solid var(--sep-op);
+  display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:6px 4px;
+  cursor:pointer;position:relative;transition:all var(--fast) var(--ease);user-select:none;
+}
+.plan-cal-cell:active{transform:scale(.98)}
+.plan-cal-cell.today{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.plan-cal-cell.selected{outline:2.5px solid var(--acc);outline-offset:1px;z-index:2}
+.plan-cal-cell.completed{
+  background:color-mix(in srgb, var(--acc) 14%, var(--surface));
+  border-color:color-mix(in srgb, var(--acc) 45%, var(--surface));
+}
+.plan-cal-cell.planned{
+  background:color-mix(in srgb, var(--label-3) 8%, var(--surface));
+  border-style:dashed;
+}
+.plan-cal-cell-head{display:flex;width:100%;align-items:center;justify-content:space-between;padding:0 3px}
+.plan-cal-cell-num{font-size:13px;font-weight:600;color:var(--label)}
+.plan-cal-cell.completed .plan-cal-cell-num{color:var(--acc);font-weight:700}
+.plan-cal-cell-dot{width:6px;height:6px;border-radius:50%;background:var(--acc)}
+.plan-cal-cell-chip{
+  font-size:10px;font-weight:600;padding:1px 5px;border-radius:5px;
+  background:var(--acc);color:var(--on-acc);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;max-width:100%;text-align:center;
+}
+.plan-cal-cell-plan-name{
+  font-size:9.5px;color:var(--label-2);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;max-width:100%;padding:0 2px;
+}
+
+/* Day Summary card */
+.plan-day-summary{
+  background:var(--surface);border-radius:var(--r-card);border:1px solid var(--sep-op);
+  padding:14px;display:flex;flex-direction:column;gap:12px;animation:fade-in var(--med) var(--ease);
+}
+.plan-day-summary-hd{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.plan-day-workout-card{
+  background:var(--surface-2);border-radius:10px;padding:10px 12px;
+  display:flex;flex-direction:column;gap:8px;border:1px solid var(--sep-op);
+}
+
+/* Exercise preview in DayAssign & DayOverride */
+.day-routine-accordion{
+  background:var(--surface-2);border-radius:10px;padding:10px;
+  margin-top:6px;margin-bottom:8px;border:1px solid var(--sep-op);
+  display:flex;flex-direction:column;gap:8px;animation:fade-in var(--med) var(--ease);
+}
+.day-routine-ex-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:6px 8px;border-radius:8px;background:var(--surface);
+}
+
+/* Exercise technique note banner */
+.ex-note-banner{
+  display:flex;align-items:flex-start;gap:8px;background:color-mix(in srgb, var(--acc) 12%, var(--surface));
+  border:1px solid color-mix(in srgb, var(--acc) 30%, transparent);border-radius:8px;
+  padding:8px 10px;margin-bottom:8px;font-size:13px;line-height:1.4;color:var(--label);
+}
+
 /* --- accent swatches --- */
 .swatches{display:flex;gap:12px;flex-wrap:wrap}
 .swatch{width:32px;height:32px;border-radius:50%;flex:none;position:relative;transition:transform var(--fast)}
@@ -1124,3 +1196,23 @@ h4.sec{
   font-size:9px;text-transform:uppercase;font-weight:700;color:var(--acc);margin-left:2px;
 }
 .set-pill-edit{color:var(--label-3);display:flex;align-items:center;font-size:12px;margin-left:2px}
+
+/* Day routine exercise preview & accordion */
+.day-routine-accordion{
+  background:var(--surface-2);border-radius:10px;padding:10px 12px;margin:4px 0 10px 44px;
+  border:1px solid var(--sep-op);display:flex;flex-direction:column;gap:10px;
+}
+.day-routine-ex-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;
+  border-bottom:1px solid color-mix(in srgb, var(--sep) 40%, transparent);
+}
+.day-routine-ex-row:last-child{border-bottom:none}
+
+/* Exercise Technique Cues / Note Banner */
+.ex-note-banner{
+  display:flex;align-items:flex-start;gap:8px;background:color-mix(in srgb, var(--acc) 10%, var(--surface-2));
+  border:1px solid color-mix(in srgb, var(--acc) 30%, transparent);border-radius:8px;
+  padding:8px 10px;margin-bottom:8px;line-height:1.4;color:var(--label);
+}
+
+
