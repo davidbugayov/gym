@@ -56,22 +56,22 @@ function StartChooser() {
       <Button variant="primary" icon="play" onClick={() => startFlow(todayR.id)}>{t('Start {0}', todayR.name)}</Button>
     </div>}
 
-    {/* Freeletics Training Section */}
+    {/* Hero Rounds Training Section */}
     <div className="fl-card" style={{ borderColor: 'var(--acc)', marginTop: 14 }}>
-      <div className="fl-badge"><Icon name="bolt" /> {t('Freeletics Training')}</div>
-      <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>{t('Freeletics God Workouts')}</div>
+      <div className="fl-badge"><Icon name="bolt" /> {t('Hero Rounds Training')}</div>
+      <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>{t('Named 5-Round Workouts')}</div>
       <div className="muted small">{t('High-intensity bodyweight rounds with rapid set transitions.')}</div>
       <div className="fl-grid">
-        <button type="button" className="fl-god-btn" onClick={() => startFreeleticsFlow('Aphrodite', FREELETICS_SPEC[0][2])}>
-          <div className="fl-god-name">⚡ Aphrodite</div>
+        <button type="button" className="fl-god-btn" onClick={() => startFreeleticsFlow('Blaze', FREELETICS_SPEC[0][2])}>
+          <div className="fl-god-name">⚡ Blaze</div>
           <div className="fl-god-desc">Burpees · Jump Squats · Sit-ups · 5 rounds</div>
         </button>
-        <button type="button" className="fl-god-btn" onClick={() => startFreeleticsFlow('Morpheus', FREELETICS_SPEC[1][2])}>
-          <div className="fl-god-name">⚡ Morpheus</div>
+        <button type="button" className="fl-god-btn" onClick={() => startFreeleticsFlow('Titan', FREELETICS_SPEC[1][2])}>
+          <div className="fl-god-name">⚡ Titan</div>
           <div className="fl-god-desc">Push-ups · Jumping Jacks · Lunges · 5 rounds</div>
         </button>
-        <button type="button" className="fl-god-btn" onClick={() => startFreeleticsFlow('Athena', FREELETICS_SPEC[2][2])}>
-          <div className="fl-god-name">⚡ Athena</div>
+        <button type="button" className="fl-god-btn" onClick={() => startFreeleticsFlow('Vortex', FREELETICS_SPEC[2][2])}>
+          <div className="fl-god-name">⚡ Vortex</div>
           <div className="fl-god-desc">Climbers · Sit-ups · Jump Squats · 5 rounds</div>
         </button>
       </div>
@@ -328,7 +328,7 @@ function WorkingSetsSheet({ close }) {
     <div style={{ marginBottom: 14 }}>
       <Segmented value={viewMode} onChange={setViewMode} options={[
         { value: 'ex', label: t('By Exercise') },
-        { value: 'round', label: A?.isFreeletics ? t('⚡ Freeletics Rounds ({0})', maxSets) : t('By Round ({0})', maxSets) }
+        { value: 'round', label: A?.isFreeletics ? t('⚡ Hero Rounds ({0})', maxSets) : t('By Round ({0})', maxSets) }
       ]} />
     </div>
 
@@ -411,7 +411,7 @@ function WorkingSetsSheet({ close }) {
         })}
       </div>
     ) : (
-      /* Round view (Freeletics style) */
+      /* Round view (Hero Rounds style) */
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {Array.from({ length: maxSets }).map((_, rIdx) => {
           const roundSets = A.entries.map((e, eIdx) => ({ entry: e, eIdx, set: e.sets[rIdx], sIdx: rIdx })).filter(x => x.set)
@@ -746,7 +746,7 @@ function ActiveWorkout() {
     {A.entries.length ? <>
       <div className="row between" style={{ alignItems: 'center', marginTop: 8, marginBottom: 8, gap: 6, flexWrap: 'wrap' }}>
         <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          {A.isFreeletics && <span className="fl-badge" style={{ margin: 0 }}><Icon name="bolt" /> Freeletics</span>}
+          {A.isFreeletics && <span className="fl-badge" style={{ margin: 0 }}><Icon name="bolt" /> Hero Rounds</span>}
           <span>{isSuperset ? t('Superset {0} / {1}', unitIdx + 1, units.length) : t('Exercise {0} / {1}', unitIdx + 1, units.length)}</span>
           {A.isFreeletics && <span className="round-badge active">{t('Round {0}', currentRound)}</span>}
         </div>

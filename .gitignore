@@ -24,3 +24,6 @@ graphify-out/
 .claude-flow/
 .swarm/
 .mcp.json
+.playwright-mcp/
+dist/
+*.png.local

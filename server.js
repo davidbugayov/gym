@@ -13,7 +13,7 @@ const HOST = '0.0.0.0';
 
 const app = express();
 
-// 1. Forward all /api/* requests to the openGym API router
+// 1. Forward all /api/* requests to the Gymly API router
 app.use(async (req, res, next) => {
   if (req.url.startsWith('/api/') || req.url === '/api') {
     const handled = await handleApi(req, res);
@@ -61,5 +61,5 @@ if (isProduction) {
 }
 
 app.listen(PORT, HOST, () => {
-  console.log(`openGym unified server listening on http://${HOST}:${PORT}`);
+  console.log(`Gymly unified server listening on http://${HOST}:${PORT}`);
 });

@@ -95,17 +95,67 @@ const HOME_BASE_SPEC = [
   ['Stronger', 'bodyweight', [['0251', 3, 8], ['1460', 3, 12], ['0662', 3, 12], ['0464', 3, 20], ['1473', 2, 15]]]
 ]
 
-// Freeletics Bodyweight — 3 days, iconic high-intensity God workouts with structured set rounds
+// Hero Rounds — 3 days, iconic named high-intensity workouts with structured set rounds
 export const FREELETICS_SPEC = [
-  ['Aphrodite', 'bodyweight', [{ id: '1160', sets: 5, sec: 40, weight: 0, mode: 'time' }, ['0514', 5, 25], ['0001', 5, 25]]],
-  ['Morpheus', 'bodyweight', [['0662', 5, 20], { id: '2612', sets: 5, min: 1, speed: 10 }, ['1460', 5, 20]]],
-  ['Athena', 'bodyweight', [{ id: '0630', sets: 5, sec: 40, weight: 0, mode: 'time' }, ['0001', 5, 25], ['0514', 5, 20]]]
+  ['Blaze', 'bodyweight', [{ id: '1160', sets: 5, sec: 40, weight: 0, mode: 'time' }, ['0514', 5, 25], ['0001', 5, 25]]],
+  ['Titan', 'bodyweight', [['0662', 5, 20], { id: '2612', sets: 5, min: 1, speed: 10 }, ['1460', 5, 20]]],
+  ['Vortex', 'bodyweight', [{ id: '0630', sets: 5, sec: 40, weight: 0, mode: 'time' }, ['0001', 5, 25], ['0514', 5, 20]]]
 ]
 
-export const makeRoutines = spec =>
-  spec.map(([name, emoji, list]) => ({ id: uid(), name, emoji, ex: list.map(e => Array.isArray(e) ? { id: e[0], sets: e[1], reps: e[2], weight: 0 } : { ...e, weight: e.weight || 0 }) }))
+// Hero Rounds II — second series of named high-intensity rounds, slightly harder mixes
+export const HERO_ROUNDS_II_SPEC = [
+  ['Nova', 'bodyweight', [{ id: '1160', sets: 5, sec: 40, weight: 0, mode: 'time' }, ['0514', 5, 25], ['1460', 5, 20]]],
+  ['Echo', 'bodyweight', [['1473', 5, 15], ['2133', 5, 30], ['0003', 5, 25]]],
+  ['Storm', 'bodyweight', [{ id: '0501', sets: 5, sec: 40, weight: 0, mode: 'time' }, ['0662', 5, 15], ['0006', 5, 20]]]
+]
+
+// Forge — Hero Rounds with light dumbbells, for users whose gear is not just bodyweight
+export const FORGE_SPEC = [
+  ['Forge Upper', 'dumbbell', [['0426', 5, 12], ['0289', 5, 12], ['0313', 5, 15]]],
+  ['Forge Lower', 'dumbbell', [['0534', 5, 12], ['0336', 5, 12], ['0549', 5, 15]]],
+  ['Forge Full', 'dumbbell', [['0289', 5, 12], ['0534', 5, 12], ['0292', 5, 10], ['1373', 5, 20]]]
+]
+
+// Dumbbell Only — 3 days, push / pull / legs entirely on dumbbells, linear progression
+const DUMBBELL_ONLY_SPEC = [
+  ['Push', 'dumbbell', [['0289', 4, 10], ['0426', 3, 10], ['0334', 3, 12], ['0251', 3, 12]]],
+  ['Pull', 'dumbbell', [['0293', 4, 10], ['0406', 3, 12], ['0310', 3, 12], ['0313', 3, 12]]],
+  ['Legs', 'dumbbell', [['0413', 4, 10], ['0336', 3, 12], ['1459', 3, 10], ['0431', 3, 12]]]
+]
+
+// Bodyweight Progression — 3 days, calisthenics strength work with a Greyskull LP
+const BODYWEIGHT_PROG_SPEC = [
+  ['Upper Strength', 'pullup', [['0652', 3, 5], ['0662', 3, 12], ['0274', 3, 15]]],
+  ['Push Strength', 'bodyweight', [['1326', 3, 6], ['0662', 3, 15], ['0464', 3, 30]]],
+  ['Full Body', 'bodyweight', [['0652', 3, 5], ['0662', 3, 12], ['1460', 3, 16], ['0687', 3, 20]]]
+]
+
+// Legs & Glutes Machine — 2 days, machine-focused lower body, double progression
+const MACHINE_LEGS_SPEC = [
+  ['Quads & Glutes', 'legs', [['0739', 4, 10], ['0585', 3, 12], ['0054', 3, 10], ['0605', 4, 15]]],
+  ['Hamstrings & Calves', 'legs', [['0085', 4, 8], ['0586', 3, 12], ['0549', 3, 15], ['0605', 4, 15]]]
+]
+
+// Back & Biceps Cable — 3 days, cable pulling volume with a Greyskull progression,
+// rounded out with a press and legs so the week stays balanced
+const CABLE_BACK_SPEC = [
+  ['Heavy Pull', 'cable', [['0861', 4, 8], ['2330', 3, 10], ['0868', 3, 10]]],
+  ['Volume Pull', 'cable', [['2330', 4, 10], ['0861', 3, 12], ['0070', 3, 10], ['0313', 3, 12]]],
+  ['Pull + Push + Legs', 'cable', [['0861', 3, 10], ['0025', 3, 8], ['0739', 3, 10], ['0274', 3, 15]]]
+]
+
+export const makeRoutines = (spec, prog) =>
+  spec.map(([name, emoji, list]) => ({
+    id: uid(),
+    name,
+    emoji,
+    ...(prog ? { prog } : {}),
+    ex: list.map(e => Array.isArray(e) ? { id: e[0], sets: e[1], reps: e[2], weight: 0 } : { ...e, weight: e.weight || 0 })
+  }))
 
 export const freeleticsRoutines = () => makeRoutines(FREELETICS_SPEC)
+export const heroRoundsIIRoutines = () => makeRoutines(HERO_ROUNDS_II_SPEC)
+export const forgeRoutines = () => makeRoutines(FORGE_SPEC)
 
 // Ready-made programs with the metadata the Program Wizard matches on:
 //   name / detail      — t() keys, translated in every locale
@@ -126,14 +176,20 @@ export const READY_PROGRAMS = [
   { id: 'five-by-five', name: '5×5 strength', detail: '3 days · barbell-focused', spec: FIVE_BY_FIVE_SPEC, days: [1, 3, 5, 1, 5], goals: ['muscle', 'fitness'], equip: ['barbell'], requiredEquip: ['barbell'], altEquipGroups: [], levels: ['regular', 'advanced'], freq: [3, 3], minutes: 60, alt: true },
   { id: 'upper-lower', name: 'Upper / Lower', detail: '4 days · strength and size', spec: UPPER_LOWER_SPEC, days: [1, 2, 4, 5], goals: ['muscle'], equip: ['barbell', 'gym', 'dumbbell'], requiredEquip: ['barbell', 'gym'], altEquipGroups: [], levels: ['regular', 'advanced'], freq: [4, 4], minutes: 60 },
   { id: 'bodyweight-hiit', name: 'Bodyweight circuits', detail: '3 days · high-intensity', spec: BODYWEIGHT_HIIT_SPEC, days: [1, 3, 5], goals: ['fatloss', 'endurance'], equip: ['bodyweight'], requiredEquip: ['bodyweight'], altEquipGroups: [], levels: ['returning', 'regular', 'advanced'], freq: [3, 3], minutes: 35 },
-  { id: 'freeletics', name: 'Freeletics Bodyweight', detail: '3 days · iconic God workouts & high-intensity rounds', spec: FREELETICS_SPEC, days: [1, 3, 5], goals: ['fitness', 'endurance'], equip: ['bodyweight'], requiredEquip: ['bodyweight'], altEquipGroups: [], levels: ['beginner', 'returning', 'regular', 'advanced'], freq: [3, 3], minutes: 30 },
+  { id: 'freeletics', name: 'Hero Rounds', detail: '3 days · named 5-round conditioning workouts', spec: FREELETICS_SPEC, days: [1, 3, 5], goals: ['fitness', 'endurance'], equip: ['bodyweight'], requiredEquip: ['bodyweight'], altEquipGroups: [], levels: ['beginner', 'returning', 'regular', 'advanced'], freq: [3, 3], minutes: 30 },
+  { id: 'hero-rounds-ii', name: 'Hero Rounds II', detail: '3 days · named 5-round conditioning, series two', spec: HERO_ROUNDS_II_SPEC, days: [1, 3, 5], goals: ['fatloss', 'endurance'], equip: ['bodyweight'], requiredEquip: ['bodyweight'], altEquipGroups: [], levels: ['regular', 'advanced'], freq: [3, 3], minutes: 30 },
+  { id: 'forge', name: 'Forge Rounds', detail: '3 days · named 5-round workouts with dumbbells', spec: FORGE_SPEC, days: [1, 3, 5], goals: ['fitness', 'muscle', 'endurance'], equip: ['dumbbell', 'gym'], requiredEquip: ['dumbbell'], altEquipGroups: [], levels: ['returning', 'regular', 'advanced'], freq: [3, 3], minutes: 35 },
   { id: 'athletic', name: 'Athletic performance', detail: '4 days · power and conditioning', spec: ATHLETIC_SPEC, days: [1, 2, 4, 5], goals: ['fitness', 'endurance', 'muscle'], equip: ['barbell', 'bodyweight', 'dumbbell', 'gym'], requiredEquip: ['barbell', 'gym'], altEquipGroups: [], levels: ['regular', 'advanced'], freq: [4, 4], minutes: 60 },
   { id: 'core-mobility', name: 'Core & Mobility', detail: '2 days · recovery and stability', spec: CORE_MOBILITY_SPEC, days: [2, 5], goals: ['stress', 'fitness'], equip: ['bodyweight'], requiredEquip: ['bodyweight'], altEquipGroups: [], levels: ['beginner', 'returning', 'regular', 'advanced'], freq: [2, 2], minutes: 25 },
   { id: 'strong-start', name: 'Strong Start', detail: '3 days · beginner full body A/B/C', spec: STRONG_START_SPEC, days: [1, 3, 5], goals: ['muscle', 'fitness'], equip: ['bodyweight', 'dumbbell'], requiredEquip: [], altEquipGroups: [['dumbbell', 'bodyweight']], levels: ['beginner', 'returning'], freq: [3, 3], minutes: 40 },
   { id: 'strength-growth', name: 'Strength Growth', detail: '3 days · barbell A/B/C, 5×5 on the big lifts', spec: STRENGTH_GROWTH_SPEC, days: [1, 3, 5], goals: ['muscle', 'fitness'], equip: ['barbell'], requiredEquip: ['barbell'], altEquipGroups: [], levels: ['regular', 'advanced'], freq: [3, 3], minutes: 60 },
   { id: 'balance-variety', name: 'Balance & Variety', detail: '3–4 days · mixed push / pull / legs + conditioning', spec: BALANCE_SPEC, days: [1, 2, 4, 5], goals: ['fitness', 'muscle'], equip: ['bodyweight', 'dumbbell', 'kettlebell'], requiredEquip: ['bodyweight'], altEquipGroups: [['kettlebell', 'dumbbell']], levels: ['returning', 'regular'], freq: [3, 4], minutes: 45 },
   { id: 'burn-run', name: 'Burn & Run', detail: '3 days · easy runs + one full-body circuit', spec: BURN_RUN_SPEC, days: [1, 3, 5], goals: ['fatloss', 'endurance'], equip: ['run', 'bodyweight'], requiredEquip: ['run', 'bodyweight'], altEquipGroups: [], levels: ['beginner', 'returning', 'regular', 'advanced'], freq: [3, 3], minutes: 35 },
-  { id: 'home-base', name: 'Home Base', detail: '2–3 days · short bodyweight full-body sessions', spec: HOME_BASE_SPEC, days: [1, 3, 5], goals: ['fitness', 'stress'], equip: ['bodyweight'], requiredEquip: ['bodyweight'], altEquipGroups: [], levels: ['beginner', 'returning'], freq: [2, 3], minutes: 25 }
+  { id: 'home-base', name: 'Home Base', detail: '2–3 days · short bodyweight full-body sessions', spec: HOME_BASE_SPEC, days: [1, 3, 5], goals: ['fitness', 'stress'], equip: ['bodyweight'], requiredEquip: ['bodyweight'], altEquipGroups: [], levels: ['beginner', 'returning'], freq: [2, 3], minutes: 25 },
+  { id: 'dumbbell-only', name: 'Dumbbell Only', detail: '3 days · dumbbell push / pull / legs, linear progression', spec: DUMBBELL_ONLY_SPEC, days: [1, 3, 5], goals: ['muscle', 'fitness'], equip: ['dumbbell', 'gym'], requiredEquip: ['dumbbell'], altEquipGroups: [], levels: ['beginner', 'returning', 'regular'], freq: [3, 3], minutes: 45, prog: 'linear' },
+  { id: 'bodyweight-prog', name: 'Bodyweight Progression', detail: '3 days · pull-ups, push-ups and core, Greyskull progression', spec: BODYWEIGHT_PROG_SPEC, days: [1, 3, 5], goals: ['fitness', 'muscle'], equip: ['bodyweight'], requiredEquip: ['bodyweight'], altEquipGroups: [], levels: ['beginner', 'returning', 'regular'], freq: [3, 3], minutes: 35, prog: 'greyskull' },
+  { id: 'machine-legs', name: 'Legs & Glutes Machine', detail: '2 days · machine leg focus, double progression', spec: MACHINE_LEGS_SPEC, days: [2, 5], goals: ['muscle', 'fitness'], equip: ['gym'], requiredEquip: ['gym'], altEquipGroups: [], levels: ['beginner', 'returning', 'regular'], freq: [2, 2], minutes: 40, prog: 'double' },
+  { id: 'cable-back', name: 'Back & Biceps Cable', detail: '3 days · cable pull day withGreyskull, plus pushes', spec: CABLE_BACK_SPEC, days: [1, 3, 5], goals: ['muscle'], equip: ['gym'], requiredEquip: ['gym'], altEquipGroups: [], levels: ['returning', 'regular', 'advanced'], freq: [3, 3], minutes: 50, prog: 'greyskull' }
 ]
 
 // Fresh routine objects (new ids) — [push, pull, legs].
@@ -149,7 +205,7 @@ const DAY_SLOTS = { 1: [3], 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 
 // week — an A/B program alternates across the slots, the rest use the first routines.
 export const readyProgram = (id, sessions) => {
   const program = READY_PROGRAMS.find(item => item.id === id) || READY_PROGRAMS[0]
-  const routines = makeRoutines(program.spec)
+  const routines = makeRoutines(program.spec, program.prog)
   const week = {}
   if (!sessions) {
     if (program.id === 'five-by-five') {

@@ -1,5 +1,5 @@
 /* ============================================================================
-   openGym — design system
+   Gymly — design system
    ----------------------------------------------------------------------------
    Rebuilt around four rules, each aimed at a specific "generated" tell in the
    previous sheet:
@@ -1124,4 +1124,3 @@ h4.sec{
   font-size:9px;text-transform:uppercase;font-weight:700;color:var(--acc);margin-left:2px;
 }
 .set-pill-edit{color:var(--label-3);display:flex;align-items:center;font-size:12px;margin-left:2px}
-

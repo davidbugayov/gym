@@ -116,7 +116,7 @@ function ProgramPreview({ program, sessions, onAdd, close }) {
   const loaded = readyProgram(program.id, sessions)
   const [useSchedule, setUseSchedule] = useState(() => defaultUseSchedule(S.week))
   // Which weekdays each session runs on — starts from the program's default slots and can be
-  // re-picked (Freeletics-style), so the plan lands on the days you actually train.
+  // re-picked (Hero Rounds-style), so the plan lands on the days you actually train.
   const [days, setDays] = useState(() => Object.keys(loaded.week).map(Number))
   const dayOrder = d => (d === 0 ? 7 : d)
   const sortedDays = () => days.slice().sort((a, b) => dayOrder(a) - dayOrder(b))
@@ -903,7 +903,7 @@ function PlanTools({ close }) {
   const exportFile = async () => {
     const bundle = buildPlanBundle(st, user?.name ? t('{0}’s plan', user.name) : '')
     const json = JSON.stringify(bundle, null, 2)
-    const name = 'opengym-plan-' + todayISO() + '.json'
+    const name = 'gymly-plan-' + todayISO() + '.json'
     if (MOBILE) { try { await shareExport(json, name) } catch (e) { /* dismissed */ } close(); return }
     const blob = new Blob([json], { type: 'application/json' })
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href)
@@ -923,7 +923,7 @@ function PlanTools({ close }) {
     <h3>{t('Share your plan')}</h3>
     <div className="muted small" style={{ marginBottom: 16 }}>{t('Send your routines to a friend, or put your week on paper.')}</div>
     <Button variant="primary" icon="upload" onClick={exportFile} disabled={!hasRoutines}>{t('Export plan file')}</Button>
-    <div className="dim small" style={{ margin: '7px 2px 0', lineHeight: 1.4 }}>{t('A small file a friend imports into their own openGym — routines only, none of your workouts or weigh-ins.')}</div>
+    <div className="dim small" style={{ margin: '7px 2px 0', lineHeight: 1.4 }}>{t('A small file a friend imports into their own Gymly — routines only, none of your workouts or weigh-ins.')}</div>
     {!MOBILE && <>
       <div style={{ height: 12 }} />
       <Button variant="tinted" icon="download" onClick={() => { close(); printPlan(st, user?.name || '') }} disabled={!hasRoutines}>{t('Print / Save as PDF')}</Button>
@@ -1100,7 +1100,7 @@ export function beginFreeleticsWorkout(name, specList, bw) {
     return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, sets: applyPrescription(buildSets(st, cfg), plan) }
   })
   update(s => {
-    s.active = { id: uid(), d: todayISO(), start: Date.now(), routineId: null, isFreeletics: true, name: `Freeletics · ${name}`, bw: bw || null, cur: 0, entries }
+    s.active = { id: uid(), d: todayISO(), start: Date.now(), routineId: null, isFreeletics: true, name: `Hero Rounds · ${name}`, bw: bw || null, cur: 0, entries }
   })
   useUI.getState().stopRest()
   nav('/workout')
@@ -1501,7 +1501,7 @@ function ChangeSet({ entryIdx, setIdx, onSave, onDelete, close }) {
 export const changeSetSheet = (entryIdx, setIdx, onSave, onDelete) =>
   ui().openSheet(close => <ChangeSet entryIdx={entryIdx} setIdx={setIdx} onSave={onSave} onDelete={onDelete} close={close} />)
 
-export function startFreeleticsWorkout(routineName = 'Aphrodite') {
+export function startFreeleticsWorkout(routineName = 'Blaze') {
   const p = READY_PROGRAMS.find(x => x.id === 'freeletics')
   if (!p) return
   const routines = makeRoutines(p.spec)
@@ -1674,9 +1674,9 @@ function SwitchTrainingSheet({ close }) {
   const handleSelectFreeletics = godKey => {
     if (hasLogged) {
       confirmSheet({
-        title: t('Start Freeletics?'),
+        title: t('Start Hero Rounds?'),
         message: t('This will replace your current workout with the {0} workout.', godKey),
-        confirmText: t('Start Freeletics'),
+        confirmText: t('Start Hero Rounds'),
         danger: true,
         onConfirm: () => {
           update(s => { s.active = null })
@@ -1723,29 +1723,29 @@ function SwitchTrainingSheet({ close }) {
       </div>
     </div>
 
-    {/* Freeletics Workouts */}
-    <div className="sect-t" style={{ padding: '0 2px 8px', fontWeight: 600 }}>⚡ {t('Freeletics Workouts')}</div>
+    {/* Hero Rounds Workouts */}
+    <div className="sect-t" style={{ padding: '0 2px 8px', fontWeight: 600 }}>⚡ {t('Hero Rounds Workouts')}</div>
     <div className="list" style={{ marginBottom: 14 }}>
-      <div className="item" onClick={() => handleSelectFreeletics('Aphrodite')}>
+      <div className="item" onClick={() => handleSelectFreeletics('Blaze')}>
         <span className="lrow-i" style={{ background: 'var(--acc)', color: 'var(--on-acc)' }}><Icon name="bolt" /></span>
         <div className="grow">
-          <div className="tt">Aphrodite</div>
+          <div className="tt">Blaze</div>
           <div className="ss">5 rounds · Burpees, Jump Squats, Sit-ups</div>
         </div>
         <span className="tag acc">{t('Start')}</span>
       </div>
-      <div className="item" onClick={() => handleSelectFreeletics('Morpheus')}>
+      <div className="item" onClick={() => handleSelectFreeletics('Titan')}>
         <span className="lrow-i" style={{ background: 'var(--acc)', color: 'var(--on-acc)' }}><Icon name="bolt" /></span>
         <div className="grow">
-          <div className="tt">Morpheus</div>
+          <div className="tt">Titan</div>
           <div className="ss">5 rounds · Push-ups, Jumping Jacks, Lunges</div>
         </div>
         <span className="tag acc">{t('Start')}</span>
       </div>
-      <div className="item" onClick={() => handleSelectFreeletics('Athena')}>
+      <div className="item" onClick={() => handleSelectFreeletics('Vortex')}>
         <span className="lrow-i" style={{ background: 'var(--acc)', color: 'var(--on-acc)' }}><Icon name="bolt" /></span>
         <div className="grow">
-          <div className="tt">Athena</div>
+          <div className="tt">Vortex</div>
           <div className="ss">5 rounds · Climbers, Sit-ups, Jump Squats</div>
         </div>
         <span className="tag acc">{t('Start')}</span>
