@@ -63,16 +63,16 @@ function StartChooser() {
       <div className="muted small">{t('High-intensity bodyweight rounds with rapid set transitions.')}</div>
       <div className="fl-grid">
         <button type="button" className="fl-god-btn" onClick={() => startFreeleticsFlow('Blaze', FREELETICS_SPEC[0][2])}>
-          <div className="fl-god-name">⚡ Blaze</div>
-          <div className="fl-god-desc">Burpees · Jump Squats · Sit-ups · 5 rounds</div>
+          <div className="fl-god-name">⚡ {t('Blaze')}</div>
+          <div className="fl-god-desc">{t('Burpees · Jump Squats · Sit-ups · 5 rounds')}</div>
         </button>
         <button type="button" className="fl-god-btn" onClick={() => startFreeleticsFlow('Titan', FREELETICS_SPEC[1][2])}>
-          <div className="fl-god-name">⚡ Titan</div>
-          <div className="fl-god-desc">Push-ups · Jumping Jacks · Lunges · 5 rounds</div>
+          <div className="fl-god-name">⚡ {t('Titan')}</div>
+          <div className="fl-god-desc">{t('Push-ups · Jumping Jacks · Lunges · 5 rounds')}</div>
         </button>
         <button type="button" className="fl-god-btn" onClick={() => startFreeleticsFlow('Vortex', FREELETICS_SPEC[2][2])}>
-          <div className="fl-god-name">⚡ Vortex</div>
-          <div className="fl-god-desc">Climbers · Sit-ups · Jump Squats · 5 rounds</div>
+          <div className="fl-god-name">⚡ {t('Vortex')}</div>
+          <div className="fl-god-desc">{t('Climbers · Sit-ups · Jump Squats · 5 rounds')}</div>
         </button>
       </div>
     </div>
