@@ -1,0 +1,10 @@
+{
+  "appId": "online.emdrbilateral.gym",
+  "appName": "Gym Online",
+  "webDir": "frontend/dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://gym.emdrbilateral.online",
+    "cleartext": true
+  }
+}

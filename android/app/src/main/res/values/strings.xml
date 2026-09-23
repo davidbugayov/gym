@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Gym RU</string>
+    <string name="title_activity_main">Gym RU</string>
+    <string name="package_name">ru.emdrbilateral.gym</string>
+    <string name="custom_url_scheme">ru.emdrbilateral.gym</string>
+</resources>

@@ -1,0 +1,33 @@
+{
+  "packageId": "ru.emdrbilateral.gym",
+  "host": "gym.emdrbilateral.ru",
+  "name": "Gym RU",
+  "launcherName": "Gym RU",
+  "display": "standalone",
+  "themeColor": "#000000",
+  "navigationColor": "#000000",
+  "backgroundColor": "#000000",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://gym.emdrbilateral.ru/icons/icon-512x512.png",
+  "maskableIconUrl": "https://gym.emdrbilateral.ru/icons/icon-512x512.png",
+  "monochromeIconUrl": "https://gym.emdrbilateral.ru/icons/icon-512x512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://gym.emdrbilateral.ru/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "orientation": "default"
+}
