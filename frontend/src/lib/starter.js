@@ -151,17 +151,24 @@ const HOME_BASE_SPEC = [
   ['Stronger', 'bodyweight', [['0251', 3, 8], ['1460', 3, 12], ['0662', 3, 12], ['0464', 3, 20], ['1473', 2, 15]]]
 ]
 
-// Freeletics Bodyweight — 3 days, iconic high-intensity God workouts with structured set rounds
-export const HERO_WARMUP = [
+// Universal warm-up and cool-down — prepended / appended to every workout session.
+// Inspired by the Freeletics dynamic warm-up + static cool-down pattern.
+export const WARMUP = [
   { id: '3224', sets: 1, sec: 45, weight: 0, mode: 'time', phase: 'warmup' }, // jack jump
-  { id: '0630', sets: 1, sec: 45, weight: 0, mode: 'time', phase: 'warmup' }  // mountain climber
+  { id: '0630', sets: 1, sec: 45, weight: 0, mode: 'time', phase: 'warmup' }, // mountain climber
+  { id: '1471', sets: 1, sec: 30, weight: 0, mode: 'time', phase: 'warmup' }  // inchworm
 ]
 
-export const HERO_COOLDOWN = [
+export const COOLDOWN = [
   { id: '1604', sets: 1, sec: 60, weight: 0, mode: 'time', phase: 'cooldown' }, // world greatest stretch
   { id: '1585', sets: 1, sec: 60, weight: 0, mode: 'time', phase: 'cooldown' }, // runners stretch
-  { id: '1365', sets: 1, sec: 60, weight: 0, mode: 'time', phase: 'cooldown' }  // upper back stretch
+  { id: '1365', sets: 1, sec: 60, weight: 0, mode: 'time', phase: 'cooldown' }, // upper back stretch
+  { id: '1511', sets: 1, sec: 45, weight: 0, mode: 'time', phase: 'cooldown' }  // hamstring stretch
 ]
+
+// Legacy aliases – kept for backward compatibility
+export const HERO_WARMUP = WARMUP
+export const HERO_COOLDOWN = COOLDOWN
 
 export const FREELETICS_SPEC = [
   ['Aphrodite', 'bodyweight', [{ id: '1160', sets: 5, sec: 40, weight: 0, mode: 'time' }, ['0514', 5, 25], ['0001', 5, 25]]],

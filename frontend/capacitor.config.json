@@ -5,5 +5,12 @@
   "backgroundColor": "#0c0e12",
   "android": {
     "allowMixedContent": false
+  },
+  "plugins": {
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "REPLACE_WITH_SERVER_CLIENT_ID.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    }
   }
 }

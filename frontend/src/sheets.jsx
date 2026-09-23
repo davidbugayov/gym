@@ -8,6 +8,7 @@ import { beep, vibrate, hapticSetComplete } from './lib/sound.js'
 import { t, instrFor, getLang, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
 import { READY_PROGRAMS, readyProgram, starterRoutines, makeRoutines, HERO_WARMUP, HERO_COOLDOWN } from './lib/starter.js'
+import { getWarmup, getCooldown, WARMUP_POOL, COOLDOWN_POOL, WARMUP_PRESETS, COOLDOWN_PRESETS, warmupCategoryName, cooldownCategoryName } from './lib/warmup-cooldown.js'
 import { matchPrograms, applyProgramToState, defaultUseSchedule, buildCustomWeek } from './lib/program-match.js'
 import Media, { Thumb } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
@@ -23,6 +24,7 @@ import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLIC
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { estimateCalories, exportGoogleHealthJSON, exportGoogleHealthCSV, syncWithGoogleHealth } from './lib/googleHealth.js'
 import { ATHLETE_RU_URL, ATHLETE_PROGRAMS, parseProgramUrl, applyImportedProgram, isAthleteRuUrl } from './lib/import-url.js'
+import { GoogleAuth } from '@southdevs/capacitor-google-auth'
 import { clearActiveSessionBackup } from './lib/autosave.js'
 import { getExerciseTrend } from './lib/trends.js'
 import { ExerciseTrendBadge, ExerciseTrendMini } from './components/ExerciseTrend.jsx'
@@ -1411,6 +1413,113 @@ export function WorkoutRow({ w, onClick }) {
   </div>
 }
 
+/* ============================ warmup / cooldown config ============================ */
+function WarmupCooldownConfig({ mode, close }) {
+  const st = useStore(s => s.S)
+  const update = useStore(s => s.update)
+  const isWarmup = mode === 'warmup'
+
+  const pool = isWarmup ? WARMUP_POOL : COOLDOWN_POOL
+  const presets = isWarmup ? WARMUP_PRESETS : COOLDOWN_PRESETS
+  const cfgKey = isWarmup ? 'warmupCfg' : 'cooldownCfg'
+  const catName = isWarmup ? warmupCategoryName : cooldownCategoryName
+  const cfg = st[cfgKey] || {}
+  const isCustom = !!cfg.custom
+
+  const activePreset = cfg.preset || 'standard'
+  const activeIds = isCustom
+    ? (cfg.ids || [])
+    : (presets[activePreset]?.ids || presets.standard.ids)
+
+  const categories = [...new Set(pool.map(e => e.category))]
+
+  const toggleExercise = id => {
+    const ids = [...activeIds]
+    const idx = ids.indexOf(id)
+    if (idx >= 0) ids.splice(idx, 1)
+    else ids.push(id)
+    update(s => { s[cfgKey] = { ...s[cfgKey], custom: true, ids } })
+  }
+
+  const selectPreset = key => {
+    update(s => { s[cfgKey] = { preset: key, custom: false, ids: [] } })
+  }
+
+  return <>
+    <h3 className="capitalize">{isWarmup ? t('Warm-up exercises') : t('Cooldown exercises')}</h3>
+    <div className="muted small" style={{ marginBottom: 12 }}>
+      {isWarmup
+        ? t('Dynamic exercises before your workout to raise heart rate and mobilize joints.')
+        : t('Static stretches after your workout to restore flexibility and reduce tension.')}
+    </div>
+
+    {/* Presets */}
+    <div className="muted small" style={{ fontWeight: 600, marginBottom: 6 }}>{t('Presets')}</div>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+      {Object.entries(presets).map(([key, preset]) => (
+        <button
+          key={key}
+          type="button"
+          className={`chip ${!isCustom && activePreset === key ? 'chip-active' : ''}`}
+          style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}
+          onClick={() => selectPreset(key)}
+        >
+          {t(preset.name)}
+        </button>
+      ))}
+      <button
+        type="button"
+        className={`chip ${isCustom ? 'chip-active' : ''}`}
+        style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}
+        onClick={() => update(s => { s[cfgKey] = { ...s[cfgKey], custom: true, ids: [...activeIds] } })}
+      >
+        {t('Custom')}
+      </button>
+    </div>
+
+    {/* Exercise list */}
+    <div className="muted small" style={{ fontWeight: 600, marginBottom: 6 }}>
+      {t('Exercises')} ({activeIds.length})
+    </div>
+    {categories.map(cat => {
+      const catExercises = pool.filter(e => e.category === cat)
+      return <div key={cat} style={{ marginBottom: 12 }}>
+        <div className="muted small" style={{ fontWeight: 600, marginBottom: 4, color: 'var(--acc)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {catName(cat)}
+        </div>
+        {catExercises.map(ex => {
+          const checked = activeIds.includes(ex.id)
+          const exData = EXIDX[ex.id]
+          return <label
+            key={ex.id}
+            className="row"
+            style={{ gap: 10, padding: '6px 0', cursor: isCustom ? 'pointer' : 'default', opacity: isCustom ? 1 : (checked ? 1 : 0.4) }}
+          >
+            <input
+              type="checkbox"
+              checked={checked}
+              disabled={!isCustom}
+              onChange={() => toggleExercise(ex.id)}
+              style={{ accentColor: 'var(--acc)', width: 18, height: 18, flexShrink: 0 }}
+            />
+            <Thumb id={ex.id} size={36} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="capitalize" style={{ fontSize: 13, lineHeight: 1.3 }}>{exData ? exData.n : ex.label}</div>
+              <div className="muted" style={{ fontSize: 11 }}>{ex.sec}s</div>
+            </div>
+          </label>
+        })}
+      </div>
+    })}
+
+    <div style={{ height: 12 }} />
+    <Button variant="primary" onClick={close}>{t('Done')}</Button>
+  </>
+}
+export function warmupCooldownSheet(mode) {
+  ui().openSheet(close => <WarmupCooldownConfig mode={mode} close={close} />)
+}
+
 /* ============================ workout lifecycle ============================ */
 export function startFlow(routineId) {
   bwSheet({ required: true, onDone: bw => beginWorkout(routineId, bw) })
@@ -1444,10 +1553,23 @@ export function beginWorkout(routineId, bw) {
   // The prescription is applied as the session is built, so you walk up to the bar with the
   // right weight already on the screen instead of being told about it afterwards. `plan` is
   // kept on the entry purely so the workout can explain the number it chose.
-  const entries = (r ? r.ex : []).map(cfg => {
+  const buildPhaseEntries = (list, phase) => list.map(raw => {
+    const cfg = Array.isArray(raw) ? { id: raw[0], sets: raw[1], reps: raw[2], weight: 0 } : raw
+    const plan = nextPrescription(st, cfg, null)
+    return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, phase: phase || cfg.phase, sets: applyPrescription(buildSets(st, cfg), plan) }
+  })
+  const mainEntries = (r ? r.ex : []).map(cfg => {
     const plan = nextPrescription(st, cfg, r)
     return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, sets: applyPrescription(buildSets(st, cfg), plan) }
   })
+  // Only inject warmup/cooldown when there's an actual routine (not freestyle)
+  const warmupList = r ? getWarmup(st) : []
+  const cooldownList = r ? getCooldown(st) : []
+  const entries = [
+    ...buildPhaseEntries(warmupList, 'warmup'),
+    ...mainEntries,
+    ...buildPhaseEntries(cooldownList, 'cooldown')
+  ]
   update(s => {
     s.active = { id: uid(), d: todayISO(), start: Date.now(), routineId, name: r ? r.name : t('Freestyle'), bw: bw || null, cur: 0, entries }
   })
@@ -1654,15 +1776,31 @@ function GoogleHealthSheet({ close }) {
   const [syncing, setSyncing] = useState(false)
   const [emailInput, setEmailInput] = useState(gh.email || '')
 
-  const toggleConnected = () => {
-    update(s => {
-      s.googleHealth = s.googleHealth || {}
-      s.googleHealth.connected = !s.googleHealth.connected
-      if (s.googleHealth.connected && !s.googleHealth.email) {
-        s.googleHealth.email = emailInput.trim() || 'user@gmail.com'
-      }
-    })
-    toast(gh.connected ? t('Disconnected from Google Health') : t('Connected to Google Health'))
+  const toggleConnected = async () => {
+    if (gh.connected) {
+      update(s => {
+        s.googleHealth = s.googleHealth || {}
+        s.googleHealth.connected = false
+        s.googleHealth.email = ''
+      })
+      toast(t('Disconnected from Google Health'))
+      try { await GoogleAuth.signOut() } catch(e) {}
+      return
+    }
+
+    try {
+      GoogleAuth.initialize()
+      const user = await GoogleAuth.signIn()
+      update(s => {
+        s.googleHealth = s.googleHealth || {}
+        s.googleHealth.connected = true
+        s.googleHealth.email = user.email || 'user@gmail.com'
+      })
+      toast(t('Connected to Google Health'))
+    } catch (err) {
+      toast(t('Google Auth failed'))
+      console.error(err)
+    }
   }
 
   const handleSyncNow = async () => {
@@ -1729,7 +1867,7 @@ function GoogleHealthSheet({ close }) {
 
       {gh.connected && (
         <div style={{ fontSize: '0.85rem', color: 'var(--fg-muted)' }}>
-          <div>{t('Account')}: <b style={{ color: 'var(--fg)' }}>{gh.email || 'user@gmail.com'}</b></div>
+          <div>{t('Account')}: <b style={{ color: 'var(--fg)' }}>{gh.email || ''}</b></div>
           {gh.lastSync && <div style={{ marginTop: 4 }}>{t('Last synced')}: {new Date(gh.lastSync).toLocaleString()}</div>}
         </div>
       )}
@@ -2423,4 +2561,3 @@ function ImportUrlSheet({ initialUrl = ATHLETE_RU_URL, close }) {
   </>
 }
 export const importUrlSheet = (url) => ui().openSheet(close => <ImportUrlSheet initialUrl={url} close={close} />)
-

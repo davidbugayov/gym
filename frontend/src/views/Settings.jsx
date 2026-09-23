@@ -10,7 +10,7 @@ import { wakeLockSupported } from '../lib/wakelock.js'
 import { t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, shareExport, syncReminder } from '../lib/mobile.js'
-import { programWizardSheet, confirmSheet, importFromApp, googleHealthSheet, importUrlSheet } from '../sheets.jsx'
+import { programWizardSheet, confirmSheet, importFromApp, googleHealthSheet, importUrlSheet, warmupCooldownSheet } from '../sheets.jsx'
 import { coachAvailable, hasConsent } from '../lib/coach.js'
 import { forgetCoach } from '../lib/coach-api.js'
 import { playRestTimerAlert, hapticSetComplete } from '../lib/sound.js'
@@ -175,6 +175,44 @@ export default function Settings() {
       </Row>
     </Section>
 
+    {/* ---------- warmup & cooldown ---------- */}
+    <Section title={t('Warm-up & Cooldown')} footer={t('Automatically added to the start and end of every workout.')}>
+      <Row icon="bolt" iconTint="var(--orange)" title={t('Warm-up')} subtitle={t('Dynamic exercises before your workout')}>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          {S.warmup !== false && (
+            <button
+              type="button"
+              className="chip"
+              style={{ fontSize: 12, padding: '4px 10px', height: 28, cursor: 'pointer' }}
+              onClick={() => warmupCooldownSheet('warmup')}
+              title={t('Configure warm-up')}
+            >
+              <Icon name="settings" size={13} style={{ marginRight: 4 }} />
+              {t('Configure')}
+            </button>
+          )}
+          <Switch checked={S.warmup !== false} onChange={v => update(s => { s.warmup = v })} />
+        </div>
+      </Row>
+      <Row icon="heart" iconTint="var(--pink)" title={t('Cooldown')} subtitle={t('Static stretches after your workout')}>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          {S.cooldown !== false && (
+            <button
+              type="button"
+              className="chip"
+              style={{ fontSize: 12, padding: '4px 10px', height: 28, cursor: 'pointer' }}
+              onClick={() => warmupCooldownSheet('cooldown')}
+              title={t('Configure cooldown')}
+            >
+              <Icon name="settings" size={13} style={{ marginRight: 4 }} />
+              {t('Configure')}
+            </button>
+          )}
+          <Switch checked={S.cooldown !== false} onChange={v => update(s => { s.cooldown = v })} />
+        </div>
+      </Row>
+    </Section>
+
     {coachAvailable(config, user, { demo: DEMO, mobile: MOBILE }) && (
       <Section title={t('Coach')} footer={hasConsent(S)
         ? t('The Coach designs and adjusts your plan; it never changes anything without your say-so.')
@@ -220,7 +258,7 @@ export default function Settings() {
     {/* ---------- google health integration ---------- */}
     <Section title={t('Google Health / Google Fit')}>
       <Row icon="heart" iconTint="#4285F4" title={t('Google Health & Fit')}
-        subtitle={S.googleHealth?.connected ? `${t('Connected')} (${S.googleHealth?.email || 'user@gmail.com'})` : t('Bidirectional sync for workouts, volume & body weight')}
+        subtitle={S.googleHealth?.connected ? `${t('Connected')} (${S.googleHealth?.email || ''})` : t('Bidirectional sync for workouts, volume & body weight')}
         accessory="chevron" onClick={googleHealthSheet} />
     </Section>
 

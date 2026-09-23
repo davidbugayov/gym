@@ -943,9 +943,14 @@ function ActiveWorkout() {
     {A.entries.length ? <>
       <div className="row between" style={{ alignItems: 'center', marginTop: 8, marginBottom: 8, gap: 6, flexWrap: 'wrap' }}>
         <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          {A.isFreeletics && (
+          {currentPhase !== 'workout' && (
             <span className="fl-badge" style={{ margin: 0 }}>
-              <Icon name="bolt" /> {currentPhase === 'warmup' ? t('Warm-up') : currentPhase === 'cooldown' ? t('Cooldown') : t('Hero Rounds')}
+              <Icon name="bolt" /> {currentPhase === 'warmup' ? t('Warm-up') : t('Cooldown')}
+            </span>
+          )}
+          {A.isFreeletics && currentPhase === 'workout' && (
+            <span className="fl-badge" style={{ margin: 0 }}>
+              <Icon name="bolt" /> {t('Hero Rounds')}
             </span>
           )}
           <span>{isSuperset ? t('Superset {0} / {1}', unitIdx + 1, units.length) : t('Exercise {0} / {1}', unitIdx + 1, units.length)}</span>

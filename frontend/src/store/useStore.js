@@ -9,7 +9,9 @@ import { notifySyncing, notifySynced, notifySaved, notifySavePulse } from '../li
 const KEY = 'gym_state_v1'
 export const DEF = {
   unit: 'kg', restSec: 90, sound: true, haptics: true, keepAwake: true, lang: 'en',
-  theme: 'dark', accent: 'lime', body: 'male', targetW: null,
+  theme: 'dark', accent: 'lime', body: 'male', targetW: null, warmup: true, cooldown: true,
+  warmupCfg: { preset: 'standard', custom: false, ids: [] },
+  cooldownCfg: { preset: 'standard', custom: false, ids: [] },
   bodyweight: [], routines: [], week: {}, dayPlan: {},
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full',
   exNotes: {}, measurements: [],
