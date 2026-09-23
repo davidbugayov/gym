@@ -4,10 +4,11 @@ import { localTZ } from '../lib/format.js'
 import { registerCustom } from '../lib/exercises.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { MOBILE, nativeLoad, nativeSave, syncReminder } from '../lib/mobile.js'
+import { notifySyncing, notifySynced, notifySaved, notifySavePulse } from '../lib/syncStatus.js'
 
 const KEY = 'gym_state_v1'
 export const DEF = {
-  unit: 'kg', restSec: 90, sound: true, keepAwake: true, lang: 'en',
+  unit: 'kg', restSec: 90, sound: true, haptics: true, keepAwake: true, lang: 'en',
   theme: 'dark', accent: 'lime', body: 'male', targetW: null,
   bodyweight: [], routines: [], week: {}, dayPlan: {},
   exWeights: {}, workouts: [], active: null, customEx: [], gifSize: 'full',
@@ -27,7 +28,21 @@ const clone = o => JSON.parse(JSON.stringify(o))
 function loadState() {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return Object.assign(clone(DEF), JSON.parse(raw))
+    const loaded = raw ? Object.assign(clone(DEF), JSON.parse(raw)) : clone(DEF)
+    // If active session wasn't in raw state (or was lost), check the periodic auto-save backup
+    if (!loaded.active) {
+      const backupRaw = localStorage.getItem('gym_active_session_backup_v1')
+      if (backupRaw) {
+        try {
+          const backup = JSON.parse(backupRaw)
+          if (backup?.active?.entries && (Date.now() - (backup.savedAt || 0) < 48 * 3600 * 1000)) {
+            loaded.active = backup.active
+            loaded._recoveredFromAutoSave = true
+          }
+        } catch (e) { /* ignore */ }
+      }
+    }
+    return loaded
   } catch (e) { /* ignore */ }
   return clone(DEF)
 }
@@ -49,8 +64,24 @@ export const useStore = create((set, get) => {
     S._ts = Date.now()
     registerCustom(S.customEx)
     localStorage.setItem(KEY, JSON.stringify(S))
+    // Maintain active workout backup in sync with store
+    if (S.active) {
+      try {
+        localStorage.setItem('gym_active_session_backup_v1', JSON.stringify({
+          active: S.active,
+          savedAt: Date.now(),
+          version: 1
+        }))
+      } catch (e) { /* ignore */ }
+    } else {
+      localStorage.removeItem('gym_active_session_backup_v1')
+      localStorage.removeItem('gym_active_session_meta_v1')
+    }
     set({ S })
     if (MOBILE) nativePersist()
+    if (!S.active && !push) {
+      notifySavePulse('Saved')
+    }
     if (push && get().user) {
       clearTimeout(pushTm)
       pushTm = setTimeout(() => get().pushState(), 1500)
@@ -61,19 +92,21 @@ export const useStore = create((set, get) => {
   // (e.g. setting the reminder time then immediately backgrounding to test it). On mobile the
   // same applies to the file mirror — backgrounding is often the last thing before the OS
   // kills the app.
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'hidden') return
-    if (MOBILE && saveTm) {
-      clearTimeout(saveTm)
-      saveTm = null
-      nativeSave(get().S)
-    }
-    if (pushTm) {
-      clearTimeout(pushTm)
-      pushTm = null
-      get().pushState()
-    }
-  })
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'hidden') return
+      if (MOBILE && saveTm) {
+        clearTimeout(saveTm)
+        saveTm = null
+        nativeSave(get().S)
+      }
+      if (pushTm) {
+        clearTimeout(pushTm)
+        pushTm = null
+        get().pushState()
+      }
+    })
+  }
 
   // Everything a sign-out leaves behind on this device, whichever way it was triggered.
   const clearLocalSession = () => {
@@ -81,6 +114,8 @@ export const useStore = create((set, get) => {
     localStorage.removeItem('gym_guest')
     localStorage.removeItem('gym_dirty')
     localStorage.removeItem(KEY)
+    localStorage.removeItem('gym_active_session_backup_v1')
+    localStorage.removeItem('gym_active_session_meta_v1')
     persist(clone(DEF), false)
   }
 
@@ -113,11 +148,19 @@ export const useStore = create((set, get) => {
     async pushState() {
       if (!get().user) return
       clearTimeout(pushTm)
-      try { await api('/api/data', { method: 'PUT', body: JSON.stringify({ state: get().S }) }); localStorage.removeItem('gym_dirty') }
-      catch (e) { localStorage.setItem('gym_dirty', '1') }
+      notifySyncing('Syncing…')
+      try {
+        await api('/api/data', { method: 'PUT', body: JSON.stringify({ state: get().S }) })
+        localStorage.removeItem('gym_dirty')
+        notifySynced('Synced')
+      } catch (e) {
+        localStorage.setItem('gym_dirty', '1')
+        notifySaved('Saved locally')
+      }
     },
     async pullState() {
       try {
+        notifySyncing('Syncing…')
         const { state } = await api('/api/data')
         const S = get().S
         const dirty = localStorage.getItem('gym_dirty') === '1'
@@ -127,7 +170,10 @@ export const useStore = create((set, get) => {
           if (active) next.active = active
           persist(next, false)
         } else if (hasData(S)) { await get().pushState() }
-      } catch (e) { /* offline — keep local */ }
+        notifySynced('Synced')
+      } catch (e) {
+        /* offline — keep local */
+      }
     },
 
     async signOut() {

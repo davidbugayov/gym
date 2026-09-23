@@ -5,7 +5,7 @@ import { useUI } from '../store/useUI.js'
 import { exOr } from '../lib/exercises.js'
 import { effectiveRoutine, lastEntryFor, bestWeightFor, buildSets, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, EFFORT, effortOf, stepEffort, capEffort } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
-import { beep, vibrate } from '../lib/sound.js'
+import { beep, vibrate, hapticClick, hapticSetComplete } from '../lib/sound.js'
 import { t } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import Media from '../components/Media.jsx'
@@ -15,6 +15,8 @@ import { Button, Check, NumberField, Segmented } from '../components/ui.jsx'
 import { nextPrescription, applyPrescription } from '../lib/progression.js'
 import { glyphOf } from '../lib/glyphs.js'
 import { FREELETICS_SPEC } from '../lib/starter.js'
+import { startPeriodicAutoSave, subscribeAutoSave, clearActiveSessionBackup } from '../lib/autosave.js'
+import { HeaderSyncInline } from '../components/HeaderSync.jsx'
 
 /* ---------- start chooser (no active workout) ---------- */
 function StartChooser() {
@@ -248,7 +250,13 @@ function ChangeSetSheet({ entryIdx, setIdx, close }) {
 
     {/* Quick actions */}
     <div className="row" style={{ gap: 8, marginBottom: 12 }}>
-      <Button icon="play" onClick={() => mut(x => { x.done = !x.done })}>
+      <Button icon="play" onClick={() => mut(x => {
+        x.done = !x.done
+        if (x.done) {
+          beep(S.sound, 1040, 0.12)
+          hapticSetComplete('set')
+        }
+      })}>
         {s.done ? t('Mark as not done') : t('Mark as completed')}
       </Button>
       <Button icon="plus" onClick={duplicateSet}>{t('Duplicate set')}</Button>
@@ -306,7 +314,13 @@ function WorkingSetsSheet({ close }) {
   const toggleDone = (entryIdx, setIdx) => {
     update(st => {
       const s = st.active.entries[entryIdx].sets[setIdx]
-      if (s) s.done = !s.done
+      if (s) {
+        s.done = !s.done
+        if (s.done) {
+          beep(st.sound, 1040, 0.12)
+          hapticSetComplete('set')
+        }
+      }
     }, true)
   }
 
@@ -475,13 +489,38 @@ function WorkingSetsSheet({ close }) {
 }
 
 /* ---------- elapsed clock (isolated so the workout tree doesn't re-render every second) ---------- */
-function Elapsed({ start }) {
-  const [t, setT] = useState('0:00')
+function Elapsed({ start, label, showIcon = false }) {
+  const [timeStr, setTimeStr] = useState('0:00')
   useEffect(() => {
-    const tick = () => { const s = Math.floor((Date.now() - start) / 1000); setT(Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0')) }
-    tick(); const iv = setInterval(tick, 1000); return () => clearInterval(iv)
+    const tick = () => {
+      const sTime = typeof start === 'number' ? start : (start ? new Date(start).getTime() : Date.now())
+      const totalSec = Math.max(0, Math.floor((Date.now() - sTime) / 1000))
+      const hrs = Math.floor(totalSec / 3600)
+      const mins = Math.floor((totalSec % 3600) / 60)
+      const secs = totalSec % 60
+      const pad = n => String(n).padStart(2, '0')
+      if (hrs > 0) {
+        setTimeStr(`${hrs}:${pad(mins)}:${pad(secs)}`)
+      } else {
+        setTimeStr(`${mins}:${pad(secs)}`)
+      }
+    }
+    tick()
+    const iv = setInterval(tick, 1000)
+    return () => clearInterval(iv)
   }, [start])
-  return <span>{t}</span>
+
+  if (label) {
+    return (
+      <span className="active-duration-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        {showIcon && <Icon name="timer" style={{ width: 13, height: 13 }} />}
+        <span>{label}:</span>
+        <b style={{ fontVariantNumeric: 'tabular-nums' }}>{timeStr}</b>
+      </span>
+    )
+  }
+
+  return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{timeStr}</span>
 }
 
 /* ---------- one exercise block (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
@@ -646,6 +685,20 @@ function ActiveWorkout() {
   const isSuperset = unit.length > 1
   const currentPhase = A.entries[unit[0]]?.phase || 'workout'
 
+  const [saveStatus, setSaveStatus] = useState({ status: 'saved', lastSaved: Date.now() })
+  const [recoveredNotice, setRecoveredNotice] = useState(() => !!S._recoveredFromAutoSave)
+
+  // Periodic auto-save loop: automatically preserves active workout session state to local storage
+  // every 3 seconds and flushes on visibilitychange/unload to prevent data loss.
+  useEffect(() => {
+    const unsub = subscribeAutoSave(st => setSaveStatus(st))
+    const stop = startPeriodicAutoSave(3000)
+    return () => {
+      unsub()
+      stop()
+    }
+  }, [])
+
   const total = A.entries.reduce((n, e) => n + e.sets.length, 0)
   const done = setsDoneActive(A)
 
@@ -694,7 +747,7 @@ function ActiveWorkout() {
     mutEntry(idx, e => {
       e.sets[i].done = !e.sets[i].done
       if (e.sets[i].done) {
-        beep(S.sound, 1040, 0.12); vibrate(30)
+        beep(S.sound, 1040, 0.12)
         const nextIncomplete = e.sets.findIndex((x, sIdx) => sIdx > i && !x.done)
         if (nextIncomplete !== -1) e.activeSetIdx = nextIncomplete
         else delete e.activeSetIdx
@@ -707,6 +760,14 @@ function ActiveWorkout() {
         // Only reps training has a "working weight" worth confirming — a bodyweight plank
         // has nothing to put in that slider.
         if (e.sets.every(x => x.done)) { exJustDone = true; if (m === 'reps' && !e.asked) { e.asked = true; askTop = true } }
+
+        if (workoutDone) {
+          hapticSetComplete('workout')
+        } else if (exJustDone) {
+          hapticSetComplete('exercise')
+        } else {
+          hapticSetComplete('set')
+        }
       } else {
         e.activeSetIdx = i
       }
@@ -765,11 +826,119 @@ function ActiveWorkout() {
 
   return <div className="narrow">
     <div className="hdr">
-      <button className="iconbtn" aria-label={t('Discard')} onClick={() => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { update(s => { s.active = null }); stopRest(); nav('/home') } })}><Icon name="xmark" /></button>
-      <div style={{ textAlign: 'center' }}><div style={{ fontWeight: 600 }}>{A.name}</div><div className="sub"><Elapsed start={A.start} /> · {t('{0} sets', done + '/' + total)}</div></div>
+      <button className="iconbtn" aria-label={t('Discard')} onClick={() => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { clearActiveSessionBackup(); update(s => { s.active = null }); stopRest(); nav('/home') } })}><Icon name="xmark" /></button>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <span style={{ fontWeight: 600 }}>{A.name}</span>
+          <HeaderSyncInline />
+        </div>
+        <div className="sub"><Elapsed start={A.start} label={t('Active duration')} showIcon /> · {t('{0} sets', done + '/' + total)}</div>
+      </div>
       <button className="iconbtn" style={{ color: 'var(--acc)' }} aria-label={t('Finish')} onClick={finishWorkout}><Icon name="check" /></button>
     </div>
     <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
+
+    {recoveredNotice && (
+      <div className="card" style={{
+        padding: '9px 12px',
+        margin: '8px 0 4px',
+        background: 'rgba(16, 185, 129, 0.12)',
+        border: '1px solid rgba(16, 185, 129, 0.35)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
+        borderRadius: 'var(--r-sm, 8px)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.86rem', color: 'var(--fg)' }}>
+          <Icon name="shield" style={{ color: '#10b981', flexShrink: 0, width: 16, height: 16 }} />
+          <span>{t('Workout session recovered from auto-save')}</span>
+        </div>
+        <button
+          type="button"
+          className="iconbtn"
+          style={{ width: 24, height: 24, padding: 0 }}
+          onClick={() => {
+            setRecoveredNotice(false)
+            update(s => { delete s._recoveredFromAutoSave }, false)
+          }}
+          aria-label={t('Dismiss')}
+        >
+          <Icon name="xmark" style={{ width: 14, height: 14 }} />
+        </button>
+      </div>
+    )}
+
+    {/* Real-time total active duration field */}
+    <div id="workout-active-duration-field" className="card" style={{
+      padding: '8px 12px',
+      margin: '10px 0 8px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 32,
+          height: 32,
+          borderRadius: 'var(--r-sm, 8px)',
+          background: 'rgba(99, 102, 241, 0.14)',
+          color: 'var(--acc)'
+        }}>
+          <Icon name="timer" />
+        </span>
+        <div>
+          <div className="muted small" style={{ fontWeight: 500, lineHeight: 1.2 }}>
+            {t('Active duration')}
+          </div>
+          <div style={{
+            fontSize: '1.05rem',
+            fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '0.02em',
+            color: 'var(--fg)',
+            marginTop: 1
+          }}>
+            <Elapsed start={A.start} />
+          </div>
+        </div>
+      </div>
+
+      <div style={{ textAlign: 'right' }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          fontSize: '0.72rem',
+          color: saveStatus.status === 'error' ? 'var(--red, #ef4444)' : saveStatus.status === 'saving' ? 'var(--label-2)' : '#10b981',
+          fontWeight: 600,
+          background: saveStatus.status === 'error' ? 'rgba(239, 68, 68, 0.12)' : saveStatus.status === 'saving' ? 'var(--surface-2)' : 'rgba(16, 185, 129, 0.1)',
+          padding: '2px 7px',
+          borderRadius: 4,
+          marginBottom: 3
+        }}>
+          {saveStatus.status === 'saving' ? (
+            <Icon name="sync" size={10} className="sync-spin" />
+          ) : (
+            <span style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: saveStatus.status === 'error' ? 'var(--red, #ef4444)' : '#10b981',
+              display: 'inline-block'
+            }} />
+          )}
+          <span>{saveStatus.status === 'error' ? t('Save error') : saveStatus.status === 'saving' ? t('Auto-saving…') : t('Auto-saved')}</span>
+        </div>
+        <div style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--fg)' }}>
+          {done} / {total} {t('sets')}
+        </div>
+      </div>
+    </div>
 
     {A.entries.length ? <>
       <div className="row between" style={{ alignItems: 'center', marginTop: 8, marginBottom: 8, gap: 6, flexWrap: 'wrap' }}>

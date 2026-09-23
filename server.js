@@ -54,6 +54,7 @@ if (isProduction) {
     server: {
       middlewareMode: true,
       hmr: false,
+      ws: false,
     },
     appType: 'spa',
   });

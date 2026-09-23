@@ -585,7 +585,8 @@ startCadence({ users: () => db.users, userNow });
 
 export async function handleApi(req, res) {
   const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
-  const key = req.method + ' ' + url.pathname;
+  const method = req.method === 'HEAD' ? 'GET' : req.method;
+  const key = method + ' ' + url.pathname;
   const handler = routes[key];
   if (!handler) return false;
   try {

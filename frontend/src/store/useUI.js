@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { uid } from '../lib/format.js'
-import { beep, vibrate } from '../lib/sound.js'
+import { beep, vibrate, hapticClick, hapticSetComplete, hapticTimerTick, hapticTimerMilestone, playRestTimerAlert, playRestTimerTick, getAudioContext } from '../lib/sound.js'
 import { api } from '../lib/api.js'
 import { t } from '../lib/i18n.js'
 import { useStore } from './useStore.js'
@@ -20,8 +20,24 @@ let workDone = null
 export const useUI = create((set, get) => ({
   sheets: [],          // { id, render:(close)=>JSX, kind:'sheet'|'center', locked }
   toastMsg: '',
+  trendTooltip: null,  // { trend, targetRect, title }
   timer: null,         // rest countdown between sets — { left, total, endsAt }
   work: null,          // work countdown DURING a timed set (issue #16) — { left, total, endsAt, label }
+
+  openTrendTooltip(trend, targetRect, title) {
+    set({ trendTooltip: { trend, targetRect, title } })
+  },
+  toggleTrendTooltip(trend, targetRect, title) {
+    const cur = get().trendTooltip
+    if (cur && cur.trend === trend) {
+      set({ trendTooltip: null })
+    } else {
+      set({ trendTooltip: { trend, targetRect, title } })
+    }
+  },
+  closeTrendTooltip() {
+    set({ trendTooltip: null })
+  },
 
   openSheet(render, { kind = 'sheet', locked = false } = {}) {
     const id = uid()
@@ -40,8 +56,9 @@ export const useUI = create((set, get) => ({
 
   startRest(sec) {
     get().stopRest()
+    getAudioContext()
     const endsAt = Date.now() + sec * 1000
-    set({ timer: { left: sec, total: sec, endsAt } })
+    set({ timer: { left: sec, total: sec, endsAt, milestones: {} } })
     pushRestTimer(sec)
     timerTick = () => {
       const tm = get().timer
@@ -50,11 +67,29 @@ export const useUI = create((set, get) => ({
       if (left === tm.left) return
       const snd = useStore.getState().S.sound
       if (left <= 0) {
-        beep(snd, 880, 0.15); beep(snd, 880, 0.15, 0.25); beep(snd, 1320, 0.4, 0.5)
-        vibrate([200, 100, 200]); get().toast(t('Rest over — next set!')); get().stopRest(); return
+        playRestTimerAlert(snd)
+        hapticTimerMilestone('complete')
+        get().toast(t('Rest over — next set!'))
+        get().stopRest()
+        return
       }
-      if (left <= 3) beep(snd, 660, 0.1)
-      set({ timer: { ...tm, left } })
+
+      const ms = tm.milestones || {}
+      if (left <= 3) {
+        playRestTimerTick(snd)
+        hapticTimerTick()
+      } else if (left === 10 && tm.total >= 20 && !ms.ten) {
+        ms.ten = true
+        hapticTimerMilestone('tenSeconds')
+      } else if (left === 30 && tm.total >= 45 && !ms.thirty) {
+        ms.thirty = true
+        hapticTimerMilestone('thirtySeconds')
+      } else if (tm.total >= 40 && left === Math.round(tm.total / 2) && !ms.half) {
+        ms.half = true
+        hapticTimerMilestone('halfway')
+      }
+
+      set({ timer: { ...tm, left, milestones: ms } })
     }
     timerInt = setInterval(timerTick, 1000)
     document.addEventListener('visibilitychange', timerTick)
@@ -87,10 +122,11 @@ export const useUI = create((set, get) => ({
   startWork(sec, label, onDone) {
     get().stopWork()
     get().stopRest()
+    getAudioContext()
     const total = Math.max(1, Math.round(sec) || 1)
     const endsAt = Date.now() + total * 1000
     workDone = onDone
-    set({ work: { left: total, total, endsAt, label } })
+    set({ work: { left: total, total, endsAt, label, milestones: {} } })
     workTick = () => {
       const wk = get().work
       if (!wk) return
@@ -98,15 +134,27 @@ export const useUI = create((set, get) => ({
       if (left === wk.left) return
       const snd = useStore.getState().S.sound
       if (left <= 0) {
-        beep(snd, 880, 0.15); beep(snd, 880, 0.15, 0.25); beep(snd, 1320, 0.4, 0.5)
-        vibrate([200, 100, 200])
+        playRestTimerAlert(snd)
+        hapticTimerMilestone('workComplete')
         const done = workDone
         get().stopWork()
         if (done) done(wk.total)
         return
       }
-      if (left <= 3) beep(snd, 660, 0.1)
-      set({ work: { ...wk, left } })
+
+      const ms = wk.milestones || {}
+      if (left <= 3) {
+        playRestTimerTick(snd)
+        hapticTimerTick()
+      } else if (left === 10 && wk.total >= 20 && !ms.ten) {
+        ms.ten = true
+        hapticTimerMilestone('tenSeconds')
+      } else if (wk.total >= 30 && left === Math.round(wk.total / 2) && !ms.half) {
+        ms.half = true
+        hapticTimerMilestone('halfway')
+      }
+
+      set({ work: { ...wk, left, milestones: ms } })
     }
     workInt = setInterval(workTick, 1000)
     document.addEventListener('visibilitychange', workTick)
@@ -117,7 +165,7 @@ export const useUI = create((set, get) => ({
     if (!wk) return
     const elapsed = Math.max(1, wk.total - wk.left)
     const done = workDone
-    vibrate(30)
+    hapticSetComplete('set')
     get().stopWork()
     if (done) done(elapsed)
   },

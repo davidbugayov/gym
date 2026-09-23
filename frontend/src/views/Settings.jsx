@@ -10,9 +10,10 @@ import { wakeLockSupported } from '../lib/wakelock.js'
 import { t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, shareExport, syncReminder } from '../lib/mobile.js'
-import { programWizardSheet, confirmSheet, importFromApp } from '../sheets.jsx'
+import { programWizardSheet, confirmSheet, importFromApp, googleHealthSheet, importUrlSheet } from '../sheets.jsx'
 import { coachAvailable, hasConsent } from '../lib/coach.js'
 import { forgetCoach } from '../lib/coach-api.js'
+import { playRestTimerAlert, hapticSetComplete } from '../lib/sound.js'
 import Icon from '../components/Icon.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
 
@@ -130,8 +131,39 @@ export default function Settings() {
             onChange={v => update(s => { s.keepAwake = v })} />
         </Row>
       )}
-      <Row icon="bell" iconTint="var(--pink)" title={t('Sounds')}>
-        <Switch checked={!!S.sound} onChange={v => update(s => { s.sound = v })} />
+      <Row icon="bell" iconTint="var(--pink)" title={t('Sounds')} subtitle={t('Subtle chime when the rest timer reaches zero')}>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          {S.sound && (
+            <button
+              type="button"
+              className="chip"
+              style={{ fontSize: 12, padding: '4px 10px', height: 28, cursor: 'pointer' }}
+              onClick={() => playRestTimerAlert(true)}
+              title={t('Preview timer sound')}
+            >
+              <Icon name="bell" size={13} style={{ marginRight: 4 }} />
+              {t('Test')}
+            </button>
+          )}
+          <Switch checked={!!S.sound} onChange={v => update(s => { s.sound = v })} />
+        </div>
+      </Row>
+      <Row icon="vibrate" iconTint="var(--acc)" title={t('Haptic feedback')} subtitle={t('Vibrations for button taps, set completions, and rest timer')}>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          {S.haptics !== false && (
+            <button
+              type="button"
+              className="chip"
+              style={{ fontSize: 12, padding: '4px 10px', height: 28, cursor: 'pointer' }}
+              onClick={() => hapticSetComplete('set')}
+              title={t('Preview haptic feedback')}
+            >
+              <Icon name="vibrate" size={13} style={{ marginRight: 4 }} />
+              {t('Test')}
+            </button>
+          )}
+          <Switch checked={S.haptics !== false} onChange={v => update(s => { s.haptics = v })} />
+        </div>
       </Row>
       {/* Two names for the same judgement, so the column asks in the scale you already think in.
           The (i) sits before the control — you read it on the way to the choice, not after it. */}
@@ -185,11 +217,21 @@ export default function Settings() {
       </div>
     </Section>
 
+    {/* ---------- google health integration ---------- */}
+    <Section title={t('Google Health / Google Fit')}>
+      <Row icon="heart" iconTint="#4285F4" title={t('Google Health & Fit')}
+        subtitle={S.googleHealth?.connected ? `${t('Connected')} (${S.googleHealth?.email || 'user@gmail.com'})` : t('Bidirectional sync for workouts, volume & body weight')}
+        accessory="chevron" onClick={googleHealthSheet} />
+    </Section>
+
     {/* ---------- data: fill it, bring things over, back it up, wipe it ---------- */}
     <Section title={t('Data')}>
       <Row icon="sparkles" iconTint="var(--acc)" title={t('Ready-made programs')} accessory="chevron" onClick={programWizardSheet} />
+      <Row icon="globe" iconTint="#6366f1" title={t('Import program from URL')}
+        subtitle={t('athlete.ru, web links, or powerlifting cycles')}
+        accessory="chevron" onClick={() => importUrlSheet()} />
       <Row icon="shuffle" iconTint="var(--teal)" title={t('Import from another app')}
-        subtitle={t('FitNotes, Strong, Hevy — or body weight from Apple Health')}
+        subtitle={t('Google Fit, FitNotes, Strong, Hevy — or body weight from Apple Health')}
         accessory="chevron" onClick={() => importRef.current.click()} />
       <Row icon="upload" iconTint="var(--blue)" title={t('Import backup')} accessory="chevron" onClick={() => fileRef.current.click()} />
       <Row icon="download" iconTint="var(--blue)" title={t('Export backup (JSON)')} accessory="chevron" onClick={doExport} />

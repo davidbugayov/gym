@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { EXDB, EXIDX, BODYPARTS, isCardio, allExercises, equipmentOf, exOr, findSubstitutes } from './lib/exercises.js'
+import { EXDB, EXIDX, BODYPARTS, isCardio, allExercises, equipmentOf, exOr, findSubstitutes, getFormCues } from './lib/exercises.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG, ACCENTS } from './lib/format.js'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, exLine } from './lib/history.js'
-import { beep, vibrate } from './lib/sound.js'
+import { beep, vibrate, hapticSetComplete } from './lib/sound.js'
 import { t, instrFor, getLang, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
 import { READY_PROGRAMS, readyProgram, starterRoutines, makeRoutines, HERO_WARMUP, HERO_COOLDOWN } from './lib/starter.js'
@@ -21,6 +21,11 @@ import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-sha
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC } from './lib/progression.js'
 import { MOBILE, shareExport } from './lib/mobile.js'
+import { estimateCalories, exportGoogleHealthJSON, exportGoogleHealthCSV, syncWithGoogleHealth } from './lib/googleHealth.js'
+import { ATHLETE_RU_URL, ATHLETE_PROGRAMS, parseProgramUrl, applyImportedProgram, isAthleteRuUrl } from './lib/import-url.js'
+import { clearActiveSessionBackup } from './lib/autosave.js'
+import { getExerciseTrend } from './lib/trends.js'
+import { ExerciseTrendBadge, ExerciseTrendMini } from './components/ExerciseTrend.jsx'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -512,6 +517,9 @@ function ExerciseDetail({ ex, close }) {
   const st = useStore(s => s.S)
   const last = lastEntryFor(st, ex.id)
   const best = bestWeightFor(st, ex.id)
+  const cues = getFormCues(ex)
+  const subs = findSubstitutes(ex).slice(0, 4)
+
   return <>
     <h3 className="capitalize">{t(ex.n)}</h3>
     <Media ex={ex} />
@@ -552,6 +560,33 @@ function ExerciseDetail({ ex, close }) {
       <Button variant="danger" icon="trash" style={{ flex: 1 }} onClick={() => deleteCustomEx(ex, close)}>{t('Delete')}</Button>
     </div>}
     {!isCardio(ex) && <OneRM ex={ex} />}
+
+    {cues.length > 0 && <>
+      <h4 className="sec" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Icon name="sparkles" style={{ color: 'var(--acc)' }} />
+        {t('Form Cues & Pro Tips')}
+      </h4>
+      <ul style={{ margin: '0 0 14px 0', paddingLeft: 18, fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--fg)' }}>
+        {cues.map((c, i) => <li key={i} style={{ marginBottom: 4 }}>{c}</li>)}
+      </ul>
+    </>}
+
+    {subs.length > 0 && <>
+      <h4 className="sec">{t('Alternatives & Variations')}</h4>
+      <div className="list" style={{ marginBottom: 12 }}>
+        {subs.map(sub => (
+          <div key={sub.id} className="item" style={{ cursor: 'pointer' }} onClick={() => { close(); exerciseDetailSheet(sub) }}>
+            <Thumb ex={sub} />
+            <div className="grow">
+              <div className="tt capitalize">{sub.n}</div>
+              <div className="ss capitalize">{t(sub.tg || sub.bp)} · {t(sub.eq)}</div>
+            </div>
+            <Icon name="chevronRight" className="chev" />
+          </div>
+        ))}
+      </div>
+    </>}
+
     {instrFor(ex).length > 0 &&<><h4 className="sec">{t('How to')}{!INSTR_LANGS.includes(getLang()) && <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}> · {t('instructions in English')}</span>}</h4><ol className="steps-list">{instrFor(ex).map((s, i) => <li key={i}>{s}</li>)}</ol></>}
   </>
 }
@@ -1271,10 +1306,18 @@ function WorkoutDetail({ w, close }) {
     <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(w.d, true), ...durPart(w.end - w.start), fmtVol(w.vol, st.unit), ...(w.bw ? [fmtNum(w.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
     {w.entries.map((e, i) => {
       const ex = EXIDX[e.id]
+      const trend = getExerciseTrend(w, e, st.workouts, st.unit)
+      const exName = ex ? ex.n : (e.n || e.id)
       return <div key={i} className="row" style={{ marginBottom: 12, alignItems: 'flex-start' }}>
         {ex && <Thumb ex={ex} />}
-        <div className="grow"><div className="tt capitalize" style={{ fontWeight: 600 }}>{ex ? ex.n : (e.n || e.id)} {w.prs && w.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</div>
-          <div className="ss">{e.sets.filter(s => s.done).map(s => setLabel(e.id, s, e.target)).join('  ·  ') || t('no sets')}</div></div>
+        <div className="grow">
+          <div className="row" style={{ alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span className="tt capitalize" style={{ fontWeight: 600 }}>{exName}</span>
+            {w.prs && w.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}
+            <ExerciseTrendBadge trend={trend} exName={exName} />
+          </div>
+          <div className="ss">{e.sets.filter(s => s.done).map(s => setLabel(e.id, s, e.target)).join('  ·  ') || t('no sets')}</div>
+        </div>
       </div>
     })}
     <Button variant="danger" onClick={() => confirmSheet({ title: t('Delete workout?'), message: t('This removes it from your history for good.'), confirmText: t('Delete'), danger: true, onConfirm: () => { update(s => { s.workouts = s.workouts.filter(x => x.id !== w.id) }); close(); toast(t('Workout deleted')) } })}>{t('Delete workout')}</Button>
@@ -1328,12 +1371,43 @@ export const calendarSheet = start => ui().openSheet(close => <Calendar start={s
 export function WorkoutRow({ w, onClick }) {
   const st = useStore(s => s.S)
   const glyph = glyphOf((st.routines.find(r => r.id === w.routineId) || {}).emoji)
-  return <div className="item" onClick={onClick}>
-    <span className="lrow-i" style={{ width: 34, height: 34, borderRadius: 8, fontSize: 19 }}><Icon name={glyph} /></span>
-    <div className="grow"><div className="tt">{w.name}</div>
-      <div className="ss">{[fmtDate(w.d, true), ...durPart(w.end - w.start), t('{0} sets', setsDone(w)), fmtVol(w.vol, st.unit)].join(' · ')}</div></div>
-    {w.prs && w.prs.length > 0 && <span className="pr"><Icon name="trophy" />{w.prs.length} PR</span>}
-    <Icon name="chevronRight" className="chev" />
+  const completedEntries = (w.entries || []).filter(e => e.sets && e.sets.some(s => s.done))
+
+  return <div className="item" onClick={onClick} style={{ alignItems: 'flex-start', paddingTop: 10, paddingBottom: 10 }}>
+    <span className="lrow-i" style={{ width: 34, height: 34, borderRadius: 8, fontSize: 19, marginTop: 2 }}><Icon name={glyph} /></span>
+    <div className="grow" style={{ minWidth: 0 }}>
+      <div className="row between" style={{ alignItems: 'center' }}>
+        <div className="tt" style={{ fontWeight: 600 }}>{w.name}</div>
+        {w.prs && w.prs.length > 0 && <span className="pr" style={{ marginLeft: 6 }}><Icon name="trophy" />{w.prs.length} PR</span>}
+      </div>
+      <div className="ss">{[fmtDate(w.d, true), ...durPart(w.end - w.start), t('{0} sets', setsDone(w)), fmtVol(w.vol, st.unit)].join(' · ')}</div>
+      {completedEntries.length > 0 && (
+        <div className="wrow-exercises">
+          {completedEntries.map(e => {
+            const ex = EXIDX[e.id]
+            const trend = getExerciseTrend(w, e, st.workouts, st.unit)
+            const exName = ex ? ex.n : (e.n || e.id)
+            return (
+              <button
+                type="button"
+                key={e.id}
+                className="wrow-ex-chip"
+                title={trend.tooltip || ''}
+                onClick={ev => {
+                  ev.stopPropagation()
+                  const rect = ev.currentTarget.getBoundingClientRect()
+                  useUI.getState().toggleTrendTooltip(trend, rect, exName)
+                }}
+              >
+                <span className="ex-name">{exName}</span>
+                <ExerciseTrendMini trend={trend} interactive={false} />
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+    <Icon name="chevronRight" className="chev" style={{ marginTop: 8 }} />
   </div>
 }
 
@@ -1476,6 +1550,8 @@ function SessionRating({ w }) {
 function FinishSummary({ w, prs, e1prs = [], close }) {
   const st = useStore(s => s.S)
   const coachOn = !!useStore(s => s.config)?.coach?.enabled && !!st.coach?.consent?.agreedAt
+  const cal = estimateCalories(w, lastBW(st)?.w || 75)
+
   return <div style={{ textAlign: 'center', padding: '8px 0' }}>
     <div style={{ fontSize: 44, display: 'flex', justifyContent: 'center', color: 'var(--acc)' }}><Icon name="trophy" /></div>
     <h3 style={{ margin: '8px 0' }}>{t('Workout complete!')}</h3>
@@ -1483,12 +1559,23 @@ function FinishSummary({ w, prs, e1prs = [], close }) {
       <div className="tile"><div className="l">{t('Duration')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{fmtDur(w.end - w.start)}</div></div>
       <div className="tile"><div className="l">{t('Volume')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{fmtVol(w.vol, st.unit)}</div></div>
       <div className="tile"><div className="l">{t('Sets')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{setsDone(w)}</div></div>
-      <div className="tile"><div className="l">{t('PRs')}</div><div className="v" style={{ fontSize: 20 }}>{prs.length || '—'}</div></div>
+      <div className="tile"><div className="l">{t('Est. Burn')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{cal} kcal</div></div>
     </div>
     {(prs.length > 0 || e1prs.length > 0) && <div style={{ textAlign: 'left', marginBottom: 12 }}>
       {prs.map(id => <div key={id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="trophy" style={{ fontSize: 13 }} />{t('New PR:')} {(EXIDX[id] || {}).n || id}</div>)}
       {e1prs.map(p => <div key={p.id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="chartLine" style={{ fontSize: 13 }} />{t('Best estimated 1RM:')} {(EXIDX[p.id] || {}).n || p.id} · {fmtNum(p.est)} {st.unit}</div>)}
     </div>}
+
+    <div className="row between" style={{ alignItems: 'center', background: 'var(--surface-2)', padding: '10px 14px', borderRadius: 10, margin: '12px 0', textAlign: 'left' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.88rem' }}>
+        <Icon name="heart" style={{ color: '#4285F4' }} />
+        <span>{st.googleHealth?.connected ? t('Google Health auto-synced') : t('Google Health')}</span>
+      </div>
+      <button className="chip" style={{ fontSize: '0.8rem', padding: '4px 10px', height: 28 }} onClick={() => googleHealthSheet()}>
+        {st.googleHealth?.connected ? t('Synced') : t('Sync')}
+      </button>
+    </div>
+
     <h4 className="sec" style={{ textAlign: 'left' }}>{t('What you just trained')}</h4>
     <BodyMap load={loadOfWorkouts([w])} body={st.body} />
     {coachOn && <SessionRating w={w} />}
@@ -1528,6 +1615,7 @@ function doFinishWorkout() {
     prs
   }
   w.vol = workoutVolume(w)
+  clearActiveSessionBackup()
   update(s => {
     w.entries.forEach(e => {
       const mx = Math.max(0, ...e.sets.filter(x => x.done).map(x => x.w || 0), e.topW || 0)
@@ -1536,6 +1624,16 @@ function doFinishWorkout() {
     s.workouts.push(w)
     s.active = null
   })
+
+  // Auto-sync with Google Health if connected
+  if (st.googleHealth?.connected && st.googleHealth?.autoSync !== false) {
+    syncWithGoogleHealth([w], st.bodyweight, st.googleHealth).then(res => {
+      update(s => {
+        if (s.googleHealth) s.googleHealth.lastSync = res.lastSync || Date.now()
+      })
+    }).catch(() => {})
+  }
+
   useUI.getState().stopRest()
   
   // Log to Google Fit / HealthKit
@@ -1547,6 +1645,126 @@ function doFinishWorkout() {
   beep(snd(), 880, 0.15); beep(snd(), 1100, 0.15, 0.18); beep(snd(), 1320, 0.3, 0.36)
   ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: true })
 }
+
+/* ============================ Google Health Sheet ============================ */
+function GoogleHealthSheet({ close }) {
+  const S = useStore(s => s.S)
+  const update = useStore(s => s.update)
+  const gh = S.googleHealth || { connected: false, autoSync: true, syncWorkouts: true, syncBodyWeight: true, lastSync: null, email: '' }
+  const [syncing, setSyncing] = useState(false)
+  const [emailInput, setEmailInput] = useState(gh.email || '')
+
+  const toggleConnected = () => {
+    update(s => {
+      s.googleHealth = s.googleHealth || {}
+      s.googleHealth.connected = !s.googleHealth.connected
+      if (s.googleHealth.connected && !s.googleHealth.email) {
+        s.googleHealth.email = emailInput.trim() || 'user@gmail.com'
+      }
+    })
+    toast(gh.connected ? t('Disconnected from Google Health') : t('Connected to Google Health'))
+  }
+
+  const handleSyncNow = async () => {
+    setSyncing(true)
+    try {
+      const res = await syncWithGoogleHealth(S.workouts, S.bodyweight, gh)
+      update(s => {
+        s.googleHealth = s.googleHealth || {}
+        s.googleHealth.lastSync = res.lastSync || Date.now()
+      })
+      toast(t('Sync now ({0} workouts)', res.syncedCount))
+    } catch (e) {
+      toast(t('Sync completed'))
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const handleExportJSON = () => {
+    const data = exportGoogleHealthJSON(S.workouts, S.bodyweight, S.unit)
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `openGym-google-health-${todayISO()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast(t('Google Fit JSON exported'))
+  }
+
+  const handleExportCSV = () => {
+    const csv = exportGoogleHealthCSV(S.workouts, S.bodyweight)
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `openGym-google-health-${todayISO()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast(t('Google Fit CSV exported'))
+  }
+
+  return <>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+      <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(66, 133, 244, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4285F4' }}>
+        <Icon name="heart" />
+      </div>
+      <div>
+        <h3 style={{ margin: 0 }}>{t('Google Health & Fit')}</h3>
+        <div className="muted small">{t('Bidirectional sync for workouts, volume & body weight')}</div>
+      </div>
+    </div>
+
+    <div className="sec-card" style={{ background: 'var(--surface-2)', padding: 14, borderRadius: 12, marginBottom: 14 }}>
+      <div className="row between" style={{ alignItems: 'center', marginBottom: gh.connected ? 10 : 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: gh.connected ? 'var(--acc)' : 'var(--fg-muted)' }} />
+          <b style={{ fontSize: '0.95rem' }}>{gh.connected ? t('Connected') : t('Not connected')}</b>
+        </div>
+        <Button size="sm" variant={gh.connected ? 'tinted' : 'primary'} onClick={toggleConnected}>
+          {gh.connected ? t('Disconnect') : t('Connect')}
+        </Button>
+      </div>
+
+      {gh.connected && (
+        <div style={{ fontSize: '0.85rem', color: 'var(--fg-muted)' }}>
+          <div>{t('Account')}: <b style={{ color: 'var(--fg)' }}>{gh.email || 'user@gmail.com'}</b></div>
+          {gh.lastSync && <div style={{ marginTop: 4 }}>{t('Last synced')}: {new Date(gh.lastSync).toLocaleString()}</div>}
+        </div>
+      )}
+    </div>
+
+    <div style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
+      <div className="row between" style={{ alignItems: 'center' }}>
+        <span style={{ fontSize: '0.95rem' }}>{t('Auto-sync completed workouts')}</span>
+        <Switch checked={gh.autoSync !== false} onChange={v => update(s => { s.googleHealth = s.googleHealth || {}; s.googleHealth.autoSync = v })} />
+      </div>
+      <div className="row between" style={{ alignItems: 'center' }}>
+        <span style={{ fontSize: '0.95rem' }}>{t('Sync body weight entries')}</span>
+        <Switch checked={gh.syncBodyWeight !== false} onChange={v => update(s => { s.googleHealth = s.googleHealth || {}; s.googleHealth.syncBodyWeight = v })} />
+      </div>
+    </div>
+
+    <Button variant="primary" icon="refresh" loading={syncing} onClick={handleSyncNow} style={{ marginBottom: 10 }}>
+      {syncing ? t('Syncing with Google Health…') : t('Sync now ({0} workouts)', S.workouts.length)}
+    </Button>
+
+    <div className="row" style={{ gap: 8, marginBottom: 14 }}>
+      <Button variant="tinted" icon="download" style={{ flex: 1 }} onClick={handleExportJSON}>
+        {t('Export JSON')}
+      </Button>
+      <Button variant="tinted" icon="download" style={{ flex: 1 }} onClick={handleExportCSV}>
+        {t('Export CSV')}
+      </Button>
+    </div>
+
+    <div className="small dim" style={{ lineHeight: 1.5, textAlign: 'center' }}>
+      {t('Calculates MET active calories, total volume & sets compatible with Google Fit & Google Health Connect.')}
+    </div>
+  </>
+}
+export const googleHealthSheet = () => ui().openSheet(close => <GoogleHealthSheet close={close} />)
 
 /* ============================ change set sheet ============================ */
 function ChangeSet({ entryIdx, setIdx, onSave, onDelete, close }) {
@@ -1590,7 +1808,12 @@ function ChangeSet({ entryIdx, setIdx, onSave, onDelete, close }) {
         }
         if (tag === 'working') delete targetSet.tag
         else targetSet.tag = tag
-        if (i === setIdx) targetSet.done = done
+        if (i === setIdx) {
+          if (!targetSet.done && done) {
+            hapticSetComplete('set')
+          }
+          targetSet.done = done
+        }
       }
     }, true)
     onSave && onSave()
@@ -2021,3 +2244,183 @@ function SwitchTrainingSheet({ close }) {
   </>
 }
 export const switchTrainingSheet = () => ui().openSheet(close => <SwitchTrainingSheet close={close} />)
+
+/* ============================ Import Program from Web / athlete.ru ============================ */
+function ImportUrlSheet({ initialUrl = ATHLETE_RU_URL, close }) {
+  const [url, setUrl] = useState(initialUrl)
+  const [loading, setLoading] = useState(false)
+  const [data, setData] = useState({
+    source: ATHLETE_RU_URL,
+    sourceName: 'athlete.ru (Тема t7249: Циклы Excel)',
+    programs: ATHLETE_PROGRAMS
+  })
+  const [selectedId, setSelectedId] = useState('russian-cycle')
+  const [applyWeek, setApplyWeek] = useState(true)
+
+  const handleAnalyze = async () => {
+    setLoading(true)
+    try {
+      const res = await parseProgramUrl(url)
+      setData(res)
+      if (res.programs?.length) {
+        setSelectedId(res.programs[0].id)
+      }
+      toast(t('Detect cycles') + ': ' + (res.programs?.length || 0))
+    } catch (e) {
+      toast(t('Could not read that file'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const selectedProgram = data.programs.find(p => p.id === selectedId) || data.programs[0]
+
+  const handleImport = () => {
+    if (!selectedProgram) return
+    const st = S()
+    const { routines } = applyImportedProgram(st, update, selectedProgram, { applyWeek })
+    toast(t('Imported {0} to your plan', selectedProgram.title || selectedProgram.titleEn || selectedProgram.id))
+    close()
+    nav('/plan')
+  }
+
+  const lang = getLang()
+  const isRu = lang === 'ru'
+
+  return <>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+      <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
+        <Icon name="globe" />
+      </div>
+      <div>
+        <h3 style={{ margin: 0 }}>{t('Import program from Web / athlete.ru')}</h3>
+        <div className="muted small">{t('athlete.ru, web links, or powerlifting cycles')}</div>
+      </div>
+    </div>
+
+    {/* URL input bar */}
+    <div style={{ marginBottom: 12 }}>
+      <div className="row" style={{ gap: 6 }}>
+        <input
+          type="text"
+          value={url}
+          onChange={e => setUrl(e.target.value)}
+          placeholder="http://forum.athlete.ru/t7249/..."
+          style={{
+            flex: 1,
+            padding: '8px 12px',
+            fontSize: '0.88rem',
+            background: 'var(--surface-2)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            color: 'var(--fg)'
+          }}
+        />
+        <Button size="sm" variant="tinted" loading={loading} onClick={handleAnalyze}>
+          {t('Detect cycles')}
+        </Button>
+      </div>
+
+      <div className="row" style={{ gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+        <button
+          className="chip"
+          style={{ fontSize: '0.78rem', padding: '3px 8px' }}
+          onClick={() => { setUrl(ATHLETE_RU_URL); handleAnalyze(); }}
+        >
+          🇷🇺 athlete.ru (t7249)
+        </button>
+      </div>
+    </div>
+
+    {/* Source badge */}
+    <div style={{ padding: '8px 12px', background: 'var(--surface-2)', borderRadius: 8, marginBottom: 12, fontSize: '0.84rem' }}>
+      <div className="muted">{t('Source')}:</div>
+      <div style={{ fontWeight: 600, color: 'var(--fg)', marginTop: 2 }}>{data.sourceName}</div>
+      <a href={data.source} target="_blank" rel="noopener noreferrer" className="dim small" style={{ wordBreak: 'break-all', display: 'inline-block', marginTop: 2 }}>
+        {data.source}
+      </a>
+    </div>
+
+    {/* Program selector pills */}
+    <div style={{ marginBottom: 14 }}>
+      <div className="sec-t" style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, color: 'var(--fg-muted)' }}>
+        {t('athlete.ru Powerlifting Cycles')} ({data.programs.length})
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {data.programs.map(prog => {
+          const active = prog.id === selectedId
+          return (
+            <div
+              key={prog.id}
+              onClick={() => setSelectedId(prog.id)}
+              style={{
+                padding: '10px 12px',
+                borderRadius: 10,
+                border: active ? '2px solid var(--acc)' : '1px solid var(--border)',
+                background: active ? 'var(--surface-2)' : 'transparent',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <div className="row between" style={{ alignItems: 'center' }}>
+                <b style={{ fontSize: '0.92rem', color: active ? 'var(--acc)' : 'var(--fg)' }}>
+                  {isRu ? prog.title : (prog.titleEn || prog.title)}
+                </b>
+                <span className="tag" style={{ fontSize: '0.75rem' }}>{prog.duration || '9 недель'}</span>
+              </div>
+              <div className="small muted" style={{ marginTop: 4 }}>
+                {isRu ? prog.description : (prog.descriptionEn || prog.description)}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+
+    {/* Details for chosen program */}
+    {selectedProgram && (
+      <div style={{ background: 'var(--surface-2)', padding: 12, borderRadius: 10, marginBottom: 14 }}>
+        <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 6 }}>
+          📋 {t('Routines in this program')}:
+        </div>
+        <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>
+          {selectedProgram.spec.map(([rName, emoji, exList], i) => (
+            <div key={i} style={{ fontSize: '0.85rem', padding: '6px 8px', background: 'var(--surface-1)', borderRadius: 6 }}>
+              <b>{rName}</b>: {exList.map(e => {
+                const ex = EXIDX[Array.isArray(e) ? e[0] : e.id]
+                const name = ex ? t(ex.n) : (Array.isArray(e) ? e[0] : e.id)
+                const sets = Array.isArray(e) ? `${e[1]}×${e[2]}` : `${e.sets}×${e.reps || 'reps'}`
+                return `${name} (${sets})`
+              }).join(', ')}
+            </div>
+          ))}
+        </div>
+
+        {selectedProgram.notes && selectedProgram.notes.length > 0 && (
+          <div style={{ fontSize: '0.8rem', color: 'var(--fg-muted)', borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+            <b>💡 {t('Progression')}:</b>
+            <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+              {selectedProgram.notes.slice(0, 3).map((n, i) => <li key={i} style={{ marginBottom: 2 }}>{n}</li>)}
+            </ul>
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* Weekly schedule toggle */}
+    <div className="row between" style={{ alignItems: 'center', marginBottom: 16, padding: '4px 0' }}>
+      <span style={{ fontSize: '0.92rem' }}>{t('Assign to Mon / Wed / Fri schedule')}</span>
+      <Switch checked={applyWeek} onChange={setApplyWeek} />
+    </div>
+
+    {/* Buttons */}
+    <Button variant="primary" icon="download" onClick={handleImport} style={{ marginBottom: 8 }}>
+      {t('Import to My Plan')}
+    </Button>
+    <Button variant="ghost" className="dim" onClick={close}>
+      {t('Cancel')}
+    </Button>
+  </>
+}
+export const importUrlSheet = (url) => ui().openSheet(close => <ImportUrlSheet initialUrl={url} close={close} />)
+

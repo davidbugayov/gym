@@ -20,6 +20,7 @@
 
 import { EXDB, EXIDX } from './exercises.js'
 import { uid } from './format.js'
+import { parseGoogleHealthImport } from './googleHealth.js'
 
 /* ----------------------------------------------------------------- CSV ---- */
 
@@ -495,6 +496,11 @@ export function parseBodyweight(text, { unit = 'kg' } = {}) {
 export function parseImport(text, opts) {
   const s = String(text)
   if (s.includes('HKQuantityTypeIdentifier') || /^\s*</.test(s)) return parseBodyweight(s, opts)
+  
+  // Google Health / Google Fit Takeout export check
+  const asGoogleHealth = parseGoogleHealthImport(s)
+  if (!asGoogleHealth.error) return asGoogleHealth
+
   const asWorkouts = parseWorkoutCSV(s, opts)
   if (!asWorkouts.error) return asWorkouts
   const asWeights = parseBodyweight(s, opts)
@@ -505,6 +511,25 @@ export function parseImport(text, opts) {
 
 /** Merge into state. Existing days win — importing twice never duplicates a workout. */
 export function mergeImport(S, parsed) {
+  if (parsed.kind === 'google_health') {
+    let added = 0
+    let skipped = 0
+    if (parsed.workouts && parsed.workouts.length) {
+      const haveW = new Set(S.workouts.map(w => w.d))
+      const freshW = parsed.workouts.filter(w => !haveW.has(w.d))
+      S.workouts = [...S.workouts, ...freshW].sort((a, b) => (a.d < b.d ? -1 : 1))
+      added += freshW.length
+      skipped += (parsed.workouts.length - freshW.length)
+    }
+    if (parsed.bodyweight && parsed.bodyweight.length) {
+      const haveB = new Set(S.bodyweight.map(b => b.d))
+      const freshB = parsed.bodyweight.filter(b => !haveB.has(b.d))
+      S.bodyweight = [...S.bodyweight, ...freshB].sort((a, b) => (a.d < b.d ? -1 : 1))
+      added += freshB.length
+      skipped += (parsed.bodyweight.length - freshB.length)
+    }
+    return { added, skipped }
+  }
   if (parsed.kind === 'bodyweight') {
     const have = new Set(S.bodyweight.map(b => b.d))
     const fresh = parsed.bodyweight.filter(b => !have.has(b.d))
@@ -514,7 +539,7 @@ export function mergeImport(S, parsed) {
   const have = new Set(S.workouts.map(w => w.d))
   const fresh = parsed.workouts.filter(w => !have.has(w.d))
   const used = new Set(fresh.flatMap(w => w.entries.map(e => e.id)))
-  const customs = parsed.customEx.filter(c => used.has(c.id) && !EXIDX[c.id])
+  const customs = (parsed.customEx || []).filter(c => used.has(c.id) && !EXIDX[c.id])
   S.customEx = [...(S.customEx || []), ...customs]
   S.workouts = [...S.workouts, ...fresh].sort((a, b) => (a.d < b.d ? -1 : 1))
   // seed the weight suggestions from the newest imported set of each lift

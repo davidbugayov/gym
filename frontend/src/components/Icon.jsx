@@ -78,14 +78,18 @@ const P = {
   play: <path d="M8.4 5.6 18 12l-9.6 6.4Z" />,
   pause: <path d="M9.4 5.8v12.4M14.6 5.8v12.4" />,
   reset: <><path d="M4.4 12a7.6 7.6 0 1 0 2.3-5.4" /><path d="M4 4.4v4.4h4.4" /></>,
+  sync: <><path d="M20.5 8A8.5 8.5 0 0 0 5.6 5.6M3.5 16a8.5 8.5 0 0 0 14.9 2.4" /><path d="M20.5 3.5v4.8h-4.8M3.5 20.5v-4.8h4.8" /></>,
   bell: <><path d="M6.6 10.4a5.4 5.4 0 0 1 10.8 0c0 4 1.4 5.6 1.4 5.6H5.2s1.4-1.6 1.4-5.6Z" /><path d="M10.1 19.2a2.1 2.1 0 0 0 3.8 0" /></>,
   bellSlash: <><path d="M8.1 6.6a5.4 5.4 0 0 1 9.3 3.8c0 4 1.4 5.6 1.4 5.6H9.4M6.6 16H5.2s1.4-1.6 1.4-5.6v-.6" /><path d="M10.1 19.2a2.1 2.1 0 0 0 3.8 0M4 3.6l16 16.8" /></>,
+  vibrate: <><rect x="7" y="4" width="10" height="16" rx="2.5" /><path d="M3.2 8.5v7M20.8 8.5v7M1 10.5v3M23 10.5v3" /></>,
   chevronRight: <path d="m9.6 5.6 6.6 6.4-6.6 6.4" />,
   chevronLeft: <path d="m14.4 5.6-6.6 6.4 6.6 6.4" />,
   chevronDown: <path d="m5.6 9.4 6.4 6.2 6.4-6.2" />,
   chevronUp: <path d="m5.6 14.6 6.4-6.2 6.4 6.2" />,
   arrowUp: <path d="M12 19.6V4.4M6.2 10.6 12 4.4l5.8 6.2" />,
   arrowDown: <path d="M12 4.4v15.2M6.2 13.4 12 19.6l5.8-6.2" />,
+  trendUp: <path d="M4.5 16.5 11 10l3.5 3.5L20 6.5M14.5 6.5H20V12" />,
+  trendDown: <path d="M4.5 7.5 11 14l3.5-3.5L20 17.5M14.5 17.5H20V12" />,
   expand: <path d="M14.4 4.4h5.2v5.2M9.6 19.6H4.4v-5.2M19.6 4.4 13.8 10.2M4.4 19.6l5.8-5.8" />,
   minimize: <path d="M19.6 9.6h-5.2V4.4M4.4 14.4h5.2v5.2M14.4 9.6l5.2-5.2M9.6 14.4l-5.2 5.2" />,
 
@@ -121,6 +125,8 @@ P.exercises = P.magnifier
 P.weight = P.scale
 P.streak = P.flame
 P.done = P.check
+P.refresh = P.sync
+P.syncing = P.sync
 
 export const ICON_NAMES = Object.keys(P)
 

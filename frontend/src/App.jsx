@@ -14,6 +14,8 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 import Modals from './components/Modals.jsx'
 import Toast from './components/Toast.jsx'
 import RestTimer from './components/RestTimer.jsx'
+import HeaderSync from './components/HeaderSync.jsx'
+import TrendTooltipPopover from './components/TrendTooltipPopover.jsx'
 import Login from './views/Login.jsx'
 import Home from './views/Home.jsx'
 import Plan from './views/Plan.jsx'
@@ -64,6 +66,7 @@ function Shell() {
 
   return (
     <>
+      <HeaderSync />
       {/* keyed on the route: a view that throws is contained, and switching tabs
           re-mounts the boundary, so the tab bar is always a way out */}
       <div id="app" className="vfade" key={loc.pathname}>
@@ -94,6 +97,7 @@ function Shell() {
       <RestTimer />
       <Modals />
       <Toast />
+      <TrendTooltipPopover />
     </>
   )
 }

@@ -1,7 +1,9 @@
 import { useEffect } from 'react'
 import { useUI } from '../store/useUI.js'
+import { useStore } from '../store/useStore.js'
 import { t } from '../lib/i18n.js'
 import { Button } from './ui.jsx'
+import Icon from './Icon.jsx'
 
 const clock = sec => Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0')
 
@@ -13,6 +15,9 @@ export default function RestTimer() {
   const timer = useUI(s => s.timer)
   const work = useUI(s => s.work)
   const { addRest, stopRest, finishWorkEarly, stopWork } = useUI()
+  const soundOn = useStore(s => s.S.sound)
+  const hapticsOn = useStore(s => s.S.haptics !== false)
+  const update = useStore(s => s.update)
   const on = work || timer
   // The bar is fixed above the tab bar and floats over whatever is beneath it — during a
   // rest that was the next set's row. Extra bottom padding lets the page scroll clear.
@@ -30,6 +35,46 @@ export default function RestTimer() {
         {work.label && <div className="lbl">{work.label}</div>}
         <div className="bar"><i style={{ width: pct + '%' }} /></div>
       </div>
+      <button
+        type="button"
+        className="chip"
+        style={{
+          padding: '4px 7px',
+          fontSize: 12,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          opacity: soundOn ? 1 : 0.6,
+          background: soundOn ? 'var(--surface-3)' : 'transparent',
+          border: 'none',
+          cursor: 'pointer'
+        }}
+        onClick={() => update(s => { s.sound = !s.sound })}
+        title={soundOn ? t('Sound alert on') : t('Sound alert muted')}
+        aria-label={soundOn ? t('Sound alert on') : t('Sound alert muted')}
+      >
+        <Icon name={soundOn ? 'bell' : 'bellSlash'} size={14} />
+      </button>
+      <button
+        type="button"
+        className="chip"
+        style={{
+          padding: '4px 7px',
+          fontSize: 12,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          opacity: hapticsOn ? 1 : 0.6,
+          background: hapticsOn ? 'var(--surface-3)' : 'transparent',
+          border: 'none',
+          cursor: 'pointer'
+        }}
+        onClick={() => update(s => { s.haptics = s.haptics === false })}
+        title={hapticsOn ? t('Haptic feedback on') : t('Haptic feedback muted')}
+        aria-label={hapticsOn ? t('Haptic feedback on') : t('Haptic feedback muted')}
+      >
+        <Icon name="vibrate" size={14} />
+      </button>
       <Button size="sm" onClick={stopWork}>{t('Cancel')}</Button>
       <Button size="sm" variant="primary" icon="check" onClick={finishWorkEarly}>{t('Done')}</Button>
     </div>
@@ -43,6 +88,46 @@ export default function RestTimer() {
       <div className="head">
         <div className="t">{clock(timer.left)}</div>
         <div className="bar"><i style={{ width: pct + '%' }} /></div>
+        <button
+          type="button"
+          className="chip"
+          style={{
+            padding: '4px 7px',
+            fontSize: 12,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            opacity: soundOn ? 1 : 0.6,
+            background: soundOn ? 'var(--surface-3)' : 'transparent',
+            border: 'none',
+            cursor: 'pointer'
+          }}
+          onClick={() => update(s => { s.sound = !s.sound })}
+          title={soundOn ? t('Sound alert on') : t('Sound alert muted')}
+          aria-label={soundOn ? t('Sound alert on') : t('Sound alert muted')}
+        >
+          <Icon name={soundOn ? 'bell' : 'bellSlash'} size={14} />
+        </button>
+        <button
+          type="button"
+          className="chip"
+          style={{
+            padding: '4px 7px',
+            fontSize: 12,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            opacity: hapticsOn ? 1 : 0.6,
+            background: hapticsOn ? 'var(--surface-3)' : 'transparent',
+            border: 'none',
+            cursor: 'pointer'
+          }}
+          onClick={() => update(s => { s.haptics = s.haptics === false })}
+          title={hapticsOn ? t('Haptic feedback on') : t('Haptic feedback muted')}
+          aria-label={hapticsOn ? t('Haptic feedback on') : t('Haptic feedback muted')}
+        >
+          <Icon name="vibrate" size={14} />
+        </button>
       </div>
       <div className="acts">
         <Button size="sm" icon="minus" onClick={() => addRest(-15)}>15s</Button>
