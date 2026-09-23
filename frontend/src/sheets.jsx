@@ -7,7 +7,7 @@ import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolu
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, getLang, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
-import { READY_PROGRAMS, readyProgram, starterRoutines, makeRoutines } from './lib/starter.js'
+import { READY_PROGRAMS, readyProgram, starterRoutines, makeRoutines, HERO_WARMUP, HERO_COOLDOWN } from './lib/starter.js'
 import { matchPrograms, applyProgramToState, defaultUseSchedule, buildCustomWeek } from './lib/program-match.js'
 import Media, { Thumb } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
@@ -1343,11 +1343,18 @@ export function startFlow(routineId) {
 }
 export function beginFreeleticsWorkout(name, specList, bw) {
   const st = S()
-  const entries = specList.map(raw => {
+  const buildEntries = (list, phase) => list.map(raw => {
     const cfg = Array.isArray(raw) ? { id: raw[0], sets: raw[1], reps: raw[2], weight: 0 } : raw
     const plan = nextPrescription(st, cfg, null)
-    return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, sets: applyPrescription(buildSets(st, cfg), plan) }
+    return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, phase: phase || cfg.phase, sets: applyPrescription(buildSets(st, cfg), plan) }
   })
+  
+  const entries = [
+    ...buildEntries(HERO_WARMUP, 'warmup'),
+    ...buildEntries(specList, 'workout'),
+    ...buildEntries(HERO_COOLDOWN, 'cooldown')
+  ]
+
   update(s => {
     s.active = { id: uid(), d: todayISO(), start: Date.now(), routineId: null, isFreeletics: true, name: `Hero Rounds · ${name}`, bw: bw || null, cur: 0, entries }
   })

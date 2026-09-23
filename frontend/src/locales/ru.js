@@ -779,5 +779,7 @@ export default {
   'Pick {0} days': 'Выберите {0} дней',
   'Program Routines': 'Тренировки программы',
   'Edit plan': 'Изменить план',
-  'Program wizard': 'Подобрать программу'
+  'Program wizard': 'Подобрать программу',
+  'Warm-up': 'Разминка',
+  'Cooldown': 'Заминка'
 }

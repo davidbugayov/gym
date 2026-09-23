@@ -644,6 +644,7 @@ function ActiveWorkout() {
   const unit = A.entries.length ? unitOf(units, cur) : []
   const unitIdx = units.findIndex(u => u === unit)
   const isSuperset = unit.length > 1
+  const currentPhase = A.entries[unit[0]]?.phase || 'workout'
 
   const total = A.entries.reduce((n, e) => n + e.sets.length, 0)
   const done = setsDoneActive(A)
@@ -773,9 +774,13 @@ function ActiveWorkout() {
     {A.entries.length ? <>
       <div className="row between" style={{ alignItems: 'center', marginTop: 8, marginBottom: 8, gap: 6, flexWrap: 'wrap' }}>
         <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          {A.isFreeletics && <span className="fl-badge" style={{ margin: 0 }}><Icon name="bolt" /> Hero Rounds</span>}
+          {A.isFreeletics && (
+            <span className="fl-badge" style={{ margin: 0 }}>
+              <Icon name="bolt" /> {currentPhase === 'warmup' ? t('Warm-up') : currentPhase === 'cooldown' ? t('Cooldown') : t('Hero Rounds')}
+            </span>
+          )}
           <span>{isSuperset ? t('Superset {0} / {1}', unitIdx + 1, units.length) : t('Exercise {0} / {1}', unitIdx + 1, units.length)}</span>
-          {A.isFreeletics && <span className="round-badge active">{t('Round {0}', currentRound)}</span>}
+          {A.isFreeletics && currentPhase === 'workout' && <span className="round-badge active">{t('Round {0}', currentRound)}</span>}
         </div>
         <div className="row" style={{ gap: 6 }}>
           <button type="button" className="set-chip-btn" onClick={() => switchTrainingSheet()} title={t('Change training')}>
