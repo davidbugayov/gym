@@ -152,6 +152,17 @@ const HOME_BASE_SPEC = [
 ]
 
 // Freeletics Bodyweight — 3 days, iconic high-intensity God workouts with structured set rounds
+export const HERO_WARMUP = [
+  { id: '3224', sets: 1, sec: 45, weight: 0, mode: 'time', phase: 'warmup' }, // jack jump
+  { id: '0630', sets: 1, sec: 45, weight: 0, mode: 'time', phase: 'warmup' }  // mountain climber
+]
+
+export const HERO_COOLDOWN = [
+  { id: '1604', sets: 1, sec: 60, weight: 0, mode: 'time', phase: 'cooldown' }, // world greatest stretch
+  { id: '1585', sets: 1, sec: 60, weight: 0, mode: 'time', phase: 'cooldown' }, // runners stretch
+  { id: '1365', sets: 1, sec: 60, weight: 0, mode: 'time', phase: 'cooldown' }  // upper back stretch
+]
+
 export const FREELETICS_SPEC = [
   ['Aphrodite', 'bodyweight', [{ id: '1160', sets: 5, sec: 40, weight: 0, mode: 'time' }, ['0514', 5, 25], ['0001', 5, 25]]],
   ['Morpheus', 'bodyweight', [['0662', 5, 20], { id: '2612', sets: 5, min: 1, speed: 10 }, ['1460', 5, 20]]],
