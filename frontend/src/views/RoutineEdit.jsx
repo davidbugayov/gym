@@ -67,7 +67,7 @@ export default function RoutineEdit() {
           exConfigSheet(ex, e, cfg => edit(x => { x[i] = { id: x[i].id, sg: x[i].sg, ...cfg } }), () => edit(x => { x.splice(i, 1); cleanupSg(x) }), r, newEx => edit(x => { x[i] = { ...x[i], id: newEx.id } }))
         }}>
           <Thumb ex={ex} />
-          <div className="grow"><div className="tt capitalize">{ex.n}</div><div className="ss">{exLine(e, S.unit)}</div></div>
+          <div className="grow"><div className="tt capitalize">{t(ex.n)}</div><div className="ss">{exLine(e, S.unit)}</div></div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <button type="button" className="btn-swap-ex" style={{ padding: '3px 7px', fontSize: 11 }} onClick={ev => {
               ev.stopPropagation()

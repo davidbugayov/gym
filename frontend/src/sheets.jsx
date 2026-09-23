@@ -513,7 +513,7 @@ function ExerciseDetail({ ex, close }) {
   const last = lastEntryFor(st, ex.id)
   const best = bestWeightFor(st, ex.id)
   return <>
-    <h3 className="capitalize">{ex.n}</h3>
+    <h3 className="capitalize">{t(ex.n)}</h3>
     <Media ex={ex} />
     <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '10px 0' }}>
       <span className="tag acc">{t(ex.bp)}</span>
@@ -696,7 +696,7 @@ function ExercisePicker({ onPick, close }) {
         <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name + body part, no animation')}</div></div><Icon name="plus" className="chev" />
       </div>}
       {f.slice(0, shown).map(e => <div key={e.id} className="item" onClick={() => onPick(e)}>
-        <Thumb ex={e} /><div className="grow"><div className="tt capitalize">{e.n}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div></div>
+        <Thumb ex={e} /><div className="grow"><div className="tt capitalize">{t(e.n)}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div></div>
         {usage[e.id] && <span className="tag acc"><Icon name="starFill" /></span>}<Icon name="plus" className="chev" />
       </div>)}
       {f.length === 0 && bp === '★' && <div className="empty">{t('Nothing chosen yet — add exercises and they’ll show up here.')}</div>}
@@ -748,7 +748,7 @@ function ChangeExerciseSheet({ currentEx, onSwap, close }) {
         <Thumb ex={current} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="small muted" style={{ textTransform: 'uppercase', fontSize: 10, fontWeight: 700 }}>{t('Currently selected')}</div>
-          <div style={{ fontWeight: 700, fontSize: 14, textTransform: 'capitalize' }}>{current.n}</div>
+          <div style={{ fontWeight: 700, fontSize: 14, textTransform: 'capitalize' }}>{t(current.n)}</div>
           <div className="small dim">{t(current.tg || current.bp)} · {t(current.eq)}</div>
         </div>
       </div>
@@ -786,7 +786,7 @@ function ChangeExerciseSheet({ currentEx, onSwap, close }) {
       {f.slice(0, shown).map(e => <div key={e.id} className="item" onClick={() => handlePick(e)}>
         <Thumb ex={e} />
         <div className="grow">
-          <div className="tt capitalize">{e.n}</div>
+          <div className="tt capitalize">{t(e.n)}</div>
           <div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div>
         </div>
         <span className="tag acc">{t('Select')}</span>
@@ -852,7 +852,7 @@ function ExConfig({ ex, existing, onSave, onDelete, onSwap, close, routine }) {
     }
   }
   return <>
-    <h3 className="capitalize">{ex.n}</h3>
+    <h3 className="capitalize">{t(ex.n)}</h3>
     <Media ex={ex} />
     <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '10px 0 14px' }}>
       {cardio && <span className="tag acc"><Icon name="figureRun" />{t('Cardio')}</span>}
@@ -1013,7 +1013,7 @@ function ExerciseNote({ ex, close }) {
     toast(t('Note saved'))
   }
   return <>
-    <h3 className="capitalize">{ex.n}</h3>
+    <h3 className="capitalize">{t(ex.n)}</h3>
     <div className="muted small" style={{ marginBottom: 12 }}>
       {t('Document technique cues, form reminders or modifications for this exercise.')}
     </div>
@@ -1117,7 +1117,7 @@ function DayOverride({ iso, close }) {
                           <span style={{ fontSize: 12, fontWeight: 700, width: 18, color: 'var(--label-3)' }}>{idx + 1}</span>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontWeight: 600, fontSize: 13, textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {ex.n}
+                              {t(ex.n)}
                             </div>
                             <div className="small muted">{spec} · {t(ex.eq)}</div>
                           </div>
@@ -1227,7 +1227,7 @@ function DayAssign({ day, close }) {
                           <span style={{ fontSize: 12, fontWeight: 700, width: 18, color: 'var(--label-3)' }}>{idx + 1}</span>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontWeight: 600, fontSize: 13, textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {ex.n}
+                              {t(ex.n)}
                             </div>
                             <div className="small muted">{spec} · {t(ex.eq)}</div>
                           </div>
@@ -1615,7 +1615,7 @@ function ChangeSet({ entryIdx, setIdx, onSave, onDelete, close }) {
       <div className="row between" style={{ marginBottom: 12 }}>
         <div>
           <h3 style={{ margin: 0 }}>{t('Change set {0}', setIdx + 1)}</h3>
-          <div className="sub" style={{ textTransform: 'capitalize' }}>{ex.n}</div>
+          <div className="sub" style={{ textTransform: 'capitalize' }}>{t(ex.n)}</div>
         </div>
         <button className="iconbtn" onClick={close} aria-label={t('Close')}><Icon name="xmark" /></button>
       </div>
@@ -1863,7 +1863,7 @@ function ShowProgramSheet({ close }) {
                   return <div key={idx} className="row between" style={{ fontSize: 13, alignItems: 'center' }}>
                     <div className="row" style={{ gap: 6, alignItems: 'center' }}>
                       <span className="muted">{idx + 1}.</span>
-                      <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{ex.n}</span>
+                      <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{t(ex.n)}</span>
                     </div>
                     <span className="small dim">{exLine(e, st.unit)}</span>
                   </div>

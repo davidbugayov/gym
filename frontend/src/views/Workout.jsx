@@ -145,7 +145,7 @@ function ChangeSetSheet({ entryIdx, setIdx, close }) {
   return <div style={{ padding: '4px 0' }}>
     <div className="row between" style={{ alignItems: 'center', marginBottom: 12 }}>
       <div>
-        <div style={{ fontWeight: 700, fontSize: 18, textTransform: 'capitalize' }}>{ex.n}</div>
+        <div style={{ fontWeight: 700, fontSize: 18, textTransform: 'capitalize' }}>{t(ex.n)}</div>
         <div className="muted small">{t('Set {0} of {1}', setIdx + 1, entry.sets.length)}</div>
       </div>
       <button type="button" className="iconbtn" onClick={close}><Icon name="xmark" /></button>
@@ -343,7 +343,7 @@ function WorkingSetsSheet({ close }) {
           return <div key={eIdx} className={'set-overview-item' + (isCurrentEx ? ' active-ex' : '')}>
             <div className="row between" style={{ alignItems: 'center', marginBottom: 8 }}>
               <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-                <span style={{ fontWeight: 700, textTransform: 'capitalize', fontSize: 15 }}>{eIdx + 1}. {ex.n}</span>
+                <span style={{ fontWeight: 700, textTransform: 'capitalize', fontSize: 15 }}>{eIdx + 1}. {t(ex.n)}</span>
                 {isCurrentEx && <span className="round-badge active">{t('Active')}</span>}
               </div>
               <div className="row" style={{ gap: 6, alignItems: 'center' }}>
@@ -449,7 +449,7 @@ function WorkingSetsSheet({ close }) {
                   <div className="row" style={{ gap: 8, alignItems: 'center' }}>
                     <Check checked={set.done} onChange={() => toggleDone(eIdx, sIdx)} />
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 13, textTransform: 'capitalize' }}>{ex.n}</div>
+                      <div style={{ fontWeight: 600, fontSize: 13, textTransform: 'capitalize' }}>{t(ex.n)}</div>
                       <div className="small dim">{desc} {set.tag ? `(${set.tag})` : ''}</div>
                     </div>
                   </div>
@@ -537,7 +537,7 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
   return <>
     <Media ex={ex} key={entry.id} compact={compact} minimizable />
     <div className="row between" style={{ marginBottom: 6, alignItems: 'center' }}>
-      <div style={{ fontSize: compact ? 17 : 20, fontWeight: 600, letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{ex.n}</div>
+      <div style={{ fontSize: compact ? 17 : 20, fontWeight: 600, letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{t(ex.n)}</div>
       <div className="row" style={{ gap: 6, alignItems: 'center' }}>
         <button type="button" className="btn-swap-ex" onClick={() => onChangeExercise && onChangeExercise(entryIdx)} title={t('Change / Swap exercise')}>
           <Icon name="shuffle" style={{ fontSize: 12 }} />
