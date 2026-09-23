@@ -776,5 +776,8 @@ export default {
 
   // --- program wizard: training days ---
   'Pick the days you train': 'Выберите дни тренировок',
-  'Pick {0} days': 'Выберите {0} дней'
-,}
+  'Pick {0} days': 'Выберите {0} дней',
+  'Program Routines': 'Тренировки программы',
+  'Edit plan': 'Изменить план',
+  'Program wizard': 'Подобрать программу'
+}
