@@ -1291,4 +1291,13 @@ export default {
   "Log this exercise again in your next workout to see percentage progress.": "Выполните это упражнение снова, чтобы увидеть прогресс в процентах.",
   "0.0% change — matched previous session performance": "0.0% — результат совпадает с прошлой тренировкой",
   "Completed": "Выполнено"
+,
+  "This browser doesn't support passkeys — you can still use Gymly locally on this device.": "This browser doesn't support passkeys — you can still use Gymly locally on this device.",
+  "to install Gymly as a full-screen app.": "to install Gymly as a full-screen app.",
+  "Rest-timer alerts, even if Gymly is closed.": "Rest-timer alerts, even if Gymly is closed.",
+  "A small file a friend imports into their own Gymly — routines only, none of your workouts or weigh-ins.": "A small file a friend imports into their own Gymly — routines only, none of your workouts or weigh-ins.",
+  "this isn’t an Gymly plan file": "this isn’t an Gymly plan file",
+  "Made with Gymly": "Made with Gymly",
+  "Reload Gymly": "Reload Gymly",
+  "Self-host Gymly": "Self-host Gymly",
 }
