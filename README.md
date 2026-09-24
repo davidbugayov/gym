@@ -244,4 +244,4 @@ infrastructure map: server IP, paths, systemd services, ports, and CI/CD workflo
 | Environment | URL | Workflow |
 |---|---|---|
 | gym .online | https://gym.emdrbilateral.online | `deploy-gym-online.yml` |
-| gym .ru | https://gym.emdrbilateral.ru | _(manual for now)_ |
+| gym .ru | https://gym.emdrbilateral.ru | 301 redirect to `.online` |

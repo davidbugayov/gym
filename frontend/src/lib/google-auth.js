@@ -23,15 +23,8 @@ export const GOOGLE_HEALTH_SCOPES = [
   'https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.writeonly'
 ]
 
-// Initialize Firebase App
-const isRu = typeof window !== 'undefined' && window.location.hostname.endsWith('.ru')
-const dynamicConfig = {
-  ...firebaseConfig,
-  appId: isRu ? "1:831370287146:web:44f5ce2605b9a25e928b53" : "1:831370287146:web:bbe398a29e56e0cf928b53",
-  measurementId: isRu ? "G-PDS9D9J2NT" : "G-E9DMMVFVWY"
-}
-
-const app = getApps().length > 0 ? getApp() : initializeApp(dynamicConfig)
+// The .online deployment is canonical; .ru redirects before the app is served.
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null
 

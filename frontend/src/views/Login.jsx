@@ -103,7 +103,7 @@ export default function Login() {
         <div style={{ height: 10 }} />
       </> : <div className="card small muted" style={{ textAlign: 'left', marginBottom: 10 }}>{t("This browser doesn't support passkeys — you can still use Gymly locally on this device.")}</div>}
       <Button variant="ghost" className="dim" onClick={() => setGuest(true)}>{t('Continue without account')}</Button>
-      <div className="dim small" style={{ marginTop: 26, lineHeight: 1.5 }}>{t('Sync your workouts and body weight directly with Google Fit.')}</div>
+      <div className="dim small" style={{ marginTop: 26, lineHeight: 1.5 }}>{t('Sync your workouts and body weight directly with Google Health.')}</div>
     </div>
   )
 }

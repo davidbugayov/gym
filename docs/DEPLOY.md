@@ -41,16 +41,11 @@ systemctl restart gym-online
 
 ---
 
-### gym.emdrbilateral.ru (`.ru` production)
+### gym.emdrbilateral.ru (redirect only)
 
-| Key | Value |
-|-----|-------|
-| URL | <https://gym.emdrbilateral.ru> |
-| Deploy path | `/opt/gym/gym-ru` |
-| systemd service | `gym-ru` |
-| Node port | `8090` |
-| nginx upstream | `http://127.0.0.1:8090` |
-| GitHub workflow | _(not yet created — add `deploy-gym-ru.yml` when needed)_ |
+The `.ru` hostname permanently redirects all paths and query strings to
+`https://gym.emdrbilateral.online`. It has no application process, database, or deployment.
+The DNS record and TLS certificate remain in place because they are required to serve the redirect.
 
 > **Note**: nginx serves both `.ru` and `.online` from the same config file at
 > `/etc/nginx/sites-enabled/gym`. SSL cert is shared:
@@ -72,14 +67,6 @@ systemctl restart gym-online
 systemctl status gym-online
 curl -s -o /dev/null -w '%{http_code}' http://localhost:8091/
 
-# gym-ru
-cd /opt/gym/gym-ru
-git pull
-npm install --ignore-scripts
-npm run build --workspace=frontend
-systemctl restart gym-ru
-systemctl status gym-ru
-curl -s -o /dev/null -w '%{http_code}' http://localhost:8090/
 ```
 
 ---
@@ -91,7 +78,6 @@ emdrbilateral-dev.service      → dev.emdrbilateral.online   (bilateralbound re
 emdrbilateral-online.service   → emdrbilateral.online       (bilateralbound repo)
 emdrbilateral-ru.service       → emdrbilateral.ru           (bilateralbound repo)
 gym-online.service             → gym.emdrbilateral.online   (this repo, gym)
-gym-ru.service                 → gym.emdrbilateral.ru       (this repo, gym)
 ```
 
 ---

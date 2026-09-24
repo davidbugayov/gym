@@ -2,29 +2,31 @@
 
 Last updated: 24 September 2026
 
-## Implemented and published
+## Canonical deployment
 
-- Google Sign-In / Google Fit integration and Android Health Connect integration are in the application code.
-- The Google Fitness API is enabled in Cloud project `gymly-9bfda`.
-- Firebase Google authentication is enabled. Firebase Authorized Domains include `gym.emdrbilateral.online` and `gym.emdrbilateral.ru`.
-- Google OAuth Branding has the app name `Gym Online`, the public homepage `https://gym.emdrbilateral.online/about.html`, and the policy links `https://gym.emdrbilateral.online/privacy` and `https://gym.emdrbilateral.online/terms`.
-- OAuth Authorized Domains include `emdrbilateral.online` and `emdrbilateral.ru`.
-- Public app information, privacy, and terms pages are available on both sites:
-  - `https://gym.emdrbilateral.online/about.html`, `/privacy`, `/terms`
-  - `https://gym.emdrbilateral.ru/about.html`, `/privacy`, `/terms`
-- The `.online` GitHub Actions deployment and `.ru` manual VPS deployment completed. The URLs returned HTTP 200 when checked.
+- `https://gym.emdrbilateral.online` is the only application host and is deployed by GitHub Actions.
+- `https://gym.emdrbilateral.ru` permanently redirects to `.online`; its old app service and database are retired.
+- OAuth privacy policy and terms use `.online` URLs only. Google OAuth Branding still lists `.ru`; Google blocks its removal because it claims the web client references that domain, though the visible client origins and callback contain no `.ru` URI.
+- Firebase Auth settings currently show that this Google account needs project-owner permission to manage domains, so `.ru` remains there pending an owner-level change.
 
-## Still required
+## Implemented
 
-1. Search Console ownership for both Domain properties, `emdrbilateral.online` and `emdrbilateral.ru`, is verified via DNS TXT records. Do not remove those records; Google requires them to maintain verification. Never commit verification tokens or registrar credentials.
-2. Google Auth Platform branding reverification passed on 24 September 2026 and was published. The console confirms: “Your branding has been verified and is being shown to users.”
-3. Submit Google Fitness data-access verification. Google requires an accurate demonstration video showing the sensitive Fitness scopes in use. No demo-video URL has been submitted.
-4. For release Android builds, register the production signing certificate SHA-1 with Google OAuth. The Android OAuth client currently has the debug SHA-1. Confirm Apple Developer HealthKit capability and provisioning for the iOS release separately.
+- Web Google Health API writes completed exercise sessions and user-entered body-weight records. It requests write-only scopes and does not read Google Health history.
+- Google Health API is enabled in Cloud project `gymly-9bfda`.
+- OAuth Data Access now lists `googlehealth.activity_and_fitness.writeonly` and `googlehealth.health_metrics_and_measurements.writeonly`; the legacy Google Fit scopes were removed.
+- Google Sign-In remains available. Android Health Connect and Apple Health are separate device integrations.
+- Public app information, privacy, and terms pages are published at `https://gym.emdrbilateral.online/about.html`, `/privacy`, and `/terms`.
 
-## Relevant commits
+## Remaining Google approval
 
-- `7727ad2` — Google Fit and Health Connect integration.
+- The Google Health write scopes are restricted and currently unverified. Add developer/test accounts in Audience while the app is in Testing; public production access requires Google verification.
+- Submit the updated data-access verification with a demo video showing the scopes being requested and used. Google warns against exposing unverified restricted scopes to production users.
+- Remove `emdrbilateral.ru` from Firebase Authentication's authorized domains using a project-owner account. Remove it from Google OAuth Branding after resolving Google's client-reference warning; keep `.online` plus Firebase's own domain. The `.ru` hostname itself must remain in DNS/TLS to serve its redirect.
+- Search Console DNS TXT verification records are independent of the app redirect. Keep them unless domain ownership verification is intentionally retired.
+
+## Relevant history
+
+- `7727ad2` — initial Google Fit and Health Connect integration.
 - `3e02d2f` — privacy and terms pages.
-- `dd614c1` — short `/privacy` and `/terms` routes.
-- `f4b83b7` — retry the `.online` HTTP readiness check after service restart.
 - `1b166ae` — public OAuth homepage.
+- `c19b314` — Google Health API migration.

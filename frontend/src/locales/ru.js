@@ -9,6 +9,7 @@ export default {
   "Connected Google Account: {0}": "Подключен аккаунт Google: {0}",
   "Signed in as {0}": "Вы вошли как {0}",
   "Google Sign-in failed: {0}": "Ошибка входа Google: {0}",
+  "Sync your workouts and body weight directly with Google Health.": "Синхронизируйте тренировки и вес напрямую с Google Health.",
   "Signed out from Google Account": "Вы вышли из Google",
   "Connected to Google Fit": "Подключено к Google Health",
   "Sync with Google Fit and Health Connect": "Синхронизация Google Health и Health Connect",
