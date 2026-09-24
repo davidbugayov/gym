@@ -1047,6 +1047,58 @@ h4.sec{
 }
 .pr .icn{font-size:13px}
 
+/* --- Library item PR badge --- */
+.pr-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1.5px;
+  background: color-mix(in srgb, var(--yellow) 14%, transparent);
+  color: var(--yellow);
+  border: 1px solid color-mix(in srgb, var(--yellow) 26%, transparent);
+  border-radius: 6px;
+  padding: 3px 6px;
+  flex-shrink: 0;
+  text-align: right;
+  line-height: 1.15;
+}
+.pr-badge .pr-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 3.5px;
+  font-size: 11px;
+}
+.pr-badge .pr-icon {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.pr-badge .pr-tag {
+  font-weight: 800;
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+  background: var(--yellow);
+  color: #000;
+  border-radius: 3px;
+  padding: 0 3px;
+  line-height: 13px;
+}
+.pr-badge .pr-weight {
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--label);
+  letter-spacing: -0.01em;
+}
+:root[data-theme="light"] .pr-badge .pr-weight {
+  color: #1c1c1e;
+}
+.pr-badge .pr-date {
+  font-size: 10px;
+  color: var(--label-2);
+  font-weight: 400;
+  padding-right: 1px;
+}
+
 /* --- toast --- */
 #toast{
   position:fixed;left:50%;transform:translateX(-50%) translateY(6px);

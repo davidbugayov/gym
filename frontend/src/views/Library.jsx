@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore.js'
 import { EXDB, BODYPARTS, allExercises, equipmentOf, matchesExerciseQuery } from '../lib/exercises.js'
-import { bestWeightFor } from '../lib/history.js'
-import { fmtNum } from '../lib/format.js'
+import { personalRecordFor } from '../lib/history.js'
+import { fmtNum, fmtDate } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import { Thumb } from '../components/Media.jsx'
 import { exerciseDetailSheet, addToRoutineSheet, customExSheet } from '../sheets.jsx'
@@ -48,11 +48,20 @@ export default function Library() {
         <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name + body part, no animation')}</div></div><Icon name="plus" className="chev" />
       </div>
       {f.slice(0, shown).map(e => {
-        const best = bestWeightFor(S, e.id)
+        const pr = personalRecordFor(S, e.id)
         return <div key={e.id} className="item" onClick={() => exerciseDetailSheet(e)}>
           <Thumb ex={e} />
           <div className="grow"><div className="tt capitalize">{e.n}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div></div>
-          {best > 0 && <span className="tag acc">{fmtNum(best)}</span>}
+          {pr && (
+            <div className="pr-badge" title={pr.date ? `${fmtNum(pr.weight)} ${S.unit || 'kg'} · ${fmtDate(pr.date)}` : `${fmtNum(pr.weight)} ${S.unit || 'kg'}`}>
+              <div className="pr-main">
+                <Icon name="trophy" className="pr-icon" />
+                <span className="pr-tag">PR</span>
+                <span className="pr-weight">{fmtNum(pr.weight)} {S.unit || 'kg'}</span>
+              </div>
+              {pr.date && <div className="pr-date">{fmtDate(pr.date)}</div>}
+            </div>
+          )}
           <Button size="sm" variant="tinted" icon="plus" onClick={ev => { ev.stopPropagation(); addToRoutineSheet(e) }}>{t('Plan')}</Button>
         </div>
       })}
@@ -61,3 +70,4 @@ export default function Library() {
     {f.length > shown && <><div style={{ height: 10 }} /><Button onClick={() => setShown(s => s + 40)}>{t('Show more')}</Button></>}
   </>
 }
+

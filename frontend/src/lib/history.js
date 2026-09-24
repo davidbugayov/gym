@@ -119,6 +119,44 @@ export function bestWeightFor(S, exId) {
   }))
   return best
 }
+export function personalRecordFor(S, exId) {
+  if (!S) return null
+  let bestW = 0
+  let bestDate = null
+
+  if (Array.isArray(S.workouts)) {
+    const ws = [...S.workouts].sort((a, b) => (a.d || '').localeCompare(b.d || ''))
+    for (const w of ws) {
+      if (!w || !Array.isArray(w.entries)) continue
+      for (const e of w.entries) {
+        if (e.id === exId) {
+          let maxW = 0
+          if (Array.isArray(e.sets)) {
+            for (const s of e.sets) {
+              if (s.done && s.w > maxW) maxW = s.w
+            }
+          }
+          if (e.topW && e.topW > maxW) maxW = e.topW
+          if (maxW > bestW) {
+            bestW = maxW
+            bestDate = w.d || (w.start ? isoOf(new Date(w.start)) : null)
+          }
+        }
+      }
+    }
+  }
+
+  const ew = S.exWeights && S.exWeights[exId]
+  if (ew && ew.w > bestW) {
+    bestW = ew.w
+    bestDate = ew.d || bestDate
+  } else if (ew && ew.w === bestW && !bestDate && ew.d) {
+    bestDate = ew.d
+  }
+
+  if (bestW <= 0) return null
+  return { weight: bestW, date: bestDate }
+}
 export function effectiveRoutineId(S, iso) {
   const ov = S.dayPlan[iso]
   if (ov === 'rest') return null

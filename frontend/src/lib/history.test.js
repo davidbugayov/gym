@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, exLine, workoutVolume, effortOf, stepEffort, capEffort } from './history.js'
+import { modeOf, isTimed, fmtSec, setLabel, defaultConfig, buildSets, exLine, workoutVolume, effortOf, stepEffort, capEffort, bestWeightFor, personalRecordFor } from './history.js'
 import { EXDB } from './exercises.js'
 
 // Real ids out of the shipped catalogue, so the body-part fallback is exercised for real.
@@ -319,3 +319,54 @@ describe('workoutVolume', () => {
     expect(workoutVolume(w)).toBe(600)
   })
 })
+
+describe('personalRecordFor', () => {
+  it('returns null when there are no workouts or records', () => {
+    expect(personalRecordFor(null, LIFT)).toBeNull()
+    expect(personalRecordFor(emptyS, LIFT)).toBeNull()
+    expect(personalRecordFor({ workouts: [] }, LIFT)).toBeNull()
+  })
+
+  it('returns null when sets were not done or weight is zero', () => {
+    const S = {
+      workouts: [
+        { d: '2026-01-10', entries: [{ id: LIFT, sets: [{ w: 100, r: 5, done: false }, { w: 0, r: 10, done: true }] }] }
+      ]
+    }
+    expect(personalRecordFor(S, LIFT)).toBeNull()
+  })
+
+  it('finds best weight and date from completed sets across workouts', () => {
+    const S = {
+      workouts: [
+        { d: '2026-01-15', entries: [{ id: LIFT, sets: [{ w: 70, r: 8, done: true }, { w: 80, r: 5, done: true }] }] },
+        { d: '2026-02-20', entries: [{ id: LIFT, sets: [{ w: 90, r: 5, done: true }, { w: 100, r: 3, done: true }] }] },
+        { d: '2026-03-05', entries: [{ id: LIFT, sets: [{ w: 95, r: 5, done: true }] }] }
+      ]
+    }
+    const pr = personalRecordFor(S, LIFT)
+    expect(pr).toEqual({ weight: 100, date: '2026-02-20' })
+  })
+
+  it('recognises topW when higher than sets', () => {
+    const S = {
+      workouts: [
+        { d: '2026-02-14', entries: [{ id: LIFT, topW: 105, sets: [{ w: 90, r: 5, done: true }] }] }
+      ]
+    }
+    expect(personalRecordFor(S, LIFT)).toEqual({ weight: 105, date: '2026-02-14' })
+  })
+
+  it('falls back to exWeights if present and higher', () => {
+    const S = {
+      workouts: [
+        { d: '2026-01-15', entries: [{ id: LIFT, sets: [{ w: 80, r: 5, done: true }] }] }
+      ],
+      exWeights: {
+        [LIFT]: { w: 85, d: '2026-01-20' }
+      }
+    }
+    expect(personalRecordFor(S, LIFT)).toEqual({ weight: 85, date: '2026-01-20' })
+  })
+})
+
