@@ -23,7 +23,7 @@ import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC } from './lib/progression.js'
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { estimateCalories, exportGoogleHealthJSON, exportGoogleHealthCSV } from './lib/googleHealth.js'
-import { syncAllWithGoogleHealth } from './lib/google-fit-api.js'
+import { readWorkoutsFromGoogleHealth, syncAllWithGoogleHealth } from './lib/google-fit-api.js'
 import { ATHLETE_RU_URL, ATHLETE_PROGRAMS, parseProgramUrl, applyImportedProgram, isAthleteRuUrl } from './lib/import-url.js'
 import { GoogleAuth } from '@southdevs/capacitor-google-auth'
 import { Capacitor } from '@capacitor/core'
@@ -1984,7 +1984,7 @@ function GoogleHealthDisclosure({ compact = false }) {
       <Icon name="heart" />
       <strong>{t('Google Health data use notice')}</strong>
     </div>
-    <div className="small">{t('When connected, openGym sends each completed workout name and type, start and end times, duration and estimated calories, plus body-weight measurements and their dates, to your Google Health account so these records appear there. The integration only writes data and does not read your Google Health history. Automatic workout and weight sync are on by default after connecting; you can turn sync off or disconnect at any time.')}</div>
+    <div className="small">{t('When connected, openGym sends completed workout summaries, exercise names, duration, estimated calories and cardio distance, plus body-weight measurements, to Google Health. During sync, it can also read recent Google Health workout summaries, including device-reported calories and distance, and add them to your training history for Coach recommendations. Workout sync is on by default; disconnect at any time.')}</div>
   </section>
 }
 
@@ -2010,6 +2010,14 @@ function doFinishWorkout() {
     entries: A.entries.map(e => ({ id: e.id, sets: e.sets, topW: e.topW || null, target: e.target || null })).filter(e => e.sets.some(s => s.done)),
     prs
   }
+  w.calories = estimateCalories(w, st.unit === 'lb'
+    ? (st.bodyweight?.at(-1)?.w || 165) * 0.45359237
+    : (st.bodyweight?.at(-1)?.w || 75))
+  const estimatedDistance = w.entries.reduce((total, entry) => {
+    if (modeOf(entry.target || {}, EXIDX[entry.id]) !== 'cardio') return total
+    return total + entry.sets.filter(set => set.done).reduce((sum, set) => sum + (Number(set.min) || 0) * (Number(set.speed) || 0) / 60, 0)
+  }, 0)
+  if (estimatedDistance > 0) w.distanceKm = Math.round(estimatedDistance * 100) / 100
   w.vol = workoutVolume(w)
   clearActiveSessionBackup()
   update(s => {
@@ -2114,6 +2122,18 @@ function GoogleHealthSheet({ close }) {
     }
   }
 
+  const refreshGoogleHealthAccess = async () => {
+    try {
+      const result = await googleSignIn(true)
+      setCachedToken(result.accessToken)
+      update(s => { if (s.googleHealth) s.googleHealth.readAuthRequired = false })
+      toast(t('Google Health access updated'))
+    } catch (err) {
+      toast(t('Google Auth failed'))
+      console.error(err)
+    }
+  }
+
   const handleSyncNow = async () => {
     setSyncing(true)
     try {
@@ -2144,7 +2164,11 @@ function GoogleHealthSheet({ close }) {
       const since = gh.lastSync || 0
       const workouts = gh.syncWorkouts === false ? [] : S.workouts.filter(workout => !since || workout.end > since)
       const weights = gh.syncBodyWeight === false ? [] : S.bodyweight.filter(entry => !since || (entry.t || new Date(entry.d).getTime()) > since)
-      const res = await syncAllWithGoogleHealth(token, workouts, weights)
+      const [res, healthRead] = await Promise.all([
+        syncAllWithGoogleHealth(token, workouts, weights),
+        gh.importWorkouts === false ? Promise.resolve({ workouts: [] })
+          : readWorkoutsFromGoogleHealth(token).then(items => ({ workouts: items }), error => ({ error, workouts: [] }))
+      ])
       if (!res.ok) {
         const firstError = res.errors[0]
         if (firstError?.status === 401 || firstError?.status === 403) setCachedToken(null)
@@ -2153,8 +2177,17 @@ function GoogleHealthSheet({ close }) {
       update(s => {
         s.googleHealth = s.googleHealth || {}
         s.googleHealth.lastSync = res.lastSync || Date.now()
+        const existing = new Set((s.workouts || []).map(workout => workout.id))
+        const fresh = healthRead.workouts.filter(workout => !existing.has(workout.id))
+        s.workouts = [...(s.workouts || []), ...fresh].sort((a, b) => (a.d || '').localeCompare(b.d || ''))
       })
-      toast(t('Synced with Google Health ({0} workouts, {1} weights)', res.syncedWorkouts, res.syncedWeights))
+      if (healthRead.error?.status === 401 || healthRead.error?.status === 403) {
+        setCachedToken(null)
+        update(s => { s.googleHealth.readAuthRequired = true })
+      }
+      toast(healthRead.error
+        ? t('Google Health sync sent {0} records, but could not read workout history. Reconnect to grant read access.', res.syncedWorkouts + res.syncedWeights)
+        : t('Google Health sync finished ({0} sent, {1} received)', res.syncedWorkouts + res.syncedWeights, healthRead.workouts.length))
     } catch (e) {
       toast(t('Google Health sync failed: {0}', e.message || 'Error'))
     } finally {
@@ -2205,8 +2238,8 @@ function GoogleHealthSheet({ close }) {
           <span style={{ width: 10, height: 10, borderRadius: '50%', background: gh.connected ? 'var(--acc)' : 'var(--fg-muted)' }} />
           <b style={{ fontSize: '0.95rem' }}>{gh.connected ? t('Connected') : t('Not connected')}</b>
         </div>
-        <Button size="sm" variant={gh.connected ? 'tinted' : 'primary'} onClick={toggleConnected}>
-          {gh.connected ? t('Disconnect') : t('Connect')}
+        <Button size="sm" variant={gh.connected ? 'tinted' : 'primary'} onClick={gh.connected && gh.readAuthRequired && !isHealthConnect ? refreshGoogleHealthAccess : toggleConnected}>
+          {gh.connected ? (gh.readAuthRequired && !isHealthConnect ? t('Grant read access') : t('Disconnect')) : t('Connect')}
         </Button>
       </div>
 
@@ -2243,7 +2276,7 @@ function GoogleHealthSheet({ close }) {
     </div>
 
     <div className="small dim" style={{ lineHeight: 1.5, textAlign: 'center' }}>
-      {t(isHealthConnect ? 'Health Connect keeps your health data on this device and is managed in Android settings.' : 'Google Health receives completed workouts and body weight. Only write access is requested.')}
+      {t(isHealthConnect ? 'Health Connect keeps your health data on this device and is managed in Android settings.' : 'Google Health sync sends workouts and body weight, and reads exercise summaries for calories and distance. You can disconnect at any time.')}
     </div>
   </>
 }

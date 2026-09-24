@@ -2,8 +2,8 @@ import { Capacitor } from '@capacitor/core';
 import { Health } from '@capgo/capacitor-health';
 
 const HEALTH_PERMISSIONS = {
-  read: ['weight', 'calories', 'steps'],
-  write: ['weight', 'calories'],
+  read: ['weight', 'calories', 'steps', 'distance'],
+  write: ['weight', 'calories', 'distance'],
 };
 
 function isFullyAuthorized(status) {
@@ -62,6 +62,15 @@ export async function logWorkoutToHealth(workout) {
       endDate: endDate.toISOString(),
       metadata: { source: 'openGym', workoutId: String(workout.id || '') },
     });
+    if (Number(workout.distanceKm) > 0) {
+      await Health.saveSample({
+        dataType: 'distance',
+        value: Number(workout.distanceKm) * 1000,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        metadata: { source: 'openGym', workoutId: String(workout.id || '') },
+      });
+    }
     console.log('Workout logged to Health Connect / HealthKit');
     return true;
   } catch (err) {
@@ -127,7 +136,7 @@ export async function getRecentActivityFromHealth() {
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0); // Start of today
 
-    const [stepsRes, calRes] = await Promise.all([
+    const [stepsRes, calRes, distanceRes] = await Promise.all([
       Health.readSamples({
         dataType: 'steps',
         startDate: startDate.toISOString(),
@@ -137,15 +146,22 @@ export async function getRecentActivityFromHealth() {
         dataType: 'calories',
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
+      }).catch(() => ({ samples: [] })),
+      Health.readSamples({
+        dataType: 'distance',
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
       }).catch(() => ({ samples: [] }))
     ]);
 
     const totalSteps = stepsRes.samples.reduce((acc, s) => acc + s.value, 0);
     const totalCals = calRes.samples.reduce((acc, s) => acc + s.value, 0);
+    const totalDistanceMeters = distanceRes.samples.reduce((acc, s) => acc + s.value, 0);
 
     return {
       steps: totalSteps,
-      calories: totalCals
+      calories: totalCals,
+      distanceKm: totalDistanceMeters / 1000
     };
   } catch (err) {
     console.error('Failed to read activity from Health:', err);

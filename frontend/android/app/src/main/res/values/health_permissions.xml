@@ -5,5 +5,7 @@
         <item>android.permission.health.WRITE_WEIGHT</item>
         <item>android.permission.health.READ_ACTIVE_CALORIES_BURNED</item>
         <item>android.permission.health.WRITE_ACTIVE_CALORIES_BURNED</item>
+        <item>android.permission.health.READ_DISTANCE</item>
+        <item>android.permission.health.WRITE_DISTANCE</item>
     </array>
 </resources>

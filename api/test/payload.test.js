@@ -36,12 +36,22 @@ test('the same profile always gets the same handle, and two profiles never share
 });
 
 test('review payload carries the plan, the window, effort and aggregates', () => {
-  const p = payload.build(sampleState(), 'u1', { kind: 'review', note: 'shoulder pinches' });
+  const S = sampleState();
+  S.workouts[0].calories = 380;
+  S.workouts[0].distanceKm = 5;
+  S.workouts[0].importedFrom = 'Google Health';
+  S.workouts[0].healthExerciseType = 'RUNNING';
+  const p = payload.build(S, 'u1', { kind: 'review', note: 'shoulder pinches' });
   assert.equal(p.task, 'review');
   assert.equal(p.plan.routines.length, 1);
   assert.equal(p.plan.routines[0].ex[0].name, '3/4 sit-up', 'exercise names are resolved for the model');
   assert.equal(p.window.workouts.length, 1);
   assert.equal(p.window.workouts[0].entries[0].sets[0].rpe, 9.5, 'effort survives into the payload');
+  assert.deepEqual(
+    { calories: p.window.workouts[0].calories, distanceKm: p.window.workouts[0].distanceKm, source: p.window.workouts[0].source, activityType: p.window.workouts[0].activityType },
+    { calories: 380, distanceKm: 5, source: 'Google Health', activityType: 'RUNNING' },
+    'health workout metrics survive into Coach context'
+  );
   assert.equal(p.userNote, 'shoulder pinches');
   assert.equal(p.meta.effortScale, 'rpe');
   assert.ok(p.aggregates.adherence.plannedPerWeek === 3);

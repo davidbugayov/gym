@@ -1035,7 +1035,7 @@ function ActiveWorkout() {
         <div className="row between" style={{ alignItems: 'center', gap: 12 }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 3 }}>{t(currentPhase === 'warmup' ? 'Warm-up' : 'Cooldown')}</div>
-            <div className="muted small">{t(currentPhase === 'warmup' ? 'Prepare your body for the workout' : 'Relax and stretch after your workout')}</div>
+            <div className="muted small">{t(currentPhase === 'warmup' ? 'Dynamic movements to prepare your body' : 'Gentle stretches to wind down after your workout')}</div>
           </div>
           <Button size="sm" variant="ghost" onClick={() => skipPhase(currentPhase)}>{t('Skip')}</Button>
         </div>

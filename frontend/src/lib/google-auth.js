@@ -17,9 +17,10 @@ export const BASIC_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.profile'
 ]
 
-// Google Health API scopes: this app writes completed exercises and body-weight records only.
+// Google Health API scopes: sync workouts and body weight in both directions.
 export const GOOGLE_HEALTH_SCOPES = [
   'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.writeonly',
+  'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly',
   'https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.writeonly'
 ]
 

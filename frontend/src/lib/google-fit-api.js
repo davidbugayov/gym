@@ -1,5 +1,6 @@
 import { estimateCalories } from './googleHealth.js'
 import { getCachedToken } from './google-auth.js'
+import { EXIDX } from './exercises.js'
 
 const API = 'https://health.googleapis.com/v4/users/me/dataTypes'
 
@@ -43,6 +44,13 @@ export async function uploadSessionToGoogleHealth(accessToken, workout) {
   const start = new Date(startMs).toISOString()
   const end = new Date(endMs).toISOString()
   const durationSeconds = Math.max(1, Math.round((endMs - startMs) / 1000))
+  const exerciseNames = (workout.entries || []).map(entry => entry.name || EXIDX[entry.id]?.n || entry.id).filter(Boolean)
+  const displayName = [workout.name || 'Strength workout', ...exerciseNames].join(' · ').slice(0, 120)
+  const metricsSummary = {
+    caloriesKcal: Number(workout.calories) || estimateCalories(workout)
+  }
+  const distanceKm = Number(workout.distanceKm)
+  if (Number.isFinite(distanceKm) && distanceKm > 0) metricsSummary.distanceMillimeters = distanceKm * 1000000
   return createDataPoint(token, 'exercise', {
     dataSource: { recordingMethod: 'ACTIVELY_MEASURED' },
     exercise: {
@@ -53,13 +61,56 @@ export async function uploadSessionToGoogleHealth(accessToken, workout) {
         endUtcOffset: utcOffsetDuration(endMs)
       },
       exerciseType: exerciseType(workout),
-      displayName: String(workout.name || 'Strength workout').slice(0, 120),
+      displayName,
       activeDuration: `${durationSeconds}s`,
-      metricsSummary: {
-        caloriesKcal: Number(workout.calories) || estimateCalories(workout)
-      }
+      metricsSummary
     }
   })
+}
+
+function durationMillis(value) {
+  const match = String(value || '').match(/^(\d+(?:\.\d+)?)s$/)
+  return match ? Number(match[1]) * 1000 : 0
+}
+
+function importedExercise(point) {
+  const exercise = point.exercise || {}
+  const start = Date.parse(exercise.interval?.startTime || '')
+  const end = Date.parse(exercise.interval?.endTime || '')
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null
+  const metrics = exercise.metricsSummary || {}
+  const activeDuration = durationMillis(exercise.activeDuration)
+  return {
+    id: `google_health_${point.name || start}`,
+    d: new Date(start).toISOString().slice(0, 10),
+    start,
+    end,
+    name: exercise.displayName || exercise.exerciseType?.replaceAll('_', ' ') || 'Google Health workout',
+    healthExerciseType: exercise.exerciseType || null,
+    calories: Number(metrics.caloriesKcal) || 0,
+    distanceKm: Number(metrics.distanceMillimeters) > 0 ? Number(metrics.distanceMillimeters) / 1_000_000 : 0,
+    activeDuration: activeDuration || end - start,
+    entries: [],
+    importedFrom: 'Google Health'
+  }
+}
+
+/** Read the latest exercise summaries, including device-recorded calories and distance. */
+export async function readWorkoutsFromGoogleHealth(accessToken, { pageSize = 25 } = {}) {
+  const token = accessToken || getCachedToken()
+  if (!token) throw new Error('not_authenticated')
+  const params = new URLSearchParams({ pageSize: String(Math.min(25, Math.max(1, pageSize))) })
+  const response = await fetch(`${API}/exercise/dataPoints?${params}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  if (!response.ok) {
+    const error = new Error(`Google Health API ${response.status}`)
+    error.status = response.status
+    error.detail = await response.text()
+    throw error
+  }
+  const data = await response.json()
+  return (data.dataPoints || []).map(importedExercise).filter(Boolean)
 }
 
 export async function uploadWeightToGoogleHealth(accessToken, weightKg, timestampMillis = Date.now()) {
