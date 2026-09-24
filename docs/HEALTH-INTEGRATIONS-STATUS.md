@@ -12,6 +12,8 @@ Last updated: 24 September 2026
 ## Implemented
 
 - Web Google Health API writes completed exercise sessions and user-entered body-weight records. It requests write-only scopes and does not read Google Health history.
+- The current source shows an in-app health-data disclosure in the normal workout-completion flow and again before the Google Health connection prompt. The copy lists the workout/weight fields, purpose, write-only behavior, and default automatic sync.
+- Google Health access is intentionally write-only; reading weight/activity from the Google Health API was removed so runtime behavior matches the requested scopes.
 - Google Health API is enabled in Cloud project `gymly-9bfda`.
 - OAuth Data Access now lists `googlehealth.activity_and_fitness.writeonly` and `googlehealth.health_metrics_and_measurements.writeonly`; the legacy Google Fit scopes were removed.
 - Google Sign-In remains available. Android Health Connect and Apple Health are separate device integrations.
@@ -19,8 +21,9 @@ Last updated: 24 September 2026
 
 ## Remaining Google approval
 
-- The Google Health write scopes are restricted and currently unverified. Add developer/test accounts in Audience while the app is in Testing; public production access requires Google verification.
-- Submit the updated data-access verification with a demo video showing the scopes being requested and used. Google warns against exposing unverified restricted scopes to production users.
+- The Google Health write scopes are restricted and currently unverified. Google Auth Platform currently shows publishing status `In production` and 1 of 100 unverified-scope users used; continue testing only with an allowlisted developer account until verification is complete.
+- Run a live integration test with an allowlisted test account, then record the OAuth prompt and successful sample write for the verification demo. Do not use fabricated/mock success as evidence.
+- Submit the updated data-access verification with the demo video. Google warns against exposing unverified restricted scopes to production users.
 - Remove `emdrbilateral.ru` from Firebase Authentication's authorized domains using a project-owner account. Remove it from Google OAuth Branding after resolving Google's client-reference warning; keep `.online` plus Firebase's own domain. The `.ru` hostname itself must remain in DNS/TLS to serve its redirect.
 - Search Console DNS TXT verification records are independent of the app redirect. Keep them unless domain ownership verification is intentionally retired.
 

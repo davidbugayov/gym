@@ -1736,11 +1736,6 @@ async function fetchAutoHealthParams() {
       // also fetch activity if needed
       const act = await h.getRecentActivityFromHealth()
       if (act) update(s => { s.todayActivity = act })
-    } else if (provider === 'google' && st.googleHealth?.connected) {
-      const g = await import('./lib/google-fit-api.js')
-      hw = await g.getRecentWeightFromGoogleHealth()
-      const act = await g.getRecentActivityFromGoogleHealth()
-      if (act) update(s => { s.todayActivity = act })
     }
   } catch (e) {
     console.error('Failed to fetch auto health params', e)
@@ -1942,6 +1937,8 @@ function FinishSummary({ w, prs, e1prs = [], close }) {
       {e1prs.map(p => <div key={p.id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="chartLine" style={{ fontSize: 13 }} />{t('Best estimated 1RM:')} {(EXIDX[p.id] || {}).n || p.id} · {fmtNum(p.est)} {st.unit}</div>)}
     </div>}
 
+    {!Capacitor.isNativePlatform() && <GoogleHealthDisclosure compact />}
+
     <div className="row between" style={{ alignItems: 'center', background: 'var(--surface-2)', padding: '10px 14px', borderRadius: 10, margin: '12px 0', textAlign: 'left' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.88rem' }}>
         <Icon name="heart" style={{ color: '#4285F4' }} />
@@ -1968,6 +1965,29 @@ export function finishWorkout() {
   if (done < total) { confirmSheet({ title: t('Finish early?'), message: t(total - done === 1 ? '{0} set still unchecked. Finish the workout now?' : '{0} sets still unchecked. Finish the workout now?', total - done), confirmText: t('Finish workout'), onConfirm: doFinishWorkout }); return }
   doFinishWorkout()
 }
+
+function GoogleHealthDisclosure({ compact = false }) {
+  return <section
+    role="note"
+    aria-label={t('Google Health data use notice')}
+    style={{
+      textAlign: 'left',
+      padding: compact ? 12 : 14,
+      margin: compact ? '12px 0' : '0 0 14px',
+      borderRadius: 12,
+      border: '1px solid rgba(66, 133, 244, 0.45)',
+      background: 'rgba(66, 133, 244, 0.09)',
+      lineHeight: 1.5
+    }}
+  >
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, color: '#4285F4' }}>
+      <Icon name="heart" />
+      <strong>{t('Google Health data use notice')}</strong>
+    </div>
+    <div className="small">{t('When connected, openGym sends each completed workout name and type, start and end times, duration and estimated calories, plus body-weight measurements and their dates, to your Google Health account so these records appear there. The integration only writes data and does not read your Google Health history. Automatic workout and weight sync are on by default after connecting; you can turn sync off or disconnect at any time.')}</div>
+  </section>
+}
+
 function doFinishWorkout() {
   const st = S()
   const A = st.active
@@ -2173,9 +2193,11 @@ function GoogleHealthSheet({ close }) {
       </div>
       <div>
         <h3 style={{ margin: 0 }}>{t(providerName)}</h3>
-        <div className="muted small">{t(isHealthConnect ? 'Sync active calories and body weight on this Android device' : 'Bidirectional sync for workouts, volume & body weight')}</div>
+        <div className="muted small">{t(isHealthConnect ? 'Sync active calories and body weight on this Android device' : 'Send completed workouts and body weight to Google Health')}</div>
       </div>
     </div>
+
+    {!isHealthConnect && <GoogleHealthDisclosure />}
 
     <div className="sec-card" style={{ background: 'var(--surface-2)', padding: 14, borderRadius: 12, marginBottom: 14 }}>
       <div className="row between" style={{ alignItems: 'center', marginBottom: gh.connected ? 10 : 0 }}>

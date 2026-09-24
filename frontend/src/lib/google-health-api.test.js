@@ -17,6 +17,7 @@ describe('Google Health API writes', () => {
 
     expect(result).toMatchObject({ ok: true, syncedWorkouts: 1, syncedWeights: 1 })
     expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls.every(([, options]) => options.method === 'POST')).toBe(true)
     expect(fetchMock.mock.calls[0][0]).toBe('https://health.googleapis.com/v4/users/me/dataTypes/exercise/dataPoints')
     const exercise = JSON.parse(fetchMock.mock.calls[0][1].body).exercise
     expect(exercise.exerciseType).toBe('STRENGTH_TRAINING')
