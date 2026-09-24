@@ -68,4 +68,23 @@ describe('Google Health API writes', () => {
     expect(result.ok).toBe(false)
     expect(result.errors[0]).toMatchObject({ id: 'workout-1', status: 403 })
   })
+
+  it('preserves the Google Health denial reason so the app can show the right fix', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      text: async () => JSON.stringify({
+        error: {
+          code: 403,
+          status: 'PERMISSION_DENIED',
+          details: [{ reason: 'API_PRIVATE_PREVIEW_ACCESS_DENIED' }]
+        }
+      })
+    }))
+    const result = await syncAllWithGoogleHealth('test-token', [
+      { id: 'workout-1', start: 1000, end: 2000 }
+    ], [])
+
+    expect(result.errors[0]).toMatchObject({ status: 403, reason: 'API_PRIVATE_PREVIEW_ACCESS_DENIED' })
+  })
 })

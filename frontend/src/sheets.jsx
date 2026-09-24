@@ -2126,7 +2126,12 @@ function GoogleHealthSheet({ close }) {
     try {
       const result = await googleSignIn(true)
       setCachedToken(result.accessToken)
-      update(s => { if (s.googleHealth) s.googleHealth.readAuthRequired = false })
+      update(s => {
+        if (s.googleHealth) {
+          s.googleHealth.authorizationRequired = false
+          s.googleHealth.readAuthRequired = false
+        }
+      })
       toast(t('Google Health access updated'))
     } catch (err) {
       toast(t('Google Auth failed'))
@@ -2171,8 +2176,25 @@ function GoogleHealthSheet({ close }) {
       ])
       if (!res.ok) {
         const firstError = res.errors[0]
-        if (firstError?.status === 401 || firstError?.status === 403) setCachedToken(null)
-        throw new Error(firstError?.status === 403 ? 'Google Health API access denied. Check API enablement, OAuth scopes and test-user access.' : firstError?.error || 'partial_sync')
+        const reason = String(firstError?.reason || '').toUpperCase()
+        if (firstError?.status === 401 || reason === 'MISSING_OAUTH_SCOPE') {
+          setCachedToken(null)
+          update(s => { s.googleHealth.authorizationRequired = true })
+          throw new Error(t('Reconnect Google Health to refresh its access permission.'))
+        }
+        if (firstError?.status === 403 && reason === 'API_PRIVATE_PREVIEW_ACCESS_DENIED') {
+          throw new Error(t('Google Health has not allowed this account into its API preview. A project owner must add the account to the Google Cloud test-user list.'))
+        }
+        if (firstError?.status === 403 && ['SERVICE_DISABLED', 'ACCESS_NOT_CONFIGURED'].includes(reason)) {
+          throw new Error(t('Google Health API is disabled for this Google Cloud project. A project owner must enable it in APIs & Services.'))
+        }
+        if (firstError?.status === 403 && reason === 'DISALLOWED_OAUTH_SCOPES') {
+          throw new Error(t('Google has not approved the requested Google Health permission for this project yet.'))
+        }
+        if (firstError?.status === 403) {
+          throw new Error(t('Google Health denied this account (403: {0}). Check the project test-user list and Health API access.', reason || 'unknown reason'))
+        }
+        throw new Error(firstError?.error || 'partial_sync')
       }
       update(s => {
         s.googleHealth = s.googleHealth || {}
@@ -2182,11 +2204,16 @@ function GoogleHealthSheet({ close }) {
         s.workouts = [...(s.workouts || []), ...fresh].sort((a, b) => (a.d || '').localeCompare(b.d || ''))
       })
       if (healthRead.error?.status === 401 || healthRead.error?.status === 403) {
-        setCachedToken(null)
-        update(s => { s.googleHealth.readAuthRequired = true })
+        const reason = String(healthRead.error.reason || '').toUpperCase()
+        if (healthRead.error.status === 401 || reason === 'MISSING_OAUTH_SCOPE') {
+          setCachedToken(null)
+          update(s => { s.googleHealth.authorizationRequired = true })
+        }
       }
       toast(healthRead.error
-        ? t('Google Health sync sent {0} records, but could not read workout history. Reconnect to grant read access.', res.syncedWorkouts + res.syncedWeights)
+        ? String(healthRead.error.reason || '').toUpperCase() === 'API_PRIVATE_PREVIEW_ACCESS_DENIED'
+          ? t('Google Health has not allowed this account into its API preview. A project owner must add the account to the Google Cloud test-user list.')
+          : t('Google Health sync sent {0} records, but could not read workout history. Check OAuth read scope and test-user access.', res.syncedWorkouts + res.syncedWeights)
         : t('Google Health sync finished ({0} sent, {1} received)', res.syncedWorkouts + res.syncedWeights, healthRead.workouts.length))
     } catch (e) {
       toast(t('Google Health sync failed: {0}', e.message || 'Error'))
@@ -2238,8 +2265,8 @@ function GoogleHealthSheet({ close }) {
           <span style={{ width: 10, height: 10, borderRadius: '50%', background: gh.connected ? 'var(--acc)' : 'var(--fg-muted)' }} />
           <b style={{ fontSize: '0.95rem' }}>{gh.connected ? t('Connected') : t('Not connected')}</b>
         </div>
-        <Button size="sm" variant={gh.connected ? 'tinted' : 'primary'} onClick={gh.connected && gh.readAuthRequired && !isHealthConnect ? refreshGoogleHealthAccess : toggleConnected}>
-          {gh.connected ? (gh.readAuthRequired && !isHealthConnect ? t('Grant read access') : t('Disconnect')) : t('Connect')}
+        <Button size="sm" variant={gh.connected ? 'tinted' : 'primary'} onClick={gh.connected && gh.authorizationRequired && !isHealthConnect ? refreshGoogleHealthAccess : toggleConnected}>
+          {gh.connected ? (gh.authorizationRequired && !isHealthConnect ? t('Grant access') : t('Disconnect')) : t('Connect')}
         </Button>
       </div>
 
