@@ -1,11 +1,9 @@
 {
-  "projectId": "gen-lang-client-0448613032",
-  "appId": "1:987911769326:web:8ec48f488a181513ddb7ff",
-  "apiKey": "AIzaSyCJL2uGU1sLt5fdfK3Q20KJz27saXhTxC0",
-  "authDomain": "gen-lang-client-0448613032.firebaseapp.com",
-  "storageBucket": "gen-lang-client-0448613032.firebasestorage.app",
-  "messagingSenderId": "987911769326",
-  "measurementId": "",
-  "oAuthClientId": "987911769326-0i8oj6kbnkfm8bv80pn9mjtg02jdkgme.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "apiKey": "AIzaSyAPMvnYALrXsaWmFVEfUaYcU9mQIFC4zQU",
+  "authDomain": "gymly-9bfda.firebaseapp.com",
+  "projectId": "gymly-9bfda",
+  "storageBucket": "gymly-9bfda.firebasestorage.app",
+  "messagingSenderId": "831370287146",
+  "appId": "1:831370287146:web:bbe398a29e56e0cf928b53",
+  "measurementId": "G-E9DMMVFVWY"
 }

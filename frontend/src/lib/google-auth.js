@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app'
+import { getAnalytics } from 'firebase/analytics'
 import {
   getAuth,
   signInWithPopup,
@@ -27,6 +28,7 @@ export const FIT_SCOPES = [
 // Initialize Firebase App
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
 export const auth = getAuth(app)
+export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null
 
 // Basic provider for smooth sign-in without 403 access_denied
 const basicProvider = new GoogleAuthProvider()
