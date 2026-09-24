@@ -38,6 +38,10 @@ app.get('/gif/:file', (req, res) => {
   res.redirect(302, CDN_GIF + encodeURIComponent(req.params.file));
 });
 
+// Short, stable public policy URLs for OAuth consent and verification.
+app.get(['/privacy', '/privacy/'], (req, res) => res.redirect(308, '/privacy.html'));
+app.get(['/terms', '/terms/'], (req, res) => res.redirect(308, '/terms.html'));
+
 // 3. Frontend serving
 const isProduction = process.env.NODE_ENV === 'production';
 const distPath = path.resolve(__dirname, 'dist');
