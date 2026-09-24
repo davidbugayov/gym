@@ -17,7 +17,7 @@ Last updated: 24 September 2026
 ## Still required
 
 1. Search Console ownership for both Domain properties, `emdrbilateral.online` and `emdrbilateral.ru`, is verified via DNS TXT records. Do not remove those records; Google requires them to maintain verification. Never commit verification tokens or registrar credentials.
-2. Branding reverification was submitted in Google Auth Platform on 24 September 2026 after the public homepage and policy URLs were saved and both root domains were verified. Google currently reports “Verification in progress”; check the Branding verification status for the outcome.
+2. Google Auth Platform branding reverification passed on 24 September 2026 and was published. The console confirms: “Your branding has been verified and is being shown to users.”
 3. Submit Google Fitness data-access verification. Google requires an accurate demonstration video showing the sensitive Fitness scopes in use. No demo-video URL has been submitted.
 4. For release Android builds, register the production signing certificate SHA-1 with Google OAuth. The Android OAuth client currently has the debug SHA-1. Confirm Apple Developer HealthKit capability and provisioning for the iOS release separately.
 
