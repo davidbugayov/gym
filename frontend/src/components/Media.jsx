@@ -35,6 +35,6 @@ export default function Media({ ex, id, compact, minimizable }) {
 
 export function Thumb({ ex }) {
   const [err, setErr] = useState(false)
-  if (!ex.img || err) return <div className="thumb thumb-x"><Icon name="dumbbell" /></div>
+  if (!ex?.img || err) return <div className="thumb thumb-x"><Icon name="dumbbell" /></div>
   return <img className="thumb" loading="lazy" decoding="async" src={imgSrc(ex)} alt="" onError={() => setErr(true)} />
 }

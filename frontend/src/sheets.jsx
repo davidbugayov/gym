@@ -1502,7 +1502,7 @@ function WarmupCooldownConfig({ mode, close }) {
               onChange={() => toggleExercise(ex.id)}
               style={{ accentColor: 'var(--acc)', width: 18, height: 18, flexShrink: 0 }}
             />
-            <Thumb id={ex.id} size={36} />
+            <Thumb ex={exData} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="capitalize" style={{ fontSize: 13, lineHeight: 1.3 }}>{exData ? exData.n : ex.label}</div>
               <div className="muted" style={{ fontSize: 11 }}>{ex.sec}s</div>
@@ -1556,7 +1556,9 @@ export function beginWorkout(routineId, bw) {
   const buildPhaseEntries = (list, phase) => list.map(raw => {
     const cfg = Array.isArray(raw) ? { id: raw[0], sets: raw[1], reps: raw[2], weight: 0 } : raw
     const plan = nextPrescription(st, cfg, null)
-    return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, phase: phase || cfg.phase, sets: applyPrescription(buildSets(st, cfg), plan) }
+    const sets = applyPrescription(buildSets(st, cfg), plan)
+    if (phase === 'warmup') sets.forEach(s => s.tag = 'W')
+    return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, phase: phase || cfg.phase, sets }
   })
   const mainEntries = (r ? r.ex : []).map(cfg => {
     const plan = nextPrescription(st, cfg, r)

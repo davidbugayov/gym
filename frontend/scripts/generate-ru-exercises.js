@@ -191,9 +191,12 @@ const EXACT = {
   "incline push-up": "отжимания с руками на возвышении",
   "inverted row": "австралийские подтягивания",
   "jack burpee": "бёрпи «джампинг джек»",
+  "jack jump (male)": "джампинг джек",
   "jumping jacks": "прыжки «джампинг джек»",
   "jump rope": "прыжки на скакалке",
   "jump squat": "приседания с выпрыгиванием",
+  "inchworm": "гусеница (inchworm)",
+  "inchworm v. 2": "гусеница (inchworm) v. 2",
   "kettlebell goblet squat": "кубковые приседания с гирей",
   "kettlebell one arm row": "тяга гири в наклоне одной рукой",
   "kettlebell swing": "махи гирей",
@@ -250,6 +253,9 @@ const EXACT = {
   "walking lunge": "выпады в движении",
   "wall sit": "стульчик у стены",
   "wheel rollerout": "прокатка с гимнастическим роликом",
+  "runners stretch": "растяжка бегуна",
+  "upper back stretch": "растяжка верхней части спины",
+  "hamstring stretch": "растяжка задней поверхности бедра",
   "world greatest stretch": "лучшая в мире растяжка",
   "wrist circles": "круговые вращения кистями"
 }
