@@ -1723,10 +1723,47 @@ export function warmupCooldownSheet(mode) {
 }
 
 /* ============================ workout lifecycle ============================ */
-export function startFlow(routineId) {
+import { getActiveHealthProvider } from './lib/healthPlatform.js'
+
+async function fetchAutoHealthParams() {
+  const st = S()
+  const provider = getActiveHealthProvider(st)
+  let hw = null
+  try {
+    if (provider === 'apple' || Capacitor.getPlatform() === 'android') {
+      const h = await import('./lib/health.js')
+      hw = await h.getRecentWeightFromHealth()
+      // also fetch activity if needed
+      const act = await h.getRecentActivityFromHealth()
+      if (act) update(s => { s.todayActivity = act })
+    } else if (provider === 'google' && st.googleHealth?.connected) {
+      const g = await import('./lib/google-fit-api.js')
+      hw = await g.getRecentWeightFromGoogleHealth()
+      const act = await g.getRecentActivityFromGoogleHealth()
+      if (act) update(s => { s.todayActivity = act })
+    }
+  } catch (e) {
+    console.error('Failed to fetch auto health params', e)
+  }
+  return hw
+}
+
+export async function startFlow(routineId) {
+  const autoWeight = await fetchAutoHealthParams()
+  if (autoWeight) {
+    update(s => {
+      const iso = todayISO()
+      const ex = s.bodyweight.find(b => b.d === iso)
+      if (ex) { ex.w = autoWeight; ex.t = Date.now() } else s.bodyweight.push({ d: iso, w: autoWeight, t: Date.now() })
+      s.bodyweight.sort((a, b) => (a.d < b.d ? -1 : 1))
+    })
+    beginWorkout(routineId, autoWeight)
+    return
+  }
   bwSheet({ required: true, onDone: bw => beginWorkout(routineId, bw) })
 }
-export function beginFreeleticsWorkout(name, specList, bw) {
+
+export async function beginFreeleticsWorkout(name, specList, bw) {
   const st = S()
   const buildEntries = (list, phase) => list.map(raw => {
     const cfg = Array.isArray(raw) ? { id: raw[0], sets: raw[1], reps: raw[2], weight: 0 } : raw
@@ -1746,9 +1783,22 @@ export function beginFreeleticsWorkout(name, specList, bw) {
   useUI.getState().stopRest()
   nav('/workout')
 }
-export function startFreeleticsFlow(name, specList) {
+
+export async function startFreeleticsFlow(name, specList) {
+  const autoWeight = await fetchAutoHealthParams()
+  if (autoWeight) {
+    update(s => {
+      const iso = todayISO()
+      const ex = s.bodyweight.find(b => b.d === iso)
+      if (ex) { ex.w = autoWeight; ex.t = Date.now() } else s.bodyweight.push({ d: iso, w: autoWeight, t: Date.now() })
+      s.bodyweight.sort((a, b) => (a.d < b.d ? -1 : 1))
+    })
+    beginFreeleticsWorkout(name, specList, autoWeight)
+    return
+  }
   bwSheet({ required: true, onDone: bw => beginFreeleticsWorkout(name, specList, bw) })
 }
+
 export function beginWorkout(routineId, bw) {
   const st = S()
   const r = routineId ? st.routines.find(x => x.id === routineId) : null

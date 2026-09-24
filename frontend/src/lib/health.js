@@ -2,7 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { Health } from '@capgo/capacitor-health';
 
 const HEALTH_PERMISSIONS = {
-  read: ['weight'],
+  read: ['weight', 'calories', 'steps'],
   write: ['weight', 'calories'],
 };
 
@@ -88,5 +88,67 @@ export async function logBodyWeightToHealth(entry) {
   } catch (err) {
     console.error('Failed to log body weight to Health:', err);
     return false;
+  }
+}
+
+export async function getRecentWeightFromHealth() {
+  try {
+    const status = await getHealthStatus();
+    if (!status.available || !status.authorized) return null;
+
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 1); // look back 1 month
+
+    const res = await Health.readSamples({
+      dataType: 'weight',
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      limit: 1,
+      ascending: false,
+    });
+
+    if (res.samples && res.samples.length > 0) {
+      return res.samples[0].value;
+    }
+    return null;
+  } catch (err) {
+    console.error('Failed to read weight from Health:', err);
+    return null;
+  }
+}
+
+export async function getRecentActivityFromHealth() {
+  try {
+    const status = await getHealthStatus();
+    if (!status.available || !status.authorized) return null;
+
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0); // Start of today
+
+    const [stepsRes, calRes] = await Promise.all([
+      Health.readSamples({
+        dataType: 'steps',
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      }).catch(() => ({ samples: [] })),
+      Health.readSamples({
+        dataType: 'calories',
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      }).catch(() => ({ samples: [] }))
+    ]);
+
+    const totalSteps = stepsRes.samples.reduce((acc, s) => acc + s.value, 0);
+    const totalCals = calRes.samples.reduce((acc, s) => acc + s.value, 0);
+
+    return {
+      steps: totalSteps,
+      calories: totalCals
+    };
+  } catch (err) {
+    console.error('Failed to read activity from Health:', err);
+    return null;
   }
 }

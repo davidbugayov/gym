@@ -93,20 +93,9 @@ export async function syncActiveHealth(workouts, bodyweight, state) {
   if (provider === 'apple') {
     if (Capacitor.isNativePlatform()) {
       try {
-        await Health.requestAuthorization({
-          read: ['weight', 'height', 'calories', 'activity'],
-          write: ['weight', 'height', 'calories', 'activity']
-        })
         const latest = workouts[workouts.length - 1]
-        if (latest) {
-          await Health.saveActivity({
-            startDate: new Date(latest.start).toISOString(),
-            endDate: new Date(latest.end).toISOString(),
-            activityType: 'workout',
-            calories: Math.round(((latest.end - latest.start) / 1000 / 60 / 60) * 500)
-          })
-        }
-        return { ok: true, provider: 'apple', lastSync: Date.now() }
+        const synced = latest ? await logWorkoutToHealth(latest) : true
+        return { ok: synced, provider: 'apple', lastSync: synced ? Date.now() : null }
       } catch (err) {
         console.warn('Apple Health native sync failed:', err)
       }
