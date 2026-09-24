@@ -1387,6 +1387,8 @@ export default {
   "Reload Gymly": "Reload Gymly",
   "Self-host Gymly": "Self-host Gymly",
   "Cooldown": "Заминка",
+  "Prepare your body for the workout": "Подготовьте тело к тренировке",
+  "Relax and stretch after your workout": "Восстановитесь и потянитесь после тренировки",
   "Warm-up & Cooldown": "Разминка и Заминка",
   "Automatically added to the start and end of every workout.": "Автоматически добавляется в начало и конец каждой тренировки.",
   "Dynamic exercises before your workout": "Динамичные упражнения перед тренировкой",

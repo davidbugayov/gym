@@ -690,6 +690,22 @@ function ActiveWorkout() {
   const isSuperset = unit.length > 1
   const currentPhase = A.entries[unit[0]]?.phase || 'workout'
 
+  const skipPhase = phase => {
+    const phaseIndices = A.entries.map((entry, index) => entry.phase === phase ? index : -1).filter(index => index >= 0)
+    if (!phaseIndices.length) return
+    const nextIndex = phase === 'warmup'
+      ? A.entries.findIndex(entry => entry.phase !== 'warmup')
+      : A.entries.length
+    update(s => {
+      for (const index of phaseIndices) {
+        s.active.entries[index].sets.forEach(set => { set.done = true })
+      }
+      if (nextIndex >= 0 && nextIndex < s.active.entries.length) s.active.cur = nextIndex
+    })
+    stopRest()
+    if (phase === 'cooldown' || nextIndex < 0) workoutCompleteSheet()
+  }
+
   const [saveStatus, setSaveStatus] = useState({ status: 'saved', lastSaved: Date.now() })
   const [recoveredNotice, setRecoveredNotice] = useState(() => !!S._recoveredFromAutoSave)
 
@@ -1015,6 +1031,15 @@ function ActiveWorkout() {
     </div>
 
     {A.entries.length ? <>
+      {currentPhase !== 'workout' && <div className="card" style={{ marginTop: 8, marginBottom: 10, padding: 14, borderColor: 'var(--acc)' }}>
+        <div className="row between" style={{ alignItems: 'center', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 3 }}>{t(currentPhase === 'warmup' ? 'Warm-up' : 'Cooldown')}</div>
+            <div className="muted small">{t(currentPhase === 'warmup' ? 'Prepare your body for the workout' : 'Relax and stretch after your workout')}</div>
+          </div>
+          <Button size="sm" variant="ghost" onClick={() => skipPhase(currentPhase)}>{t('Skip')}</Button>
+        </div>
+      </div>}
       <div className="row between" style={{ alignItems: 'center', marginTop: 8, marginBottom: 8, gap: 6, flexWrap: 'wrap' }}>
         <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {currentPhase !== 'workout' && (
