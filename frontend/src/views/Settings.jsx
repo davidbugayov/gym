@@ -148,8 +148,8 @@ export default function Settings() {
         <Row
           icon="heart"
           iconTint="#4285F4"
-          title={t('Google Health & Fit')}
-          subtitle={S.googleHealth?.connected ? t('Connected to Google Fit') : t('Not connected')}
+          title={t('Google Health')}
+          subtitle={S.googleHealth?.connected ? t('Connected to Google Health') : t('Not connected')}
           accessory="chevron"
           onClick={googleHealthSheet}
         />
@@ -185,8 +185,8 @@ export default function Settings() {
         <Row
           icon="heart"
           iconTint="#4285F4"
-          title={t('Google Health & Fit')}
-          subtitle={t('Sync with Google Fit and Health Connect')}
+          title={t('Google Health')}
+          subtitle={t('Sync workouts and body weight with Google Health')}
           accessory="chevron"
           onClick={googleHealthSheet}
         />
@@ -388,9 +388,9 @@ export default function Settings() {
     </Section>
 
     {/* ---------- google health integration ---------- */}
-    <Section title={t('Google Health / Google Fit')}>
-      <Row icon="heart" iconTint="#4285F4" title={t('Google Health & Fit')}
-        subtitle={S.googleHealth?.connected ? `${t('Connected')} (${S.googleHealth?.email || ''})` : t('Bidirectional sync for workouts, volume & body weight')}
+    <Section title={t('Google Health')}>
+      <Row icon="heart" iconTint="#4285F4" title={t('Google Health')}
+        subtitle={S.googleHealth?.connected ? `${t('Connected')} (${S.googleHealth?.email || ''})` : t('Sync workouts and body weight with Google Health')}
         accessory="chevron" onClick={googleHealthSheet} />
     </Section>
 

@@ -13,10 +13,8 @@
       "scopes": [
         "profile",
         "email",
-        "https://www.googleapis.com/auth/fitness.activity.read",
-        "https://www.googleapis.com/auth/fitness.activity.write",
-        "https://www.googleapis.com/auth/fitness.body.read",
-        "https://www.googleapis.com/auth/fitness.body.write"
+        "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.writeonly",
+        "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.writeonly"
       ],
       "serverClientId": "831370287146-kpbja4q6s91qtt8sm611jsl768domq00.apps.googleusercontent.com",
       "forceCodeForRefreshToken": true

@@ -1,179 +1,110 @@
-import { resolveActivityType, estimateCalories } from './googleHealth.js'
-import { EXIDX } from './exercises.js'
-import { fmtVol } from './format.js'
+import { estimateCalories } from './googleHealth.js'
 import { getCachedToken } from './google-auth.js'
 
-const FIT_API_BASE = 'https://fitness.googleapis.com/fitness/v1/users/me'
+const API = 'https://health.googleapis.com/v4/users/me/dataTypes'
 
-/**
- * Creates or updates a workout session in Google Fit via Fitness REST API.
- */
-export async function uploadSessionToGoogleFit(accessToken, workout) {
-  if (!accessToken) throw new Error('no_token')
-
-  const act = resolveActivityType(workout)
-  const startTimeMillis = workout.start || Date.now() - 3600000
-  const endTimeMillis = workout.end || Date.now()
-  const sessionId = `opengym_workout_${workout.id || startTimeMillis}`
-
-  const exercisesSummary = (workout.entries || []).map(e => {
-    const ex = EXIDX[e.id] || { n: e.id }
-    const doneSets = (e.sets || []).filter(s => s.done !== false)
-    const totalReps = doneSets.reduce((sum, s) => sum + (s.r || 0), 0)
-    const maxWeight = Math.max(0, ...doneSets.map(s => s.w || 0))
-    return `${ex.n}: ${doneSets.length} sets, ${totalReps} reps${maxWeight > 0 ? ` (max ${maxWeight}kg)` : ''}`
-  }).join('; ')
-
-  const sessionBody = {
-    id: sessionId,
-    name: workout.name || 'Strength Workout',
-    description: `openGym log: Vol ${fmtVol(workout.vol || 0, 'kg')}. ${exercisesSummary}`.slice(0, 1000),
-    startTimeMillis,
-    endTimeMillis,
-    activityType: act.id,
-    application: {
-      name: 'openGym Fitness',
-      version: '1.2.3'
-    }
-  }
-
-  const res = await fetch(`${FIT_API_BASE}/sessions/${sessionId}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(sessionBody)
-  })
-
-  if (!res.ok) {
-    const errText = await res.text()
-    console.warn('Google Fit session upload warning:', res.status, errText)
-    throw new Error(`Google Fit error: ${res.status}`)
-  }
-
-  return await res.json()
+function utcOffsetDuration(timestamp) {
+  const minutes = -new Date(timestamp).getTimezoneOffset()
+  return `${minutes * 60}s`
 }
 
-/**
- * Fetches recent sessions from Google Fit.
- */
-export async function fetchGoogleFitSessions(accessToken) {
-  if (!accessToken) throw new Error('no_token')
-
-  const res = await fetch(`${FIT_API_BASE}/sessions`, {
-    headers: {
-      'Authorization': `Bearer ${accessToken}`
-    }
-  })
-
-  if (!res.ok) {
-    throw new Error(`Google Fit fetch error: ${res.status}`)
-  }
-
-  const data = await res.json()
-  return data.session || []
+function exerciseType(workout) {
+  const name = String(workout.name || '').toLowerCase()
+  if (/hiit|interval/.test(name)) return 'HIIT'
+  if (/circuit/.test(name)) return 'CIRCUIT_TRAINING'
+  if (/calisthenic|body.?weight/.test(name)) return 'CALISTHENICS'
+  if (/row/.test(name)) return 'ROWING_MACHINE'
+  if (/bike|cycling/.test(name)) return 'STATIONARY_BIKE'
+  return 'STRENGTH_TRAINING'
 }
 
-/**
- * Creates or inserts body weight data points in Google Fit.
- */
-export async function uploadWeightToGoogleFit(accessToken, weightKg, timestampMillis = Date.now()) {
-  if (!accessToken || !weightKg) return null
-
-  // Ensure data source exists or insert into standard weight stream
-  const startTimeNanos = BigInt(timestampMillis) * 1000000n
-  const endTimeNanos = startTimeNanos
-
-  const dataPoint = {
-    dataTypeName: 'com.google.weight',
-    startTimeNanos: startTimeNanos.toString(),
-    endTimeNanos: endTimeNanos.toString(),
-    value: [{ fpVal: parseFloat(weightKg) }]
+async function createDataPoint(token, type, payload) {
+  const response = await fetch(`${API}/${type}/dataPoints`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  if (!response.ok) {
+    const detail = await response.text()
+    const error = new Error(`Google Health API ${response.status}`)
+    error.status = response.status
+    error.detail = detail
+    throw error
   }
+  return response.json()
+}
 
-  const dataSourceId = 'raw:com.google.weight:opengym.app:weight'
-
-  // Attempt to create data source first if not exists
-  try {
-    await fetch(`${FIT_API_BASE}/dataSources`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
+export async function uploadSessionToGoogleHealth(accessToken, workout) {
+  const token = accessToken || getCachedToken()
+  if (!token) throw new Error('not_authenticated')
+  const startMs = Number(workout.start) || Date.now() - 3600000
+  const endMs = Number(workout.end) || Date.now()
+  if (endMs <= startMs) throw new Error('invalid_workout_time')
+  const start = new Date(startMs).toISOString()
+  const end = new Date(endMs).toISOString()
+  const durationSeconds = Math.max(1, Math.round((endMs - startMs) / 1000))
+  return createDataPoint(token, 'exercise', {
+    dataSource: { recordingMethod: 'ACTIVELY_MEASURED' },
+    exercise: {
+      interval: {
+        startTime: start,
+        startUtcOffset: utcOffsetDuration(startMs),
+        endTime: end,
+        endUtcOffset: utcOffsetDuration(endMs)
       },
-      body: JSON.stringify({
-        dataStreamName: 'weight',
-        type: 'raw',
-        application: { name: 'openGym Fitness' },
-        dataType: {
-          name: 'com.google.weight',
-          field: [{ name: 'weight', format: 'floatPoint' }]
-        }
-      })
-    })
-  } catch (e) {
-    // Already exists
-  }
-
-  // Insert dataset point
-  const datasetId = `${startTimeNanos}-${endTimeNanos}`
-  const patchRes = await fetch(`${FIT_API_BASE}/dataSources/${dataSourceId}/datasets/${datasetId}`, {
-    method: 'PATCH',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      dataSourceId,
-      minStartTimeNs: startTimeNanos.toString(),
-      maxEndTimeNs: endTimeNanos.toString(),
-      point: [dataPoint]
-    })
+      exerciseType: exerciseType(workout),
+      displayName: String(workout.name || 'Strength workout').slice(0, 120),
+      activeDuration: `${durationSeconds}s`,
+      metricsSummary: {
+        caloriesKcal: Number(workout.calories) || estimateCalories(workout)
+      }
+    }
   })
-
-  return patchRes.ok
 }
 
-/**
- * Full bidirectional sync of workouts and weight records with Google Fit.
- */
-export async function syncAllWithGoogleFit(accessToken, workouts = [], bodyweight = []) {
-  if (!accessToken) {
-    accessToken = getCachedToken()
-  }
-  if (!accessToken) {
-    throw new Error('not_authenticated')
-  }
+export async function uploadWeightToGoogleHealth(accessToken, weightKg, timestampMillis = Date.now()) {
+  const token = accessToken || getCachedToken()
+  const kg = Number(weightKg)
+  if (!token) throw new Error('not_authenticated')
+  if (!Number.isFinite(kg) || kg <= 0 || kg > 1000) throw new Error('invalid_weight')
+  const timestamp = Number(timestampMillis) || Date.now()
+  return createDataPoint(token, 'weight', {
+    dataSource: { recordingMethod: 'ACTIVELY_MEASURED' },
+    weight: {
+      sampleTime: { physicalTime: new Date(timestamp).toISOString(), utcOffset: utcOffsetDuration(timestamp) },
+      weightGrams: kg * 1000
+    }
+  })
+}
 
+// Upload only; Google Health API is not used here to read or import a user's health history.
+export async function syncAllWithGoogleHealth(accessToken, workouts = [], bodyweight = []) {
+  const token = accessToken || getCachedToken()
+  if (!token) throw new Error('not_authenticated')
   let syncedWorkouts = 0
   let syncedWeights = 0
   const errors = []
-
-  // Sync workouts
-  for (const w of workouts) {
+  for (const workout of workouts) {
     try {
-      await uploadSessionToGoogleFit(accessToken, w)
+      await uploadSessionToGoogleHealth(token, workout)
       syncedWorkouts++
-    } catch (err) {
-      errors.push({ id: w.id, error: err.message })
+    } catch (error) {
+      errors.push({ id: workout.id, error: error.message, status: error.status })
+      if (error.status === 401) break
     }
   }
-
-  // Sync latest weights
-  const recentWeights = bodyweight.slice(-10)
-  for (const bw of recentWeights) {
+  for (const entry of bodyweight) {
     try {
-      const ts = bw.t || (bw.d ? new Date(bw.d).getTime() : Date.now())
-      await uploadWeightToGoogleFit(accessToken, bw.w, ts)
+      const timestamp = entry.t || (entry.d ? new Date(entry.d).getTime() : Date.now())
+      await uploadWeightToGoogleHealth(token, entry.w, timestamp)
       syncedWeights++
-    } catch (err) {
-      // Non-fatal
+    } catch (error) {
+      errors.push({ id: entry.id || entry.d, error: error.message, status: error.status })
+      if (error.status === 401) break
     }
   }
-
   return {
-    ok: syncedWorkouts > 0 || errors.length === 0,
+    ok: errors.length === 0,
     syncedWorkouts,
     syncedWeights,
     lastSync: Date.now(),

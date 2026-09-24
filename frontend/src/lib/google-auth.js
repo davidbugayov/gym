@@ -17,12 +17,10 @@ export const BASIC_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.profile'
 ]
 
-// Extended scopes for Google Fitness REST API (restricted by Google in development/testing mode)
-export const FIT_SCOPES = [
-  'https://www.googleapis.com/auth/fitness.activity.write',
-  'https://www.googleapis.com/auth/fitness.activity.read',
-  'https://www.googleapis.com/auth/fitness.body.write',
-  'https://www.googleapis.com/auth/fitness.body.read'
+// Google Health API scopes: this app writes completed exercises and body-weight records only.
+export const GOOGLE_HEALTH_SCOPES = [
+  'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.writeonly',
+  'https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.writeonly'
 ]
 
 // Initialize Firebase App
@@ -43,12 +41,12 @@ basicProvider.addScope('email')
 basicProvider.addScope('profile')
 basicProvider.setCustomParameters({ prompt: 'select_account' })
 
-// Extended provider for Google Fit
-const fitProvider = new GoogleAuthProvider()
-fitProvider.addScope('email')
-fitProvider.addScope('profile')
-FIT_SCOPES.forEach(scope => fitProvider.addScope(scope))
-fitProvider.setCustomParameters({ prompt: 'select_account' })
+// Google Health consent is requested only when a user connects the health integration.
+const healthProvider = new GoogleAuthProvider()
+healthProvider.addScope('email')
+healthProvider.addScope('profile')
+GOOGLE_HEALTH_SCOPES.forEach(scope => healthProvider.addScope(scope))
+healthProvider.setCustomParameters({ prompt: 'select_account', include_granted_scopes: 'true' })
 
 // In-memory access token cache (CRITICAL: never in localStorage)
 let cachedAccessToken = null
@@ -76,15 +74,16 @@ export function initGoogleAuth(callback) {
 
 /**
  * Sign in using Google OAuth Popup.
- * @param {boolean} withFitScopes - whether to request restricted Google Fit scopes
+ * @param {boolean} withHealthScopes - whether to request Google Health write scopes
  */
-export async function googleSignIn(withFitScopes = false) {
+export async function googleSignIn(withHealthScopes = false) {
   try {
     isSigningIn = true
-    const targetProvider = withFitScopes ? fitProvider : basicProvider
+    const targetProvider = withHealthScopes ? healthProvider : basicProvider
     const result = await signInWithPopup(auth, targetProvider)
     const credential = GoogleAuthProvider.credentialFromResult(result)
     const token = credential?.accessToken || null
+    if (withHealthScopes && !token) throw new Error('google_health_access_token_missing')
     cachedAccessToken = token
 
     const user = result.user
@@ -103,18 +102,14 @@ export async function googleSignIn(withFitScopes = false) {
       s.googleHealth.connected = true
       s.googleHealth.email = user.email
       s.googleHealth.name = user.displayName
-      if (withFitScopes) {
-        s.googleHealth.fitGranted = true
+      if (withHealthScopes) {
+        s.googleHealth.healthGranted = true
       }
     })
 
     return { user, profile, accessToken: token }
   } catch (error) {
     console.error('Google Sign In Error:', error)
-    // If fit scopes were requested and rejected by Google 403/access_denied, fallback to basic sign-in
-    if (withFitScopes && (error.code === 'auth/access-denied' || error.message?.includes('access_denied') || error.code === 'auth/popup-closed-by-user')) {
-      // Fallback
-    }
     throw error
   } finally {
     isSigningIn = false

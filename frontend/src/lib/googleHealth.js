@@ -1,20 +1,10 @@
-// Google Health & Google Fit integration service for openGym.
-// Provides bidirectional synchronization, Google Fit dataset generation,
-// MET-based calorie calculations, session logging, and Takeout import/export.
+// Google Health data helpers for openGym.
+// Provides legacy-compatible exports/imports and MET-based calorie calculations.
 
-import { t } from './i18n.js'
 import { EXIDX } from './exercises.js'
-import { fmtDur, fmtVol, todayISO } from './format.js'
+import { fmtVol, todayISO } from './format.js'
 
-export const GOOGLE_FIT_SCOPES = [
-  'https://www.googleapis.com/auth/fitness.activity.read',
-  'https://www.googleapis.com/auth/fitness.activity.write',
-  'https://www.googleapis.com/auth/fitness.body.read',
-  'https://www.googleapis.com/auth/fitness.body.write'
-]
-
-// Google Fit Activity Types mapping
-// Standard activity codes:
+// Legacy Google Fit activity codes used only by the Takeout-compatible export format:
 // 97: Weightlifting / Strength Training
 // 8: Calisthenics / Bodyweight
 // 58: Circuit Training / HIIT
@@ -47,7 +37,7 @@ export function estimateCalories(workout, userWeightKg = 75) {
   return Math.max(40, cal)
 }
 
-// Build standard Google Fit Session representation (Fitness REST API & Health Connect)
+// Build the legacy Google Fit Takeout session representation for export only.
 export function formatGoogleFitSession(workout, options = {}) {
   const act = resolveActivityType(workout)
   const startTimeMillis = workout.start || Date.now() - 3600000
@@ -210,37 +200,4 @@ export function parseGoogleHealthImport(text) {
   }
 
   return { error: 'unrecognised' }
-}
-
-// Client-side Google Health sync simulation & persistence
-export async function syncWithGoogleHealth(workouts, bodyweight, config = {}) {
-  const lastSync = Date.now()
-  const syncedSessions = (workouts || []).map(w => formatGoogleFitSession(w))
-  
-  // Try sending to local API if available
-  try {
-    const res = await fetch('/api/google-health/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessions: syncedSessions,
-        weights: bodyweight,
-        timestamp: lastSync
-      })
-    })
-    if (res.ok) {
-      const data = await res.json()
-      return { ok: true, syncedCount: syncedSessions.length, lastSync, ...data }
-    }
-  } catch (e) {
-    // offline or self-contained fallback
-  }
-
-  return {
-    ok: true,
-    syncedCount: syncedSessions.length,
-    weightsCount: (bodyweight || []).length,
-    lastSync,
-    status: 'synced_locally'
-  }
 }

@@ -23,12 +23,12 @@ import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC } from './lib/progression.js'
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { estimateCalories, exportGoogleHealthJSON, exportGoogleHealthCSV } from './lib/googleHealth.js'
-import { syncAllWithGoogleFit } from './lib/google-fit-api.js'
+import { syncAllWithGoogleHealth } from './lib/google-fit-api.js'
 import { ATHLETE_RU_URL, ATHLETE_PROGRAMS, parseProgramUrl, applyImportedProgram, isAthleteRuUrl } from './lib/import-url.js'
 import { GoogleAuth } from '@southdevs/capacitor-google-auth'
 import { Capacitor } from '@capacitor/core'
 import { getHealthStatus, initHealth, logBodyWeightToHealth, logWorkoutToHealth } from './lib/health.js'
-import { getCachedToken, googleSignIn, googleSignOut, setCachedToken } from './lib/google-auth.js'
+import { getCachedToken, googleSignIn, setCachedToken } from './lib/google-auth.js'
 import { clearActiveSessionBackup } from './lib/autosave.js'
 import { getExerciseTrend } from './lib/trends.js'
 import { ExerciseTrendBadge, ExerciseTrendMini } from './components/ExerciseTrend.jsx'
@@ -1952,14 +1952,16 @@ function doFinishWorkout() {
   })
 
   // Auto-sync with Google Health if connected
-  if (st.googleHealth?.connected && st.googleHealth?.provider !== 'health-connect' && st.googleHealth?.autoSync !== false) {
+  if (st.googleHealth?.connected && st.googleHealth?.provider === 'google-health-api' && st.googleHealth?.autoSync !== false) {
     const token = getCachedToken()
+    const since = st.googleHealth.lastSync || 0
+    const weights = st.googleHealth.syncBodyWeight === false ? [] : st.bodyweight.filter(entry => !since || (entry.t || new Date(entry.d).getTime()) > since)
     const sync = token
-      ? syncAllWithGoogleFit(token, [w], st.bodyweight)
+      ? syncAllWithGoogleHealth(token, st.googleHealth.syncWorkouts === false ? [] : [w], weights)
       : Promise.reject(new Error('google_fit_reauthentication_required'))
     sync.then(res => {
       update(s => {
-        if (s.googleHealth) s.googleHealth.lastSync = res.lastSync || Date.now()
+        if (s.googleHealth && res.ok) s.googleHealth.lastSync = res.lastSync || Date.now()
       })
     }).catch(() => {})
   }
@@ -1983,7 +1985,7 @@ function GoogleHealthSheet({ close }) {
   const gh = S.googleHealth || { connected: false, autoSync: true, syncWorkouts: true, syncBodyWeight: true, lastSync: null, email: '' }
   const [syncing, setSyncing] = useState(false)
   const isHealthConnect = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android'
-  const providerName = isHealthConnect ? 'Health Connect' : 'Google Health & Fit'
+  const providerName = isHealthConnect ? 'Health Connect' : 'Google Health'
 
   const toggleConnected = async () => {
     if (gh.connected) {
@@ -1994,7 +1996,7 @@ function GoogleHealthSheet({ close }) {
       })
       toast(t(isHealthConnect ? 'Disconnected from Health Connect' : 'Disconnected from Google Health'))
       if (isHealthConnect || !Capacitor.isNativePlatform()) {
-        try { await googleSignOut() } catch(e) {}
+        setCachedToken(null)
       } else {
         try { await GoogleAuth.signOut() } catch(e) {}
       }
@@ -2032,6 +2034,8 @@ function GoogleHealthSheet({ close }) {
         s.googleHealth = s.googleHealth || {}
         s.googleHealth.connected = true
         s.googleHealth.email = user.email || 'user@gmail.com'
+        if (s.googleHealth.provider !== 'google-health-api') s.googleHealth.lastSync = null
+        s.googleHealth.provider = 'google-health-api'
       })
       toast(t('Connected to Google Health'))
     } catch (err) {
@@ -2064,17 +2068,25 @@ function GoogleHealthSheet({ close }) {
 
       const token = getCachedToken()
       if (!token) {
-        toast(t('Reconnect Google Fit to authorise health data access'))
+        toast(t('Reconnect Google Health to authorise health data access'))
         return
       }
-      const res = await syncAllWithGoogleFit(token, S.workouts, S.bodyweight)
+      const since = gh.lastSync || 0
+      const workouts = gh.syncWorkouts === false ? [] : S.workouts.filter(workout => !since || workout.end > since)
+      const weights = gh.syncBodyWeight === false ? [] : S.bodyweight.filter(entry => !since || (entry.t || new Date(entry.d).getTime()) > since)
+      const res = await syncAllWithGoogleHealth(token, workouts, weights)
+      if (!res.ok) {
+        const firstError = res.errors[0]
+        if (firstError?.status === 401 || firstError?.status === 403) setCachedToken(null)
+        throw new Error(firstError?.status === 403 ? 'Google Health API access denied. Check API enablement, OAuth scopes and test-user access.' : firstError?.error || 'partial_sync')
+      }
       update(s => {
         s.googleHealth = s.googleHealth || {}
         s.googleHealth.lastSync = res.lastSync || Date.now()
       })
-      toast(t('Synced with Google Fit ({0} workouts)', res.syncedWorkouts))
+      toast(t('Synced with Google Health ({0} workouts, {1} weights)', res.syncedWorkouts, res.syncedWeights))
     } catch (e) {
-      toast(t('Google Fit sync failed: {0}', e.message || 'Error'))
+      toast(t('Google Health sync failed: {0}', e.message || 'Error'))
     } finally {
       setSyncing(false)
     }
@@ -2089,7 +2101,7 @@ function GoogleHealthSheet({ close }) {
     a.download = `openGym-google-health-${todayISO()}.json`
     a.click()
     URL.revokeObjectURL(url)
-    toast(t('Google Fit JSON exported'))
+    toast(t('Google Health JSON exported'))
   }
 
   const handleExportCSV = () => {
@@ -2101,7 +2113,7 @@ function GoogleHealthSheet({ close }) {
     a.download = `openGym-google-health-${todayISO()}.csv`
     a.click()
     URL.revokeObjectURL(url)
-    toast(t('Google Fit CSV exported'))
+    toast(t('Google Health CSV exported'))
   }
 
   return <>
@@ -2159,7 +2171,7 @@ function GoogleHealthSheet({ close }) {
     </div>
 
     <div className="small dim" style={{ lineHeight: 1.5, textAlign: 'center' }}>
-      {t(isHealthConnect ? 'Health Connect keeps your health data on this device and is managed in Android settings.' : 'Calculates MET active calories, total volume & sets compatible with Google Fit & Google Health Connect.')}
+      {t(isHealthConnect ? 'Health Connect keeps your health data on this device and is managed in Android settings.' : 'Google Health receives completed workouts and body weight. Only write access is requested.')}
     </div>
   </>
 }

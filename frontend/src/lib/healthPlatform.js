@@ -1,9 +1,7 @@
 import { Capacitor } from '@capacitor/core'
 import { logWorkoutToHealth } from './health.js'
 import { getCachedToken } from './google-auth.js'
-import { uploadSessionToGoogleFit, syncAllWithGoogleFit } from './google-fit-api.js'
-import { syncWithGoogleHealth } from './googleHealth.js'
-import { todayISO } from './format.js'
+import { syncAllWithGoogleHealth } from './google-fit-api.js'
 import { t } from './i18n.js'
 
 /**
@@ -121,14 +119,10 @@ export async function syncActiveHealth(workouts, bodyweight, state) {
       return { ok: synced, provider: 'health-connect', lastSync: synced ? Date.now() : null }
     }
 
-    // Legacy web Google Fit / Health flow.
+    // Web Google Health API flow.
     const token = getCachedToken()
-    if (token) {
-      const res = await syncAllWithGoogleFit(token, workouts, bodyweight)
-      return { ok: true, provider: 'google', lastSync: res.lastSync || Date.now() }
-    } else {
-      const res = await syncWithGoogleHealth(workouts, bodyweight, state?.googleHealth)
-      return { ok: true, provider: 'google', lastSync: res.lastSync || Date.now() }
-    }
+    if (!token) return { ok: false, provider: 'google', reason: 'not_authenticated' }
+    const res = await syncAllWithGoogleHealth(token, workouts, bodyweight)
+    return { ...res, provider: 'google' }
   }
 }
