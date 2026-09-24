@@ -16,8 +16,8 @@ Last updated: 24 September 2026
 
 ## Still required
 
-1. Verify ownership of the Search Console Domain properties `emdrbilateral.online` and `emdrbilateral.ru` from a Google account that is an Owner or Editor of the Cloud project. Root TXT verification records for both domains were added to REG.RU on 24 September 2026, and REG.RU confirms the zone changes were applied. As of the last check, the authoritative and public DNS resolvers did not return either TXT record, so Search Console could not yet verify `.online`; allow DNS propagation and retry both domains. Never commit verification tokens or registrar credentials.
-2. After both domains are verified, request branding reverification in Google Auth Platform. The saved homepage and policy links now point to the public `about.html`, `/privacy`, and `/terms` pages, but the previous branding report still shows findings from the old homepage URL and must be rerun after domain ownership is confirmed.
+1. Search Console ownership for both Domain properties, `emdrbilateral.online` and `emdrbilateral.ru`, is verified via DNS TXT records. Do not remove those records; Google requires them to maintain verification. Never commit verification tokens or registrar credentials.
+2. Branding reverification was submitted in Google Auth Platform on 24 September 2026 after the public homepage and policy URLs were saved and both root domains were verified. Google currently reports “Verification in progress”; check the Branding verification status for the outcome.
 3. Submit Google Fitness data-access verification. Google requires an accurate demonstration video showing the sensitive Fitness scopes in use. No demo-video URL has been submitted.
 4. For release Android builds, register the production signing certificate SHA-1 with Google OAuth. The Android OAuth client currently has the debug SHA-1. Confirm Apple Developer HealthKit capability and provisioning for the iOS release separately.
 
