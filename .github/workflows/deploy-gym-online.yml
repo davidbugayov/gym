@@ -60,12 +60,15 @@ jobs:
           for i in $(seq 1 30); do
             STATUS=$($SSH_CMD root@144.31.68.9 "systemctl is-active gym-online" 2>/dev/null)
             if [ "$STATUS" = "active" ]; then
-              echo "Service is running"
-              $SSH_CMD root@144.31.68.9 "curl -s -o /dev/null -w 'HTTP %{http_code}' http://localhost:8091/"
-              exit 0
+              HTTP_STATUS=$($SSH_CMD root@144.31.68.9 "curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:8091/" 2>/dev/null || true)
+              if [ "$HTTP_STATUS" = "200" ]; then
+                echo "Service is running and returned HTTP 200"
+                exit 0
+              fi
             fi
-            echo "Waiting... ($i/30)"
+            echo "Waiting for HTTP readiness... ($i/30)"
             sleep 2
           done
-          echo "Service failed to start"
+          echo "Service failed to become HTTP-ready"
+          $SSH_CMD root@144.31.68.9 "systemctl status gym-online --no-pager -l" || true
           exit 1
