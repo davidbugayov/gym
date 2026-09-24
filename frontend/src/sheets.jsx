@@ -1564,9 +1564,9 @@ export function beginWorkout(routineId, bw) {
     const plan = nextPrescription(st, cfg, r)
     return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, sets: applyPrescription(buildSets(st, cfg), plan) }
   })
-  // Only inject warmup/cooldown when there's an actual routine (not freestyle)
-  const warmupList = r ? getWarmup(st) : []
-  const cooldownList = r ? getCooldown(st) : []
+  // Inject warmup/cooldown for all workouts (including freestyle)
+  const warmupList = getWarmup(st)
+  const cooldownList = getCooldown(st)
   const entries = [
     ...buildPhaseEntries(warmupList, 'warmup'),
     ...mainEntries,
