@@ -22,9 +22,13 @@ import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-sha
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC } from './lib/progression.js'
 import { MOBILE, shareExport } from './lib/mobile.js'
-import { estimateCalories, exportGoogleHealthJSON, exportGoogleHealthCSV, syncWithGoogleHealth } from './lib/googleHealth.js'
+import { estimateCalories, exportGoogleHealthJSON, exportGoogleHealthCSV } from './lib/googleHealth.js'
+import { syncAllWithGoogleFit } from './lib/google-fit-api.js'
 import { ATHLETE_RU_URL, ATHLETE_PROGRAMS, parseProgramUrl, applyImportedProgram, isAthleteRuUrl } from './lib/import-url.js'
 import { GoogleAuth } from '@southdevs/capacitor-google-auth'
+import { Capacitor } from '@capacitor/core'
+import { getHealthStatus, initHealth, logBodyWeightToHealth, logWorkoutToHealth } from './lib/health.js'
+import { getCachedToken, googleSignIn, googleSignOut, setCachedToken } from './lib/google-auth.js'
 import { clearActiveSessionBackup } from './lib/autosave.js'
 import { getExerciseTrend } from './lib/trends.js'
 import { ExerciseTrendBadge, ExerciseTrendMini } from './components/ExerciseTrend.jsx'
@@ -1750,8 +1754,12 @@ function doFinishWorkout() {
   })
 
   // Auto-sync with Google Health if connected
-  if (st.googleHealth?.connected && st.googleHealth?.autoSync !== false) {
-    syncWithGoogleHealth([w], st.bodyweight, st.googleHealth).then(res => {
+  if (st.googleHealth?.connected && st.googleHealth?.provider !== 'health-connect' && st.googleHealth?.autoSync !== false) {
+    const token = getCachedToken()
+    const sync = token
+      ? syncAllWithGoogleFit(token, [w], st.bodyweight)
+      : Promise.reject(new Error('google_fit_reauthentication_required'))
+    sync.then(res => {
       update(s => {
         if (s.googleHealth) s.googleHealth.lastSync = res.lastSync || Date.now()
       })
@@ -1776,7 +1784,8 @@ function GoogleHealthSheet({ close }) {
   const update = useStore(s => s.update)
   const gh = S.googleHealth || { connected: false, autoSync: true, syncWorkouts: true, syncBodyWeight: true, lastSync: null, email: '' }
   const [syncing, setSyncing] = useState(false)
-  const [emailInput, setEmailInput] = useState(gh.email || '')
+  const isHealthConnect = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android'
+  const providerName = isHealthConnect ? 'Health Connect' : 'Google Health & Fit'
 
   const toggleConnected = async () => {
     if (gh.connected) {
@@ -1785,14 +1794,42 @@ function GoogleHealthSheet({ close }) {
         s.googleHealth.connected = false
         s.googleHealth.email = ''
       })
-      toast(t('Disconnected from Google Health'))
-      try { await GoogleAuth.signOut() } catch(e) {}
+      toast(t(isHealthConnect ? 'Disconnected from Health Connect' : 'Disconnected from Google Health'))
+      if (isHealthConnect || !Capacitor.isNativePlatform()) {
+        try { await googleSignOut() } catch(e) {}
+      } else {
+        try { await GoogleAuth.signOut() } catch(e) {}
+      }
       return
     }
 
     try {
-      GoogleAuth.initialize()
-      const user = await GoogleAuth.signIn()
+      if (isHealthConnect) {
+        const authorized = await initHealth()
+        if (!authorized) {
+          const status = await getHealthStatus().catch(() => null)
+          toast(t(status?.available ? 'Health Connect permissions were not granted' : 'Health Connect is unavailable on this device'))
+          return
+        }
+        update(s => {
+          s.googleHealth = s.googleHealth || {}
+          s.googleHealth.connected = true
+          s.googleHealth.provider = 'health-connect'
+          s.googleHealth.email = ''
+        })
+        toast(t('Connected to Health Connect'))
+        return
+      }
+
+      let user
+      if (Capacitor.isNativePlatform()) {
+        await GoogleAuth.initialize()
+        user = await GoogleAuth.signIn()
+        setCachedToken(user.authentication?.accessToken || null)
+      } else {
+        const result = await googleSignIn(true)
+        user = { email: result.user.email, name: result.user.displayName }
+      }
       update(s => {
         s.googleHealth = s.googleHealth || {}
         s.googleHealth.connected = true
@@ -1808,14 +1845,38 @@ function GoogleHealthSheet({ close }) {
   const handleSyncNow = async () => {
     setSyncing(true)
     try {
-      const res = await syncWithGoogleHealth(S.workouts, S.bodyweight, gh)
+      if (isHealthConnect) {
+        const since = gh.lastSync || 0
+        const workouts = S.workouts.filter(workout => !since || workout.end > since)
+        const weights = gh.syncBodyWeight === false ? [] : S.bodyweight.filter(entry => !since || (entry.t || new Date(entry.d).getTime()) > since)
+        const workoutResults = await Promise.all(workouts.map(logWorkoutToHealth))
+        const weightResults = await Promise.all(weights.map(logBodyWeightToHealth))
+        const syncedCount = workoutResults.filter(Boolean).length + weightResults.filter(Boolean).length
+        if ((workouts.length || weights.length) && !syncedCount) {
+          toast(t('Connect Health Connect before syncing'))
+          return
+        }
+        update(s => {
+          s.googleHealth = s.googleHealth || {}
+          s.googleHealth.lastSync = Date.now()
+        })
+        toast(t('Synced with Health Connect ({0} records)', syncedCount))
+        return
+      }
+
+      const token = getCachedToken()
+      if (!token) {
+        toast(t('Reconnect Google Fit to authorise health data access'))
+        return
+      }
+      const res = await syncAllWithGoogleFit(token, S.workouts, S.bodyweight)
       update(s => {
         s.googleHealth = s.googleHealth || {}
         s.googleHealth.lastSync = res.lastSync || Date.now()
       })
-      toast(t('Sync now ({0} workouts)', res.syncedCount))
+      toast(t('Synced with Google Fit ({0} workouts)', res.syncedWorkouts))
     } catch (e) {
-      toast(t('Sync completed'))
+      toast(t('Google Fit sync failed: {0}', e.message || 'Error'))
     } finally {
       setSyncing(false)
     }
@@ -1851,8 +1912,8 @@ function GoogleHealthSheet({ close }) {
         <Icon name="heart" />
       </div>
       <div>
-        <h3 style={{ margin: 0 }}>{t('Google Health & Fit')}</h3>
-        <div className="muted small">{t('Bidirectional sync for workouts, volume & body weight')}</div>
+        <h3 style={{ margin: 0 }}>{t(providerName)}</h3>
+        <div className="muted small">{t(isHealthConnect ? 'Sync active calories and body weight on this Android device' : 'Bidirectional sync for workouts, volume & body weight')}</div>
       </div>
     </div>
 
@@ -1869,7 +1930,7 @@ function GoogleHealthSheet({ close }) {
 
       {gh.connected && (
         <div style={{ fontSize: '0.85rem', color: 'var(--fg-muted)' }}>
-          <div>{t('Account')}: <b style={{ color: 'var(--fg)' }}>{gh.email || ''}</b></div>
+          {!isHealthConnect && <div>{t('Account')}: <b style={{ color: 'var(--fg)' }}>{gh.email || ''}</b></div>}
           {gh.lastSync && <div style={{ marginTop: 4 }}>{t('Last synced')}: {new Date(gh.lastSync).toLocaleString()}</div>}
         </div>
       )}
@@ -1887,7 +1948,7 @@ function GoogleHealthSheet({ close }) {
     </div>
 
     <Button variant="primary" icon="refresh" loading={syncing} onClick={handleSyncNow} style={{ marginBottom: 10 }}>
-      {syncing ? t('Syncing with Google Health…') : t('Sync now ({0} workouts)', S.workouts.length)}
+      {syncing ? t(isHealthConnect ? 'Syncing with Health Connect…' : 'Syncing with Google Health…') : t(isHealthConnect ? 'Sync with Health Connect' : 'Sync now ({0} workouts)', S.workouts.length)}
     </Button>
 
     <div className="row" style={{ gap: 8, marginBottom: 14 }}>
@@ -1900,7 +1961,7 @@ function GoogleHealthSheet({ close }) {
     </div>
 
     <div className="small dim" style={{ lineHeight: 1.5, textAlign: 'center' }}>
-      {t('Calculates MET active calories, total volume & sets compatible with Google Fit & Google Health Connect.')}
+      {t(isHealthConnect ? 'Health Connect keeps your health data on this device and is managed in Android settings.' : 'Calculates MET active calories, total volume & sets compatible with Google Fit & Google Health Connect.')}
     </div>
   </>
 }

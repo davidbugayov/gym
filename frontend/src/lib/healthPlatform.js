@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core'
-import { Health } from '@capgo/capacitor-health'
+import { logWorkoutToHealth } from './health.js'
 import { getCachedToken } from './google-auth.js'
 import { uploadSessionToGoogleFit, syncAllWithGoogleFit } from './google-fit-api.js'
 import { syncWithGoogleHealth } from './googleHealth.js'
@@ -44,12 +44,12 @@ export function getHealthProviderInfo(provider) {
   }
   return {
     id: 'google',
-    name: 'Google Health',
-    fullName: 'Google Health & Fit',
+    name: 'Health Connect',
+    fullName: 'Health Connect',
     icon: 'heart',
     color: '#4285F4',
     badgeBg: 'rgba(66, 133, 244, 0.15)',
-    description: 'Bidirectional sync for workouts, volume & body weight with Google Fit'
+    description: 'Native Android health sync for active calories & body weight'
   }
 }
 
@@ -115,7 +115,13 @@ export async function syncActiveHealth(workouts, bodyweight, state) {
     }
     return { ok: true, provider: 'apple', lastSync: Date.now() }
   } else {
-    // Google Fit / Health
+    if (Capacitor.getPlatform() === 'android') {
+      const latest = workouts[workouts.length - 1]
+      const synced = latest ? await logWorkoutToHealth(latest) : true
+      return { ok: synced, provider: 'health-connect', lastSync: synced ? Date.now() : null }
+    }
+
+    // Legacy web Google Fit / Health flow.
     const token = getCachedToken()
     if (token) {
       const res = await syncAllWithGoogleFit(token, workouts, bodyweight)

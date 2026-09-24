@@ -8,8 +8,17 @@
   },
   "plugins": {
     "GoogleAuth": {
-      "scopes": ["profile", "email"],
-      "serverClientId": "REPLACE_WITH_SERVER_CLIENT_ID.apps.googleusercontent.com",
+      "androidClientId": "831370287146-fef34i5kobgcfgbefqkh0hsfcngvbha1.apps.googleusercontent.com",
+      "iosClientId": "831370287146-70aei80geqj07a37sh3i84nu6gsq455i.apps.googleusercontent.com",
+      "scopes": [
+        "profile",
+        "email",
+        "https://www.googleapis.com/auth/fitness.activity.read",
+        "https://www.googleapis.com/auth/fitness.activity.write",
+        "https://www.googleapis.com/auth/fitness.body.read",
+        "https://www.googleapis.com/auth/fitness.body.write"
+      ],
+      "serverClientId": "831370287146-kpbja4q6s91qtt8sm611jsl768domq00.apps.googleusercontent.com",
       "forceCodeForRefreshToken": true
     }
   }
