@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { DAYN, uid, exCount } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
-import { dayAssignSheet, planToolsSheet, programWizardSheet, importUrlSheet } from '../sheets.jsx'
+import { dayAssignSheet, planToolsSheet, programWizardSheet, readyProgramsSheet, importUrlSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import { glyphOf, DEFAULT_GLYPH } from '../lib/glyphs.js'
@@ -47,7 +47,7 @@ export default function Plan() {
         <h4 className="sec" style={{ margin: 0 }}>{t('Routines')}</h4>
         <div className="row" style={{ gap: 6 }}>
           <Button size="sm" variant="tinted" icon="globe" onClick={() => importUrlSheet()}>{t('URL')}</Button>
-          <Button size="sm" variant="tinted" icon="sparkles" onClick={programWizardSheet}>{t('Ready-made programs')}</Button>
+          <Button size="sm" variant="tinted" icon="sparkles" onClick={readyProgramsSheet}>{t('Ready-made programs')}</Button>
           <Button size="sm" variant="tinted" icon="plus" onClick={addRoutine}>{t('New')}</Button>
         </div>
       </div>

@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useUI } from '../store/useUI.js'
+import Icon from './Icon.jsx'
 
-// One bottom sheet (or centered dialog) with swipe-to-dismiss.
+// One bottom sheet (or centered dialog) with swipe-to-dismiss and explicit close button.
 function Sheet({ sheet }) {
   const { closeSheet } = useUI()
   const ref = useRef(null)
@@ -49,15 +50,39 @@ function Sheet({ sheet }) {
     return (
       <div>
         <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
-        <div className="center">{sheet.render(close)}</div>
+        <div className="center" style={{ position: 'relative' }}>
+          {!sheet.locked && (
+            <button
+              type="button"
+              className="sheet-close-btn"
+              onClick={close}
+              aria-label="Close"
+              title="Close"
+            >
+              <Icon name="x" />
+            </button>
+          )}
+          {sheet.render(close)}
+        </div>
       </div>
     )
   }
   return (
     <div>
       <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
-      <div className="sheet" ref={ref} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className="sheet" ref={ref} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ position: 'relative' }}>
         <div className="grab" />
+        {!sheet.locked && (
+          <button
+            type="button"
+            className="sheet-close-btn"
+            onClick={close}
+            aria-label="Close"
+            title="Close"
+          >
+            <Icon name="x" />
+          </button>
+        )}
         {sheet.render(close)}
       </div>
     </div>
@@ -66,6 +91,20 @@ function Sheet({ sheet }) {
 
 export default function Modals() {
   const sheets = useUI(s => s.sheets)
+
+  // Escape key closes top sheet if not locked
+  useEffect(() => {
+    const onKeyDown = e => {
+      if (e.key === 'Escape') {
+        const top = sheets[sheets.length - 1]
+        if (top && !top.locked) {
+          useUI.getState().closeSheet(top.id)
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [sheets])
 
   // lock the page behind any open sheet (iOS-safe)
   useEffect(() => {

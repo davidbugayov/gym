@@ -746,6 +746,32 @@ h4.sec{
 :root[data-theme="light"] .center{background:#fff}
 @keyframes pop{from{transform:translate(-50%,-50%) scale(.94);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
 
+.sheet-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--label-2);
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  z-index: 20;
+  transition: background var(--fast), transform var(--fast);
+}
+.sheet-close-btn:hover {
+  background: var(--surface-3);
+  color: var(--label);
+}
+.sheet-close-btn:active {
+  transform: scale(0.92);
+}
+
 /* --- RIR/RPE conversion table (effort help sheet) ---
    The two scales only click when you see them side by side, so the numbers get fixed-width
    tabular columns you can read straight down, and the words take whatever is left. Built out
@@ -1633,11 +1659,11 @@ h4.sec{
 
 /* Day routine exercise preview & accordion */
 .day-routine-accordion{
-  background:var(--surface-2);border-radius:10px;padding:10px 12px;margin:4px 0 10px 44px;
+  background:var(--surface-2);border-radius:12px;padding:12px 14px;margin:8px 0 12px 0;
   border:1px solid var(--sep-op);display:flex;flex-direction:column;gap:10px;
 }
 .day-routine-ex-row{
-  display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;
   border-bottom:1px solid color-mix(in srgb, var(--sep) 40%, transparent);
 }
 .day-routine-ex-row:last-child{border-bottom:none}
@@ -1648,5 +1674,169 @@ h4.sec{
   border:1px solid color-mix(in srgb, var(--acc) 30%, transparent);border-radius:8px;
   padding:8px 10px;margin-bottom:8px;line-height:1.4;color:var(--label);
 }
+
+/* --- Routine management drag-and-drop reordering --- */
+.routine-reorder-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.routine-item-wrap {
+  position: relative;
+  touch-action: pan-y;
+  transition: transform 0.24s cubic-bezier(0.2, 0, 0, 1);
+  will-change: transform;
+}
+
+.routine-item-wrap.is-dragged {
+  z-index: 50 !important;
+}
+
+.routine-item-wrap.is-dragged .item {
+  background: var(--surface-2);
+  box-shadow: 0 14px 32px -4px rgba(0, 0, 0, 0.45), 0 0 0 2px var(--acc);
+}
+
+.routine-item-wrap.is-active-drag {
+  transition: none !important;
+}
+
+.routine-item-wrap.is-dropping {
+  transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.22s ease !important;
+}
+
+.drag-handle {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  cursor: grab;
+  cursor: -webkit-grab;
+  user-select: none;
+  -webkit-user-select: none;
+  opacity: 0.65;
+  transition: opacity var(--fast), color var(--fast), transform var(--fast);
+}
+
+.drag-handle:hover,
+.drag-handle:focus-visible {
+  opacity: 1;
+  color: var(--acc);
+}
+
+.drag-handle:active,
+.drag-handle.dragging {
+  cursor: grabbing;
+  cursor: -webkit-grabbing;
+  opacity: 1;
+  color: var(--acc);
+}
+
+.routine-drag-slot-indicator {
+  height: 3px;
+  background: var(--acc);
+  border-radius: 99px;
+  margin: -1px 4px;
+  box-shadow: 0 0 10px var(--acc);
+  animation: pulseIndicator 1.2s infinite ease-in-out;
+}
+
+@keyframes pulseIndicator {
+  0%, 100% { opacity: 0.75; transform: scaleY(1); }
+  50% { opacity: 1; transform: scaleY(1.4); }
+}
+
+/* --- Program Preview interactive exercise rows --- */
+.preview-ex-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.preview-ex-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--sep-op, rgba(255, 255, 255, 0.07));
+  border-radius: var(--r-md, 10px);
+  cursor: pointer;
+  user-select: none;
+  text-align: left;
+  transition: background var(--fast), border-color var(--fast), transform 0.1s ease;
+}
+
+.preview-ex-row:hover {
+  background: var(--surface-3);
+  border-color: var(--label-3);
+}
+
+.preview-ex-row:active {
+  transform: scale(0.985);
+}
+
+.preview-ex-name {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--fg);
+  line-height: 1.25;
+}
+
+.preview-ex-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+.preview-sets-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--acc) 18%, var(--surface-3));
+  color: var(--acc);
+}
+
+.preview-reps-text {
+  font-size: 12px;
+  color: var(--label-2);
+}
+
+.preview-muscle-tag {
+  font-size: 11px;
+  color: var(--label-3);
+  text-transform: capitalize;
+}
+
+.preview-ex-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--label-2);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* --- Sparklines in history chips and cards --- */
+.exercise-sparkline-wrap {
+  cursor: help;
+  transition: opacity 0.15s ease;
+}
+
+.exercise-sparkline-wrap:hover {
+  opacity: 0.85;
+}
+
+.wrow-ex-chip .exercise-sparkline-wrap {
+  margin-left: 2px;
+}
+
 
 

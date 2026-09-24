@@ -14,6 +14,8 @@ import { programWizardSheet, confirmSheet, importFromApp, googleHealthSheet, imp
 import { coachAvailable, hasConsent } from '../lib/coach.js'
 import { forgetCoach } from '../lib/coach-api.js'
 import { playRestTimerAlert, hapticSetComplete } from '../lib/sound.js'
+import { googleSignIn, googleSignOut } from '../lib/google-auth.js'
+import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
 import Icon from '../components/Icon.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
 
@@ -52,6 +54,30 @@ export default function Settings() {
     }
     rd.readAsText(f)
   }
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true)
+    try {
+      const res = await googleSignIn()
+      toast(t('Signed in as {0}', res.profile.name))
+    } catch (e) {
+      if (e.code !== 'auth/popup-closed-by-user') {
+        toast(t('Google Sign-in failed: {0}', e.message || 'Error'))
+      }
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
+
+  const handleGoogleLogout = async () => {
+    try {
+      await googleSignOut()
+      toast(t('Signed out from Google Account'))
+    } catch (e) {
+      toast(e.message)
+    }
+  }
+
   const signInHere = async () => {
     try { const u = await passkeyLogin(); setUser(u); await pullState(); toast(t('Welcome back, {0}', u.name)) }
     catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') toast(e.message || t('Sign-in failed')) }
@@ -76,7 +102,7 @@ export default function Settings() {
       <div style={{ flex: 1, marginLeft: 10 }}><h1>{t('Settings')}</h1></div>
     </div>
 
-    {/* ---------- account (demo and mobile builds have nothing to sign in to) ---------- */}
+    {/* ---------- account (Google Gmail + Passkeys) ---------- */}
     <Section title={MOBILE ? t('Your data') : DEMO ? t('Demo') : t('Account')}>
       {MOBILE ? <>
         <Row icon="lock" iconTint="var(--acc)" title={t('All data stays on this phone')} subtitle={t('No account, no cloud — back it up anytime with Export below.')} />
@@ -89,16 +115,64 @@ export default function Settings() {
         <Row icon="rocket" iconTint="var(--indigo)" title={t('Self-host Gymly')} subtitle={t('Passkey sign-in, sync across your devices, your own data.')} accessory="chevron"
           onClick={() => window.open(REPO, '_blank', 'noopener')} />
       </> : user ? <>
-        <Row icon="personCircle" iconTint="var(--grey)" title={user.name} subtitle={t('Signed in with passkey — data syncs to this profile.')} />
+        <Row
+          icon="personCircle"
+          iconTint={user.provider === 'google' ? '#4285F4' : 'var(--grey)'}
+          title={user.name}
+          subtitle={user.email ? `${user.email} · ${t('Google Account')}` : t('Signed in with passkey — data syncs to this profile.')}
+        />
+        <Row
+          icon="heart"
+          iconTint="#4285F4"
+          title={t('Google Health & Fit')}
+          subtitle={S.googleHealth?.connected ? t('Connected to Google Fit') : t('Not connected')}
+          accessory="chevron"
+          onClick={googleHealthSheet}
+        />
         {user.admin && <Row icon="wrench" iconTint="var(--indigo)" title={t('Admin dashboard')} accessory="chevron" onClick={() => nav('/admin')} />}
-        <Row icon="signOut" iconTint="var(--red)" title={t('Sign out')} danger onClick={() => confirmSheet({ title: t('Sign out?'), message: t('Your data is synced to your profile first, then cleared from this device.'), confirmText: t('Sign out'), danger: true, onConfirm: () => { signOut(); nav('/home') } })} />
-        <Row icon="shield" iconTint="var(--red)" title={t('Sign out everywhere')} subtitle={t('Ends this profile’s sessions on all your devices.')} danger onClick={signOutEverywhere} />
-      </> : webauthnOK() ? <>
-        <Row icon="sparkles" iconTint="var(--acc)" title={t('Create passkey profile')} subtitle={t('Keeps your data safe and separate per person.')} accessory="chevron" onClick={registerHere} />
-        <Row icon="person" iconTint="var(--blue)" title={t('Sign in with passkey')} accessory="chevron" onClick={signInHere} />
-      </> : (
-        <Row icon="lock" iconTint="var(--grey)" title={t('Passkeys not supported in this browser.')} />
-      )}
+        <Row
+          icon="signOut"
+          iconTint="var(--red)"
+          title={t('Sign out')}
+          danger
+          onClick={() => confirmSheet({
+            title: t('Sign out?'),
+            message: t('Your data is preserved in this browser. You can sign in again anytime.'),
+            confirmText: t('Sign out'),
+            danger: true,
+            onConfirm: async () => {
+              if (user.provider === 'google') await handleGoogleLogout()
+              else signOut()
+              nav('/home')
+            }
+          })}
+        />
+        {user.provider !== 'google' && (
+          <Row icon="shield" iconTint="var(--red)" title={t('Sign out everywhere')} subtitle={t('Ends this profile’s sessions on all your devices.')} danger onClick={signOutEverywhere} />
+        )}
+      </> : <>
+        <div style={{ padding: '8px 12px 10px' }}>
+          <GoogleSignInButton
+            onClick={handleGoogleLogin}
+            loading={googleLoading}
+            text={t('Sign in with Google (Gmail)')}
+          />
+        </div>
+        <Row
+          icon="heart"
+          iconTint="#4285F4"
+          title={t('Google Health & Fit')}
+          subtitle={t('Sync with Google Fit and Health Connect')}
+          accessory="chevron"
+          onClick={googleHealthSheet}
+        />
+        {webauthnOK() ? <>
+          <Row icon="sparkles" iconTint="var(--acc)" title={t('Create passkey profile')} subtitle={t('Keeps your data safe and separate per person.')} accessory="chevron" onClick={registerHere} />
+          <Row icon="person" iconTint="var(--blue)" title={t('Sign in with passkey')} accessory="chevron" onClick={signInHere} />
+        </> : (
+          <Row icon="lock" iconTint="var(--grey)" title={t('Passkeys not supported in this browser.')} />
+        )}
+      </>}
     </Section>
     {!user && !DEMO && !MOBILE && <p className="sect-f" style={{ marginTop: -18, marginBottom: 22 }}>{t('Guest mode — data lives only in this browser.')}</p>}
 
@@ -123,7 +197,41 @@ export default function Settings() {
     <Section title={t('During a workout')} footer={wakeOK ? t('The screen stays on while a workout is running, so you don’t have to unlock your phone between sets.') : null}>
       <SelectRow icon="timer" iconTint="var(--orange)" title={t('Rest timer')}
         value={S.restSec} onChange={v => update(s => { s.restSec = v })}
-        options={[60, 90, 120, 150, 180].map(v => ({ value: v, label: v + 's' }))} />
+        options={[30, 45, 60, 90, 120, 150, 180, 240, 300].map(v => ({ value: v, label: v + 's' }))} />
+      <Row icon="timer" iconTint="var(--orange)" title={t('Rest timer presets')} subtitle={t('Quick-select buttons available during workouts')}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 220 }}>
+          {[30, 45, 60, 90, 120, 150, 180, 240, 300].map(sec => {
+            const presets = S.restPresets && S.restPresets.length ? S.restPresets : [60, 90, 120]
+            const active = presets.includes(sec)
+            return (
+              <button
+                key={sec}
+                type="button"
+                className={'chip' + (active ? ' acc' : '')}
+                style={{
+                  fontSize: 12,
+                  padding: '4px 8px',
+                  cursor: 'pointer',
+                  borderRadius: 14,
+                  fontWeight: active ? 600 : 400
+                }}
+                onClick={() => update(s => {
+                  const curr = (s.restPresets && s.restPresets.length) ? [...s.restPresets] : [60, 90, 120]
+                  if (curr.includes(sec)) {
+                    if (curr.length > 1) {
+                      s.restPresets = curr.filter(x => x !== sec).sort((a, b) => a - b)
+                    }
+                  } else {
+                    s.restPresets = [...curr, sec].sort((a, b) => a - b)
+                  }
+                })}
+              >
+                {sec}s
+              </button>
+            )
+          })}
+        </div>
+      </Row>
       {(wakeOK || !MOBILE) && (
         <Row icon="sun" iconTint="var(--yellow)" title={t('Keep screen awake')}
           subtitle={wakeOK ? null : t('Not supported in this browser.')}>

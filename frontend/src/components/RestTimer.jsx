@@ -14,9 +14,10 @@ const clock = sec => Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '
 export default function RestTimer() {
   const timer = useUI(s => s.timer)
   const work = useUI(s => s.work)
-  const { addRest, stopRest, finishWorkEarly, stopWork } = useUI()
+  const { addRest, stopRest, finishWorkEarly, stopWork, startRest } = useUI()
   const soundOn = useStore(s => s.S.sound)
   const hapticsOn = useStore(s => s.S.haptics !== false)
+  const restPresets = useStore(s => (s.S.restPresets && s.S.restPresets.length > 0) ? s.S.restPresets : [60, 90, 120])
   const update = useStore(s => s.update)
   const on = work || timer
   // The bar is fixed above the tab bar and floats over whatever is beneath it — during a
@@ -134,6 +135,35 @@ export default function RestTimer() {
         <Button size="sm" icon="plus" onClick={() => addRest(15)}>15s</Button>
         <Button size="sm" variant="primary" className="skip" onClick={stopRest}>{t('Skip')}</Button>
       </div>
+      {restPresets && restPresets.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 4, flexWrap: 'wrap' }}>
+          {restPresets.map(sec => {
+            const isMatch = timer.total === sec
+            return (
+              <button
+                key={sec}
+                type="button"
+                className={'chip' + (isMatch ? ' acc' : '')}
+                style={{
+                  fontSize: 11,
+                  padding: '3px 8px',
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  fontWeight: isMatch ? 600 : 500,
+                  background: isMatch ? 'var(--acc)' : 'var(--surface-3)',
+                  color: isMatch ? 'var(--acc-fg, #000)' : 'var(--fg)',
+                  border: 'none',
+                  transition: 'background 0.15s ease, color 0.15s ease'
+                }}
+                onClick={() => startRest(sec)}
+                title={t('Set rest timer to {0}s', sec)}
+              >
+                {sec}s
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

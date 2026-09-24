@@ -181,6 +181,17 @@ export const makeRoutines = spec =>
 
 export const freeleticsRoutines = () => makeRoutines(FREELETICS_SPEC)
 
+export const HERO_WARMUP = [
+  ['3220', 1, 30],
+  ['1428', 1, 20],
+  ['1604', 1, 10]
+]
+
+export const HERO_COOLDOWN = [
+  ['1604', 1, 10],
+  ['0857', 1, 15]
+]
+
 // Ready-made programs with the metadata the Program Wizard matches on:
 //   name / detail      — t() keys, translated in every locale
 //   goals              — what the program is for (see GOALS in program-match.js)
