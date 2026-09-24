@@ -166,10 +166,6 @@ export const COOLDOWN = [
   { id: '1511', sets: 1, sec: 45, weight: 0, mode: 'time', phase: 'cooldown' }  // hamstring stretch
 ]
 
-// Legacy aliases – kept for backward compatibility
-export const HERO_WARMUP = WARMUP
-export const HERO_COOLDOWN = COOLDOWN
-
 export const FREELETICS_SPEC = [
   ['Aphrodite', 'bodyweight', [{ id: '1160', sets: 5, sec: 40, weight: 0, mode: 'time' }, ['0514', 5, 25], ['0001', 5, 25]]],
   ['Morpheus', 'bodyweight', [['0662', 5, 20], { id: '2612', sets: 5, min: 1, speed: 10 }, ['1460', 5, 20]]],

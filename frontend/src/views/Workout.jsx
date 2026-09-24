@@ -940,6 +940,58 @@ function ActiveWorkout() {
       </div>
     </div>
 
+    {/* Rest timer quick-select bar */}
+    <div className="card" style={{
+      padding: '7px 12px',
+      margin: '0 0 10px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+      flexWrap: 'wrap'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
+        <Icon name="timer" style={{ color: 'var(--acc)' }} size={16} />
+        <span>{t('Rest timer')}:</span>
+        <span className="dim" style={{ fontWeight: 500 }}>{S.restSec || 90}s</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+        {[60, 90, 120].map(sec => (
+          <button
+            key={sec}
+            type="button"
+            className="chip"
+            style={{
+              padding: '3px 8px',
+              fontSize: 12,
+              borderRadius: 12,
+              cursor: 'pointer',
+              background: (S.restSec === sec) ? 'color-mix(in srgb, var(--acc) 15%, transparent)' : 'var(--surface-3)',
+              color: (S.restSec === sec) ? 'var(--acc)' : 'var(--fg)',
+              borderColor: (S.restSec === sec) ? 'var(--acc)' : 'var(--sep)',
+              fontWeight: (S.restSec === sec) ? 700 : 500
+            }}
+            onClick={() => {
+              update(s => { s.restSec = sec })
+              startRest(sec)
+            }}
+            title={t('Set rest timer to {0}s', sec)}
+          >
+            {sec}s
+          </button>
+        ))}
+        <Button
+          size="sm"
+          variant="tinted"
+          icon="play"
+          style={{ padding: '3px 9px', fontSize: 12 }}
+          onClick={() => startRest(S.restSec || 90)}
+        >
+          {t('Rest')}
+        </Button>
+      </div>
+    </div>
+
     {A.entries.length ? <>
       <div className="row between" style={{ alignItems: 'center', marginTop: 8, marginBottom: 8, gap: 6, flexWrap: 'wrap' }}>
         <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

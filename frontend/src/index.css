@@ -702,11 +702,97 @@ h4.sec{
 /* rest variant: −15/+15/Skip and the clock won't share one line on a phone, so the clock and
    bar take the top row and the controls take their own. The work timer keeps a single row —
    it only ever has two buttons. */
-#timer.rest{flex-direction:column;align-items:stretch;gap:10px}
+#timer.rest{flex-direction:column;align-items:stretch;gap:8px}
 #timer.rest .head{display:flex;align-items:center;gap:12px}
-#timer.rest .acts{display:flex;align-items:center;gap:8px}
-#timer.rest .acts .btn{padding-top:11px;padding-bottom:11px}   /* sweaty hands, mid-set */
-#timer.rest .acts .skip{margin-left:auto;min-width:84px}
+#timer.rest .acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#timer.rest .acts .btn{padding-top:10px;padding-bottom:10px}   /* sweaty hands, mid-set */
+#timer.rest .acts .skip{margin-left:auto;min-width:80px}
+#timer.rest .btn-set-rest-toggle{display:inline-flex;align-items:center;gap:4px}
+#timer.rest .rest-quick-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-top:2px}
+#timer.rest .rest-quick-label{font-size:11px;font-weight:600;color:var(--label-3);text-transform:uppercase;letter-spacing:0.04em;margin-right:2px}
+
+/* --- Rest Timer Quick-Select Menu Popover --- */
+.rest-menu-backdrop{
+  position:fixed;inset:0;z-index:58;
+  background:rgba(0,0,0,0.45);
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  animation:fadeIn 0.15s ease-out;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.rest-menu-card{
+  position:fixed;left:12px;right:12px;bottom:calc(170px + var(--sab));
+  max-width:480px;margin:0 auto;z-index:62;
+  background:color-mix(in srgb,var(--surface) 98%,transparent);
+  backdrop-filter:saturate(180%) blur(24px);-webkit-backdrop-filter:saturate(180%) blur(24px);
+  border:1px solid var(--sep);border-radius:var(--r-xl);padding:16px;
+  box-shadow:0 24px 50px -10px rgba(0,0,0,0.7);
+  animation:slideup 0.2s cubic-bezier(0.16,1,0.3,1);
+  max-height:calc(100vh - 200px);overflow-y:auto;
+}
+@media (min-width:700px){
+  .rest-menu-card{
+    left:50%;right:auto;transform:translateX(-50%);width:480px;bottom:195px;
+  }
+}
+.rest-menu-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.rest-menu-title-wrap{display:flex;flex-direction:column;gap:2px}
+.rest-menu-title{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;color:var(--label);letter-spacing:-0.01em}
+.rest-menu-sub{font-size:12px;color:var(--label-3);font-variant-numeric:tabular-nums}
+.rest-menu-sec{margin-bottom:12px}
+.rest-menu-sec-label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--label-2);margin-bottom:8px}
+
+/* 3 prominent common intervals: 60s, 90s, 120s */
+.rest-common-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rest-common-btn{
+  position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:10px 4px;min-height:58px;border-radius:var(--r-md);
+  border:1px solid var(--sep);background:var(--surface-2);color:var(--fg);
+  cursor:pointer;transition:all 0.15s ease;
+}
+.rest-common-btn:hover{background:var(--surface-3);border-color:color-mix(in srgb,var(--acc) 40%,var(--sep))}
+.rest-common-btn.active{
+  background:var(--acc);border-color:var(--acc);color:var(--acc-fg,#000);
+  box-shadow:0 4px 14px -2px color-mix(in srgb,var(--acc) 50%,transparent);
+}
+.rest-common-val{font-size:17px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
+.rest-common-desc{font-size:11px;opacity:0.8;font-weight:500;margin-top:2px}
+.rest-active-badge{
+  position:absolute;top:3px;right:4px;font-size:9px;font-weight:700;text-transform:uppercase;
+  display:inline-flex;align-items:center;gap:2px;background:rgba(0,0,0,0.25);padding:1px 4px;border-radius:4px;
+}
+.rest-default-badge{
+  position:absolute;top:3px;right:4px;font-size:9px;font-weight:600;color:var(--acc);
+  background:color-mix(in srgb,var(--acc) 15%,transparent);padding:1px 4px;border-radius:4px;
+}
+
+/* More intervals */
+.rest-more-grid{display:flex;flex-wrap:wrap;gap:6px}
+.rest-interval-chip{
+  font-size:12px !important;padding:5px 9px !important;border-radius:14px !important;
+  cursor:pointer;font-variant-numeric:tabular-nums;border:1px solid var(--sep) !important;
+  background:var(--surface-2) !important;color:var(--fg) !important;
+}
+.rest-interval-chip.acc{
+  background:var(--acc) !important;color:var(--acc-fg,#000) !important;
+  border-color:var(--acc) !important;font-weight:700 !important;
+}
+
+/* Custom time row */
+.rest-custom-row{display:flex;align-items:center;gap:6px}
+.rest-custom-input-wrap{position:relative;flex:1;display:flex;align-items:center}
+.rest-custom-input{
+  width:100%;padding:6px 22px 6px 8px;font-size:14px;font-weight:600;
+  border-radius:var(--r-sm);border:1px solid var(--sep);background:var(--surface-3);
+  color:var(--fg);text-align:center;font-variant-numeric:tabular-nums;
+}
+.rest-custom-input:focus{outline:none;border-color:var(--acc)}
+.rest-custom-unit{position:absolute;right:8px;font-size:11px;color:var(--label-3);pointer-events:none}
+
+/* Default preference */
+.rest-default-row{padding-top:10px;border-top:1px solid var(--sep);margin-top:2px}
+.rest-default-label{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.rest-default-chk{width:16px;height:16px;accent-color:var(--acc);cursor:pointer}
 /* work timer (issue #16): the same bar doing the opposite job — outlined and tinted so a
    glance tells "you are holding this" apart from "you are recovering". */
 #timer.working{border:var(--hair) solid var(--acc)}
@@ -1537,10 +1623,12 @@ h4.sec{
   #tabbar button.start{margin-top:-26px}
   .sheet{left:50%;right:auto;margin-left:-320px;width:640px;border-radius:var(--r-xl) var(--r-xl) 0 0}
   .center{width:340px}
-  #timer{left:50%;right:auto;margin-left:-260px;width:520px;bottom:112px}
-  /* 520px fits the clock, the bar and all three controls on one line again */
-  #timer.rest{flex-direction:row;align-items:center;gap:14px}
-  #timer.rest .head{flex:1;min-width:0}
+  #timer{left:50%;right:auto;margin-left:-270px;width:540px;bottom:112px}
+  #timer.rest{flex-direction:column;align-items:stretch;gap:8px}
+  #timer.rest .head{display:flex;align-items:center;gap:12px;width:100%}
+  #timer.rest .acts{display:flex;align-items:center;gap:8px;width:100%}
+  #timer.rest .acts .skip{margin-left:auto;min-width:80px}
+  #timer.rest .rest-quick-row{display:flex;align-items:center;gap:6px;width:100%}
   .exmedia img{height:380px}
   .hm-wrap{display:flex;flex-direction:column;align-items:center}
 }
