@@ -16,6 +16,11 @@ export function fmtDate(iso, long) {
   const d = new Date(iso + 'T12:00:00')
   return d.toLocaleDateString(dateLocale(), long ? { weekday: 'short', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short' })
 }
+export function fmtDateFromTs(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  return d.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })
+}
 export function fmtDur(ms) {
   const m = Math.floor(ms / 60000)
   return m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : m + ' min'

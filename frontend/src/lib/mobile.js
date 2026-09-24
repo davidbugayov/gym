@@ -11,7 +11,27 @@
 // web bundles; the Capacitor plugins are only ever imported behind it.
 import { t } from './i18n.js'
 
-export const MOBILE = import.meta.env.VITE_MOBILE === '1'
+export const MOBILE = import.meta.env.VITE_MOBILE === '1' || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).has('mobile') || window.localStorage.getItem('gymly_force_mobile') === '1'))
+
+export const BACKUP_PROMPT_INTERVAL_DAYS = 7
+export const BACKUP_PROMPT_INTERVAL_MS = BACKUP_PROMPT_INTERVAL_DAYS * 24 * 60 * 60 * 1000
+
+export function isBackupOverdue(S) {
+  if (!S) return false
+  const now = Date.now()
+  if (S.lastBackupDismissedAt && (now - S.lastBackupDismissedAt < BACKUP_PROMPT_INTERVAL_MS)) {
+    return false
+  }
+  if (!S.lastBackupAt) {
+    return !!((S.workouts?.length) || (S.routines?.length) || (S.bodyweight?.length))
+  }
+  return (now - S.lastBackupAt >= BACKUP_PROMPT_INTERVAL_MS)
+}
+
+export function getDaysSinceLastBackup(S) {
+  if (!S?.lastBackupAt) return null
+  return Math.max(0, Math.floor((Date.now() - S.lastBackupAt) / (24 * 60 * 60 * 1000)))
+}
 
 const FILE = 'gymly-state.json'
 
@@ -61,8 +81,17 @@ export async function syncReminder(S, interactive = false) {
 // WKWebView can't do blob-URL downloads, so the backup goes out through the OS share sheet
 // (Files, AirDrop, mail, …) from a temp file instead.
 export async function shareExport(json, filename) {
-  const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
-  const { Share } = await import('@capacitor/share')
-  const w = await Filesystem.writeFile({ path: filename, directory: Directory.Cache, data: json, encoding: Encoding.UTF8 })
-  await Share.share({ title: filename, url: w.uri })
+  try {
+    const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
+    const { Share } = await import('@capacitor/share')
+    const w = await Filesystem.writeFile({ path: filename, directory: Directory.Cache, data: json, encoding: Encoding.UTF8 })
+    await Share.share({ title: filename, url: w.uri })
+  } catch (e) {
+    if (typeof document !== 'undefined') {
+      const blob = new Blob([json], { type: 'application/json' })
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); URL.revokeObjectURL(a.href)
+    } else {
+      throw e
+    }
+  }
 }

@@ -578,6 +578,17 @@ h4.sec{
 .setrow.eff3 .stp .num{font-size:14px}
 .setrow.done .n{background:var(--acc);color:var(--on-acc)}
 .setrow.done{opacity:.45}
+@keyframes pulse-working-border {
+  0%, 100% {
+    border-left-color: var(--acc);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--acc) 20%, transparent);
+  }
+  50% {
+    border-left-color: color-mix(in srgb, var(--acc) 65%, white);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc) 45%, transparent);
+  }
+}
+
 .setrow.is-working{
   background:color-mix(in srgb,var(--acc) 10%,transparent);
   border-left:3px solid var(--acc);
@@ -585,8 +596,23 @@ h4.sec{
   padding-left:6px;
   padding-right:6px;
   margin:2px 0;
+  transition:border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+  animation: pulse-working-border 2.4s ease-in-out infinite;
 }
 .setrow.is-working::before{display:none}
+
+.btn-swap-ex, .btn-quick-swap{
+  font-size:12px;font-weight:600;color:var(--acc);
+  background:color-mix(in srgb,var(--acc) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--acc) 28%,transparent);
+  padding:4px 9px;border-radius:6px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:4px;
+  transition:all var(--fast);
+}
+.btn-swap-ex:hover, .btn-quick-swap:hover{
+  background:color-mix(in srgb,var(--acc) 22%,transparent);
+  border-color:var(--acc);
+}
 .setrow .n{
   cursor:pointer;
   border:1px solid transparent;

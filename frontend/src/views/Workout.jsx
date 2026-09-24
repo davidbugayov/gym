@@ -9,7 +9,7 @@ import { beep, vibrate, hapticClick, hapticSetComplete } from '../lib/sound.js'
 import { t } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import Media from '../components/Media.jsx'
-import { startFlow, startFreeleticsFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, changeExerciseSheet, showProgramSheet, switchTrainingSheet, exerciseNoteSheet } from '../sheets.jsx'
+import { startFlow, startFreeleticsFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, changeExerciseSheet, quickSwapSheet, showProgramSheet, switchTrainingSheet, exerciseNoteSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField, Segmented } from '../components/ui.jsx'
 import { nextPrescription, applyPrescription } from '../lib/progression.js'
@@ -265,19 +265,19 @@ function ChangeSetSheet({ entryIdx, setIdx, close }) {
     <div style={{ marginBottom: 12 }}>
       <Button variant="tinted" icon="shuffle" onClick={() => {
         close()
-        changeExerciseSheet(ex, newEx => {
+        quickSwapSheet(ex, entry, newEx => {
           update(st => {
             const ent = st.active?.entries[entryIdx]
             if (!ent) return
             ent.id = newEx.id
             ent.target = { ...(ent.target || {}), id: newEx.id }
-            const r = st.routines.find(x => x.id === st.active.routineId)
+            const r = st.routines?.find(x => x.id === st.active.routineId)
             ent.plan = nextPrescription(st, { ...ent.target, id: newEx.id }, r)
           })
-          useUI.getState().toast(t('Swapped to {0}', newEx.n))
+          useUI.getState().toast(t('Swapped to {0} · Set progress kept', t(newEx.n)))
         })
       }}>
-        {t('Change / Swap this exercise')}
+        {t('Quick swap exercise (same muscle)')}
       </Button>
     </div>
 
@@ -361,22 +361,22 @@ function WorkingSetsSheet({ close }) {
                 {isCurrentEx && <span className="round-badge active">{t('Active')}</span>}
               </div>
               <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-                <button type="button" className="btn-swap-ex" onClick={() => {
+                <button type="button" className="btn-swap-ex btn-quick-swap" onClick={() => {
                   close()
-                  changeExerciseSheet(ex, newEx => {
+                  quickSwapSheet(ex, entry, newEx => {
                     update(st => {
                       const ent = st.active?.entries[eIdx]
                       if (!ent) return
                       ent.id = newEx.id
                       ent.target = { ...(ent.target || {}), id: newEx.id }
-                      const r = st.routines.find(x => x.id === st.active.routineId)
+                      const r = st.routines?.find(x => x.id === st.active.routineId)
                       ent.plan = nextPrescription(st, { ...ent.target, id: newEx.id }, r)
                     })
-                    useUI.getState().toast(t('Swapped to {0}', newEx.n))
+                    useUI.getState().toast(t('Swapped to {0} · Set progress kept', t(newEx.n)))
                   })
-                }} title={t('Change / Swap this exercise')}>
+                }} title={t('Quick swap with another {0} exercise', t(ex.tg || ex.bp || 'muscle'))}>
                   <Icon name="shuffle" style={{ fontSize: 11 }} />
-                  <span>{t('Change')}</span>
+                  <span>{t('Quick swap')}</span>
                 </button>
                 <span className="small muted">{exDoneCount}/{entry.sets.length}</span>
               </div>
@@ -524,7 +524,7 @@ function Elapsed({ start, label, showIcon = false }) {
 }
 
 /* ---------- one exercise block (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
-function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemoveSet, onStartTimed, onChangeSet, onChangeExercise }) {
+function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemoveSet, onStartTimed, onChangeSet, onChangeExercise, onQuickSwap }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
   const entry = S.active.entries[entryIdx]
@@ -578,9 +578,14 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
     <div className="row between" style={{ marginBottom: 6, alignItems: 'center' }}>
       <div style={{ fontSize: compact ? 17 : 20, fontWeight: 600, letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{t(ex.n)}</div>
       <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-        <button type="button" className="btn-swap-ex" onClick={() => onChangeExercise && onChangeExercise(entryIdx)} title={t('Change / Swap exercise')}>
+        <button
+          type="button"
+          className="btn-swap-ex btn-quick-swap"
+          onClick={() => onQuickSwap ? onQuickSwap(entryIdx) : (onChangeExercise && onChangeExercise(entryIdx))}
+          title={t('Quick swap with another {0} exercise without losing set progress', t(ex.tg || ex.bp || 'muscle'))}
+        >
           <Icon name="shuffle" style={{ fontSize: 12 }} />
-          <span>{t('Change')}</span>
+          <span>{t('Quick swap')}</span>
         </button>
         <button className="iconbtn" aria-label={t('Details')} onClick={() => exerciseDetailSheet(ex)}><Icon name="info" /></button>
       </div>
@@ -790,10 +795,27 @@ function ActiveWorkout() {
         if (!ent) return
         ent.id = newEx.id
         ent.target = { ...(ent.target || {}), id: newEx.id }
-        const r = s.routines.find(x => x.id === s.active.routineId)
+        const r = s.routines?.find(x => x.id === s.active.routineId)
         ent.plan = nextPrescription(s, { ...ent.target, id: newEx.id }, r)
       })
       useUI.getState().toast(t('Swapped to {0}', newEx.n))
+    })
+  }
+
+  const handleQuickSwapExercise = entryIdx => {
+    const entry = A.entries[entryIdx]
+    if (!entry) return
+    const curEx = exOr(entry.id)
+    quickSwapSheet(curEx, entry, newEx => {
+      update(s => {
+        const ent = s.active?.entries[entryIdx]
+        if (!ent) return
+        ent.id = newEx.id
+        ent.target = { ...(ent.target || {}), id: newEx.id }
+        const r = s.routines?.find(x => x.id === s.active.routineId)
+        ent.plan = nextPrescription(s, { ...ent.target, id: newEx.id }, r)
+      })
+      useUI.getState().toast(t('Swapped to {0} · Set progress kept', t(newEx.n)))
     })
   }
 
@@ -1027,13 +1049,15 @@ function ActiveWorkout() {
             <ExerciseBlock entryIdx={idx} compact
               onToggle={i => toggle(idx, i)} onField={(i, f, v) => setField(idx, i, f, v)} onAddSet={() => addSet(idx)} onRemoveSet={() => removeSet(idx)} onStartTimed={i => startTimed(idx, i)}
               onChangeSet={i => useUI.getState().openSheet(cl => <ChangeSetSheet entryIdx={idx} setIdx={i} close={cl} />)}
-              onChangeExercise={handleSwapExercise} />
+              onChangeExercise={handleSwapExercise}
+              onQuickSwap={handleQuickSwapExercise} />
           </div>)}
         </div>
       ) : (
         <ExerciseBlock entryIdx={cur} onToggle={i => toggle(cur, i)} onField={(i, f, v) => setField(cur, i, f, v)} onAddSet={() => addSet(cur)} onRemoveSet={() => removeSet(cur)} onStartTimed={i => startTimed(cur, i)}
           onChangeSet={i => useUI.getState().openSheet(cl => <ChangeSetSheet entryIdx={cur} setIdx={i} close={cl} />)}
-          onChangeExercise={handleSwapExercise} />
+          onChangeExercise={handleSwapExercise}
+          onQuickSwap={handleQuickSwapExercise} />
       )}
     </> : <div className="empty"><div className="ico"><Icon name="shuffle" /></div>{t('Freestyle workout — add your first exercise.')}</div>}
 

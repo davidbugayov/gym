@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, allExercises, equipmentOf, exOr, findSubstitutes, getFormCues } from './lib/exercises.js'
@@ -838,6 +838,204 @@ function ChangeExerciseSheet({ currentEx, onSwap, close }) {
   </>
 }
 export const changeExerciseSheet = (currentEx, onSwap) => ui().openSheet(close => <ChangeExerciseSheet currentEx={currentEx} onSwap={onSwap} close={close} />)
+
+/* ============================ quick swap exercise sheet (same muscle group) ============================ */
+function QuickSwapSheet({ currentEx, entry, onSwap, close }) {
+  const st = useStore(s => s.S)
+  const all = allExercises(st)
+  const current = currentEx ? exOr(currentEx.id || currentEx) : null
+  const targetMuscle = current?.tg || current?.bp || ''
+  const bodyPart = current?.bp || ''
+
+  // All substitutes targeting the same muscle group
+  const sameMuscleExercises = useMemo(() => {
+    if (!current) return []
+    const subs = findSubstitutes(current, all)
+    if (subs.length > 0) return subs
+    return all.filter(e => e.id !== current.id && (e.bp === current.bp || e.tg === current.tg))
+  }, [current, all])
+
+  const [q, setQ] = useState('')
+  const [eq, setEq] = useState('')
+  const [shown, setShown] = useState(30)
+  const [showAllMuscles, setShowAllMuscles] = useState(false)
+
+  const completedSets = entry?.sets?.filter(s => s.done).length || 0
+  const totalSets = entry?.sets?.length || 0
+
+  const ql = q.toLowerCase().trim()
+  let pool = showAllMuscles ? all.filter(e => e.id !== current?.id) : sameMuscleExercises
+  if (ql) {
+    pool = pool.filter(e => e.n.toLowerCase().includes(ql) || (e.tg && e.tg.toLowerCase().includes(ql)) || (e.eq && e.eq.toLowerCase().includes(ql)))
+  }
+
+  const eqOpts = equipmentOf(pool)
+  const eqOn = eqOpts.includes(eq) ? eq : ''
+  const f = eqOn ? pool.filter(e => e.eq === eqOn) : pool
+
+  const handlePick = ex => {
+    close()
+    onSwap(ex)
+  }
+
+  const handleRandom = () => {
+    if (!sameMuscleExercises.length) return
+    const randomEx = sameMuscleExercises[Math.floor(Math.random() * sameMuscleExercises.length)]
+    handlePick(randomEx)
+  }
+
+  return <>
+    <div className="row between" style={{ alignItems: 'flex-start', marginBottom: 10 }}>
+      <div>
+        <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+          <h3 style={{ margin: 0 }}>{t('Quick Swap')}</h3>
+          <span className="tag acc" style={{ fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Icon name="shuffle" style={{ fontSize: 10 }} />
+            {t('Same muscle group')}
+          </span>
+        </div>
+        {current && (
+          <div className="muted small" style={{ marginTop: 2 }}>
+            {t('Replace “{0}”', t(current.n))}
+          </div>
+        )}
+      </div>
+      <button type="button" className="iconbtn" onClick={close} aria-label={t('Close')}><Icon name="xmark" /></button>
+    </div>
+
+    {/* Set progress preserved banner */}
+    <div className="card" style={{ padding: '10px 12px', marginBottom: 12, background: 'color-mix(in srgb, var(--acc) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--acc) 30%, transparent)' }}>
+      <div className="row between" style={{ alignItems: 'center' }}>
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <span style={{ color: 'var(--acc)', fontSize: 16, display: 'inline-flex' }}>
+            <Icon name="checkCircleFill" />
+          </span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--fg)' }}>
+              {t('Set progress kept')}
+            </div>
+            <div className="small muted">
+              {t('{0} of {1} sets completed · Weights and reps preserved', completedSets, totalSets)}
+            </div>
+          </div>
+        </div>
+        {sameMuscleExercises.length > 1 && (
+          <Button size="sm" variant="tinted" icon="shuffle" onClick={handleRandom} title={t('Pick a random substitute from this muscle group')}>
+            {t('Random swap')}
+          </Button>
+        )}
+      </div>
+    </div>
+
+    {/* Currently selected exercise info */}
+    {current && (
+      <div className="card" style={{ padding: '8px 12px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Thumb ex={current} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="small muted" style={{ textTransform: 'uppercase', fontSize: 10, fontWeight: 700 }}>{t('Currently selected')}</div>
+          <div style={{ fontWeight: 700, fontSize: 14, textTransform: 'capitalize' }}>{t(current.n)}</div>
+          <div className="small dim">{t(current.tg || current.bp)} · {t(current.eq)}</div>
+        </div>
+      </div>
+    )}
+
+    {/* Search within this muscle group */}
+    <div className="search" style={{ marginBottom: 8 }}>
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+      <input
+        className="input"
+        placeholder={t('Search in {0}…', t(targetMuscle || bodyPart || 'muscle group'))}
+        value={q}
+        onChange={e => { setQ(e.target.value); setShown(30) }}
+      />
+    </div>
+
+    {/* Equipment filter chips */}
+    {eqOpts.length > 1 && (
+      <div className="chips" style={{ marginBottom: 10 }}>
+        <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(30) }}>
+          {t('Any equipment')}
+        </button>
+        {eqOpts.map(x => (
+          <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(30) }}>
+            {t(x)}
+          </button>
+        ))}
+      </div>
+    )}
+
+    {/* Quick 1-tap alternatives carousel if multiple exist and no search is active */}
+    {!ql && !eq && sameMuscleExercises.length > 0 && !showAllMuscles && (
+      <div style={{ marginBottom: 10 }}>
+        <div className="small muted" style={{ marginBottom: 6, fontWeight: 600 }}>{t('Quick alternatives')}</div>
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+          {sameMuscleExercises.slice(0, 5).map(e => (
+            <button
+              key={e.id}
+              type="button"
+              className="btn ghost"
+              onClick={() => handlePick(e)}
+              style={{ padding: '6px 10px', fontSize: 12, borderRadius: 8, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--surface-2)', border: '1px solid var(--sep)' }}
+            >
+              <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{t(e.n)}</span>
+              <span className="tag small" style={{ fontSize: 10 }}>{t(e.eq)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* List of matching substitutes */}
+    <div className="list">
+      {f.slice(0, shown).map(e => (
+        <div key={e.id} className="item" onClick={() => handlePick(e)}>
+          <Thumb ex={e} />
+          <div className="grow">
+            <div className="tt capitalize">{t(e.n)}</div>
+            <div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div>
+          </div>
+          <span className="tag acc" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Icon name="shuffle" style={{ fontSize: 10 }} />
+            {t('Swap')}
+          </span>
+        </div>
+      ))}
+      {f.length === 0 && (
+        <div className="empty" style={{ padding: '24px 12px' }}>
+          <div>{t('No other exercises found for this muscle group.')}</div>
+          {!showAllMuscles && (
+            <div style={{ marginTop: 10 }}>
+              <Button size="sm" variant="tinted" onClick={() => setShowAllMuscles(true)}>
+                {t('Search all muscle groups instead')}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+
+    {f.length > shown && (
+      <>
+        <div style={{ height: 8 }} />
+        <Button onClick={() => setShown(s => s + 30)}>{t('Show more')}</Button>
+      </>
+    )}
+
+    {!showAllMuscles && (
+      <div style={{ marginTop: 12, textAlign: 'center' }}>
+        <button
+          type="button"
+          className="btn ghost small"
+          style={{ fontSize: 12, color: 'var(--dim)' }}
+          onClick={() => setShowAllMuscles(true)}
+        >
+          {t('Looking for a different muscle? Browse all exercises')}
+        </button>
+      </div>
+    )}
+  </>
+}
+export const quickSwapSheet = (currentEx, entry, onSwap) => ui().openSheet(close => <QuickSwapSheet currentEx={currentEx} entry={entry} onSwap={onSwap} close={close} />)
 
 /* ============================ exercise config ============================ */
 // Progression settings for one exercise (issue #17). Shown inside the config sheet because

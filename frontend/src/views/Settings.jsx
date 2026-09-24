@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore, DEF, hasData } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { ACCENTS, todayISO, localTZ } from '../lib/format.js'
+import { ACCENTS, todayISO, localTZ, fmtDateFromTs } from '../lib/format.js'
 import { effortOf } from '../lib/history.js'
 import { webauthnOK, passkeyLogin, passkeyRegister, IS_ANDROID } from '../lib/api.js'
 import { pushSupported, enablePush, disablePush, sendTestPush } from '../lib/push.js'
 import { wakeLockSupported } from '../lib/wakelock.js'
 import { t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
-import { MOBILE, shareExport, syncReminder } from '../lib/mobile.js'
+import { MOBILE, shareExport, syncReminder, isBackupOverdue, getDaysSinceLastBackup, BACKUP_PROMPT_INTERVAL_DAYS } from '../lib/mobile.js'
 import { programWizardSheet, confirmSheet, importFromApp, googleHealthSheet, importUrlSheet, warmupCooldownSheet } from '../sheets.jsx'
 import { coachAvailable, hasConsent } from '../lib/coach.js'
 import { forgetCoach } from '../lib/coach-api.js'
@@ -35,11 +35,16 @@ export default function Settings() {
     const name = 'gymly-backup-' + todayISO() + '.json'
     // WKWebView can't download blob URLs — the native build hands the file to the share sheet.
     if (MOBILE) {
-      try { await shareExport(json, name); toast(t('Backup exported')) } catch (e) { /* share sheet dismissed */ }
+      try {
+        await shareExport(json, name)
+        update(s => { s.lastBackupAt = Date.now(); delete s.lastBackupDismissedAt })
+        toast(t('Backup exported'))
+      } catch (e) { /* share sheet dismissed */ }
       return
     }
     const blob = new Blob([json], { type: 'application/json' })
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href)
+    update(s => { s.lastBackupAt = Date.now(); delete s.lastBackupDismissedAt })
     toast(t('Backup exported'))
   }
   const doImport = ev => {
@@ -102,10 +107,29 @@ export default function Settings() {
       <div style={{ flex: 1, marginLeft: 10 }}><h1>{t('Settings')}</h1></div>
     </div>
 
+    {/* Periodic Mobile Backup Prompt Notification */}
+    {MOBILE && isBackupOverdue(S) && (
+      <BackupPromptCard
+        S={S}
+        onExport={doExport}
+        onDismiss={() => {
+          update(s => { s.lastBackupDismissedAt = Date.now() })
+          toast(t('Reminder postponed for 7 days'))
+        }}
+      />
+    )}
+
     {/* ---------- account (Google Gmail + Passkeys) ---------- */}
     <Section title={MOBILE ? t('Your data') : DEMO ? t('Demo') : t('Account')}>
       {MOBILE ? <>
-        <Row icon="lock" iconTint="var(--acc)" title={t('All data stays on this phone')} subtitle={t('No account, no cloud — back it up anytime with Export below.')} />
+        <Row
+          icon="lock"
+          iconTint="var(--acc)"
+          title={t('All data stays on this phone')}
+          subtitle={S.lastBackupAt
+            ? t('No cloud sync — last backed up on {0}.', fmtDateFromTs(S.lastBackupAt))
+            : t('No account, no cloud — back it up anytime with Export below.')}
+        />
         <Row icon="rocket" iconTint="var(--indigo)" title={t('Self-host Gymly')} subtitle={t('Passkey sign-in, sync across your devices, your own data.')} accessory="chevron"
           onClick={() => window.open(REPO, '_blank', 'noopener')} />
       </> : DEMO ? <>
@@ -380,7 +404,14 @@ export default function Settings() {
         subtitle={t('Google Fit, FitNotes, Strong, Hevy — or body weight from Apple Health')}
         accessory="chevron" onClick={() => importRef.current.click()} />
       <Row icon="upload" iconTint="var(--blue)" title={t('Import backup')} accessory="chevron" onClick={() => fileRef.current.click()} />
-      <Row icon="download" iconTint="var(--blue)" title={t('Export backup (JSON)')} accessory="chevron" onClick={doExport} />
+      <Row
+        icon="download"
+        iconTint="var(--blue)"
+        title={t('Export backup (JSON)')}
+        subtitle={S.lastBackupAt ? t('Last export: {0}', fmtDateFromTs(S.lastBackupAt)) : (MOBILE ? t('Never exported') : null)}
+        accessory="chevron"
+        onClick={doExport}
+      />
       {/* Also drops anything the Coach is holding server-side: a wipe that leaves a pending
           proposal on the server behind would be a wipe in name only. */}
       <Row icon="trash" iconTint="var(--red)" title={t('Reset everything')} danger onClick={() => confirmSheet({ title: t('Reset everything?'), message: t('Deletes your plan, workouts and body weight on this device. This cannot be undone.'), confirmText: t('Delete everything'), danger: true, onConfirm: () => { if (user) forgetCoach().catch(() => {}); replaceState(JSON.parse(JSON.stringify(DEF)), true); nav('/home'); toast(t('All data reset')) } })} />
@@ -548,3 +579,78 @@ function RegisterInline({ close, setUser, pushState, pullState, toast }) {
     <div style={{ height: 12 }} /><Button variant="primary" onClick={go}>{t('Create passkey')}</Button>
   </>
 }
+
+function BackupPromptCard({ S, onExport, onDismiss }) {
+  const days = getDaysSinceLastBackup(S)
+  const isOverdue = days !== null && days >= BACKUP_PROMPT_INTERVAL_DAYS
+
+  return (
+    <div
+      className="card"
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--acc-line, rgba(48,209,88,.38))',
+        borderRadius: 'var(--r-card)',
+        padding: '14px 16px',
+        marginBottom: 16,
+        position: 'relative',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flex: 1, minWidth: 0 }}>
+          <span
+            className="lrow-i"
+            style={{
+              background: 'var(--acc)',
+              color: 'var(--on-acc)',
+              marginTop: 2,
+              flexShrink: 0,
+            }}
+          >
+            <Icon name="shield" />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--label)', letterSpacing: '-0.01em' }}>
+              {t('Export backup recommended')}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--label-2)', marginTop: 4, lineHeight: 1.4 }}>
+              {isOverdue
+                ? t('Your last backup was {0} days ago. Export a fresh backup to protect your workout history.', days)
+                : t('On mobile, your workouts live only on this phone. Export a backup now to keep your data safe.')}
+            </div>
+          </div>
+        </div>
+        <button
+          className="iconbtn"
+          style={{ width: 28, height: 28, color: 'var(--label-3)', flexShrink: 0, marginTop: -2 }}
+          onClick={onDismiss}
+          aria-label={t('Dismiss')}
+          title={t('Remind later')}
+        >
+          <Icon name="xmark" />
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', marginTop: 12 }}>
+        <Button
+          size="sm"
+          variant="plain"
+          onClick={onDismiss}
+          style={{ padding: '6px 12px', fontSize: 13, height: 32 }}
+        >
+          {t('Remind later')}
+        </Button>
+        <Button
+          size="sm"
+          variant="primary"
+          icon="download"
+          onClick={onExport}
+          style={{ padding: '6px 14px', fontSize: 13, height: 32 }}
+        >
+          {t('Export now')}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
