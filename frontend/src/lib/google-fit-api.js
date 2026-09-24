@@ -4,6 +4,23 @@ import { EXIDX } from './exercises.js'
 
 const API = 'https://health.googleapis.com/v4/users/me/dataTypes'
 
+function readApiError(status, detail) {
+  let payload = null
+  try { payload = JSON.parse(detail) } catch {}
+  const apiError = payload?.error || {}
+  const reason = apiError.details?.find(detail => detail.reason || detail.metadata?.reason)?.reason
+    || apiError.details?.find(detail => detail.metadata?.reason)?.metadata?.reason
+    || apiError.errors?.[0]?.reason
+    || apiError.reason
+    || apiError.status
+    || null
+  const error = new Error(`Google Health API ${status}`)
+  error.status = status
+  error.reason = String(reason || '').toUpperCase()
+  error.detail = detail
+  return error
+}
+
 function utcOffsetDuration(timestamp) {
   const minutes = -new Date(timestamp).getTimezoneOffset()
   return `${minutes * 60}s`
@@ -27,10 +44,7 @@ async function createDataPoint(token, type, payload) {
   })
   if (!response.ok) {
     const detail = await response.text()
-    const error = new Error(`Google Health API ${response.status}`)
-    error.status = response.status
-    error.detail = detail
-    throw error
+    throw readApiError(response.status, detail)
   }
   return response.json()
 }
@@ -104,10 +118,7 @@ export async function readWorkoutsFromGoogleHealth(accessToken, { pageSize = 25 
     headers: { Authorization: `Bearer ${token}` }
   })
   if (!response.ok) {
-    const error = new Error(`Google Health API ${response.status}`)
-    error.status = response.status
-    error.detail = await response.text()
-    throw error
+    throw readApiError(response.status, await response.text())
   }
   const data = await response.json()
   return (data.dataPoints || []).map(importedExercise).filter(Boolean)
@@ -140,7 +151,7 @@ export async function syncAllWithGoogleHealth(accessToken, workouts = [], bodywe
       await uploadSessionToGoogleHealth(token, workout)
       syncedWorkouts++
     } catch (error) {
-      errors.push({ id: workout.id, error: error.message, status: error.status })
+      errors.push({ id: workout.id, error: error.message, status: error.status, reason: error.reason })
       if (error.status === 401) break
     }
   }
@@ -150,7 +161,7 @@ export async function syncAllWithGoogleHealth(accessToken, workouts = [], bodywe
       await uploadWeightToGoogleHealth(token, entry.w, timestamp)
       syncedWeights++
     } catch (error) {
-      errors.push({ id: entry.id || entry.d, error: error.message, status: error.status })
+      errors.push({ id: entry.id || entry.d, error: error.message, status: error.status, reason: error.reason })
       if (error.status === 401) break
     }
   }
