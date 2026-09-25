@@ -140,9 +140,11 @@ export function getWarmup(S) {
   const cfg = S.warmupCfg || {}
   const preset = cfg.preset || DEFAULT_WARMUP_PRESET
   const ids = cfg.custom ? (cfg.ids || []) : (WARMUP_PRESETS[preset]?.ids || WARMUP_PRESETS[DEFAULT_WARMUP_PRESET].ids)
+  const durations = cfg.durations || {}
   return ids.map(id => {
     const poolItem = WARMUP_POOL.find(e => e.id === id)
-    return { id, sets: 1, sec: poolItem?.sec || 30, weight: 0, mode: 'time', phase: 'warmup' }
+    const sec = durations[id] || poolItem?.sec || 30
+    return { id, sets: 1, sec, weight: 0, mode: 'time', phase: 'warmup' }
   }).filter(e => WARMUP_POOL.some(p => p.id === e.id))
 }
 
@@ -154,8 +156,10 @@ export function getCooldown(S) {
   const cfg = S.cooldownCfg || {}
   const preset = cfg.preset || DEFAULT_COOLDOWN_PRESET
   const ids = cfg.custom ? (cfg.ids || []) : (COOLDOWN_PRESETS[preset]?.ids || COOLDOWN_PRESETS[DEFAULT_COOLDOWN_PRESET].ids)
+  const durations = cfg.durations || {}
   return ids.map(id => {
     const poolItem = COOLDOWN_POOL.find(e => e.id === id)
-    return { id, sets: 1, sec: poolItem?.sec || 45, weight: 0, mode: 'time', phase: 'cooldown' }
+    const sec = durations[id] || poolItem?.sec || 45
+    return { id, sets: 1, sec, weight: 0, mode: 'time', phase: 'cooldown' }
   }).filter(e => COOLDOWN_POOL.some(p => p.id === e.id))
 }

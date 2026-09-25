@@ -1617,6 +1617,70 @@ export function WorkoutRow({ w, onClick }) {
 }
 
 /* ============================ warmup / cooldown config ============================ */
+function ExerciseSecDialog({ ex, currentSec, onSave, close }) {
+  const [val, setVal] = useState(currentSec)
+  const presets = [15, 20, 30, 40, 45, 60, 90, 120]
+  const exData = EXIDX[ex.id]
+  const name = ex.label || (exData ? exData.n : ex.id)
+
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <h3 style={{ marginBottom: 4, textTransform: 'capitalize' }}>{t(name)}</h3>
+      <div className="muted small" style={{ marginBottom: 16 }}>{t('Duration in seconds')}</div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 18 }}>
+        <button
+          type="button"
+          className="iconbtn"
+          style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--sep)', fontSize: 18 }}
+          onClick={() => setVal(v => Math.max(5, v - 5))}
+          aria-label={t('Decrease seconds')}
+        >
+          <Icon name="minus" />
+        </button>
+        <div style={{
+          fontSize: 34,
+          fontWeight: 700,
+          fontFamily: "'JetBrains Mono', monospace",
+          color: 'var(--acc)',
+          minWidth: 90,
+          letterSpacing: '-0.02em'
+        }}>
+          {val}<span style={{ fontSize: 20, color: 'var(--label-2)', marginLeft: 3 }}>{t('s')}</span>
+        </div>
+        <button
+          type="button"
+          className="iconbtn"
+          style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--sep)', fontSize: 18 }}
+          onClick={() => setVal(v => Math.min(600, v + 5))}
+          aria-label={t('Increase seconds')}
+        >
+          <Icon name="plus" />
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
+        {presets.map(s => (
+          <button
+            key={s}
+            type="button"
+            className={`chip ${val === s ? 'chip-active' : ''}`}
+            style={{ padding: '6px 14px', fontSize: 13, cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace" }}
+            onClick={() => setVal(s)}
+          >
+            {s}{t('s')}
+          </button>
+        ))}
+      </div>
+
+      <div className="row" style={{ gap: 8 }}>
+        <Button variant="ghost" style={{ flex: 1 }} onClick={close}>{t('Cancel')}</Button>
+        <Button variant="primary" style={{ flex: 1 }} onClick={() => { onSave(val); close() }}>{t('Save')}</Button>
+      </div>
+    </div>
+  )
+}
+
 function WarmupCooldownConfig({ mode, close }) {
   const st = useStore(s => s.S)
   const update = useStore(s => s.update)
@@ -1628,6 +1692,7 @@ function WarmupCooldownConfig({ mode, close }) {
   const catName = isWarmup ? warmupCategoryName : cooldownCategoryName
   const cfg = st[cfgKey] || {}
   const isCustom = !!cfg.custom
+  const durations = cfg.durations || {}
 
   const activePreset = cfg.preset || 'standard'
   const activeIds = isCustom
@@ -1641,11 +1706,32 @@ function WarmupCooldownConfig({ mode, close }) {
     const idx = ids.indexOf(id)
     if (idx >= 0) ids.splice(idx, 1)
     else ids.push(id)
-    update(s => { s[cfgKey] = { ...s[cfgKey], custom: true, ids } })
+    update(s => { s[cfgKey] = { ...s[cfgKey], custom: true, ids, durations: { ...(s[cfgKey]?.durations || durations) } } })
+  }
+
+  const setExerciseSec = (id, newSec) => {
+    const sec = Math.max(5, Math.min(600, Math.round(newSec / 5) * 5 || newSec))
+    update(s => {
+      const curCfg = s[cfgKey] || {}
+      s[cfgKey] = {
+        ...curCfg,
+        custom: true,
+        ids: curCfg.custom ? (curCfg.ids || [...activeIds]) : [...activeIds],
+        durations: {
+          ...(curCfg.durations || durations),
+          [id]: sec
+        }
+      }
+    })
+  }
+
+  const adjustExerciseSec = (id, delta, defaultSec) => {
+    const current = durations[id] || defaultSec
+    setExerciseSec(id, current + delta)
   }
 
   const selectPreset = key => {
-    update(s => { s[cfgKey] = { preset: key, custom: false, ids: [] } })
+    update(s => { s[cfgKey] = { preset: key, custom: false, ids: [], durations: { ...(s[cfgKey]?.durations || {}) } } })
   }
 
   return <>
@@ -1674,7 +1760,7 @@ function WarmupCooldownConfig({ mode, close }) {
         type="button"
         className={`chip ${isCustom ? 'chip-active' : ''}`}
         style={{ padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}
-        onClick={() => update(s => { s[cfgKey] = { ...s[cfgKey], custom: true, ids: [...activeIds] } })}
+        onClick={() => update(s => { s[cfgKey] = { ...s[cfgKey], custom: true, ids: [...activeIds], durations: { ...(s[cfgKey]?.durations || durations) } } })}
       >
         {t('Custom')}
       </button>
@@ -1686,31 +1772,111 @@ function WarmupCooldownConfig({ mode, close }) {
     </div>
     {categories.map(cat => {
       const catExercises = pool.filter(e => e.category === cat)
-      return <div key={cat} style={{ marginBottom: 12 }}>
+      return <div key={cat} style={{ marginBottom: 14 }}>
         <div className="muted small" style={{ fontWeight: 600, marginBottom: 4, color: 'var(--acc)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {catName(cat)}
         </div>
         {catExercises.map(ex => {
           const checked = activeIds.includes(ex.id)
           const exData = EXIDX[ex.id]
-          return <label
+          const currentSec = durations[ex.id] || ex.sec
+          const exName = ex.label || (exData ? exData.n : ex.id)
+
+          return <div
             key={ex.id}
-            className="row"
-            style={{ gap: 10, padding: '6px 0', cursor: isCustom ? 'pointer' : 'default', opacity: isCustom ? 1 : (checked ? 1 : 0.4) }}
+            className="row between"
+            style={{
+              padding: '8px 10px',
+              borderRadius: 'var(--r)',
+              marginBottom: 4,
+              background: checked ? 'var(--surface)' : 'transparent',
+              border: checked ? '1px solid var(--sep)' : '1px solid transparent',
+              alignItems: 'center',
+              opacity: checked ? 1 : 0.45,
+              transition: 'all var(--fast)'
+            }}
           >
-            <input
-              type="checkbox"
-              checked={checked}
-              disabled={!isCustom}
-              onChange={() => toggleExercise(ex.id)}
-              style={{ accentColor: 'var(--acc)', width: 18, height: 18, flexShrink: 0 }}
-            />
-            <Thumb ex={exData} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="capitalize" style={{ fontSize: 13, lineHeight: 1.3 }}>{exData ? exData.n : ex.label}</div>
-              <div className="muted" style={{ fontSize: 11 }}>{ex.sec}s</div>
+            <div
+              className="row"
+              style={{ gap: 10, flex: 1, minWidth: 0, cursor: 'pointer', alignItems: 'center' }}
+              onClick={() => toggleExercise(ex.id)}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => toggleExercise(ex.id)}
+                style={{ accentColor: 'var(--acc)', width: 19, height: 19, flexShrink: 0, cursor: 'pointer' }}
+                onClick={e => e.stopPropagation()}
+              />
+              <Thumb ex={exData} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="capitalize" style={{ fontSize: 13.5, fontWeight: 500, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {t(exName)}
+                </div>
+                <div className="muted" style={{ fontSize: 11, marginTop: 1 }}>
+                  {t('{0} sec', currentSec)}
+                </div>
+              </div>
             </div>
-          </label>
+
+            {/* Interactive seconds selector & stepper */}
+            <div className="row" style={{ alignItems: 'center', gap: 4, marginLeft: 8 }} onClick={e => e.stopPropagation()}>
+              <button
+                type="button"
+                className="iconbtn"
+                style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--sep)', fontSize: 12 }}
+                disabled={!checked}
+                onClick={() => adjustExerciseSec(ex.id, -5, ex.sec)}
+                title="-5s"
+                aria-label={t('Decrease seconds')}
+              >
+                <Icon name="minus" />
+              </button>
+              <button
+                type="button"
+                className="tag"
+                style={{
+                  minWidth: 46,
+                  height: 28,
+                  padding: '0 6px',
+                  justifyContent: 'center',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  background: checked ? 'var(--surface-2)' : 'transparent',
+                  border: '1px solid var(--sep)',
+                  color: checked ? 'var(--acc)' : 'var(--label-3)',
+                  cursor: checked ? 'pointer' : 'default'
+                }}
+                disabled={!checked}
+                onClick={() => {
+                  if (!checked) return
+                  ui().openSheet(c => (
+                    <ExerciseSecDialog
+                      ex={ex}
+                      currentSec={currentSec}
+                      onSave={sVal => setExerciseSec(ex.id, sVal)}
+                      close={c}
+                    />
+                  ), { kind: 'center' })
+                }}
+                title={t('Tap to choose seconds')}
+              >
+                {currentSec}{t('s')}
+              </button>
+              <button
+                type="button"
+                className="iconbtn"
+                style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--sep)', fontSize: 12 }}
+                disabled={!checked}
+                onClick={() => adjustExerciseSec(ex.id, 5, ex.sec)}
+                title="+5s"
+                aria-label={t('Increase seconds')}
+              >
+                <Icon name="plus" />
+              </button>
+            </div>
+          </div>
         })}
       </div>
     })}
