@@ -14,12 +14,14 @@ import {
   fmtNum,
   fmtDate,
   fmtVol,
+  durPart,
   todayISO,
   isoOf,
   weekKey,
   MONTHS,
   MONTHS_LONG
 } from '../lib/format.js'
+import { glyphOf } from '../lib/glyphs.js'
 import { t } from '../lib/i18n.js'
 import { WorkoutRow, workoutDetailSheet } from '../sheets.jsx'
 import VolumeBarChart from '../components/VolumeBarChart.jsx'
@@ -45,6 +47,7 @@ export default function History() {
 
   // Workout log filter
   const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState(() => (typeof window !== 'undefined' && window.innerWidth <= 640 ? 'grid' : 'list'))
 
   // 1. Overall Performance Totals
   const totalWorkouts = workouts.length
@@ -636,15 +639,26 @@ export default function History() {
           </div>
 
           {/* Card 3: Workout Log & Session Details */}
-          <div className="row between" style={{ marginTop: 24, marginBottom: 10 }}>
+          <div className="row between" style={{ marginTop: 24, marginBottom: 10, alignItems: 'center' }}>
             <h3 style={{ margin: 0 }}>
               {t('Workout Log')} <span className="dim">({filteredWorkouts.length})</span>
             </h3>
-            {selectedPeriod && (
-              <Button size="sm" variant="ghost" onClick={() => setSelectedPeriod(null)}>
-                {t('Show All')}
-              </Button>
-            )}
+            <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+              <Segmented
+                className="seg-inline"
+                value={viewMode}
+                onChange={setViewMode}
+                options={[
+                  { value: 'grid', label: t('Grid') },
+                  { value: 'list', label: t('List') }
+                ]}
+              />
+              {selectedPeriod && (
+                <Button size="sm" variant="ghost" onClick={() => setSelectedPeriod(null)}>
+                  {t('Show All')}
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Search Field */}
@@ -659,17 +673,59 @@ export default function History() {
 
           {/* Workouts List */}
           {filteredWorkouts.length > 0 ? (
-            <div className="list">
-              {[...filteredWorkouts]
-                .reverse()
-                .map(w => (
-                  <WorkoutRow
-                    key={w.id}
-                    w={w}
-                    onClick={() => workoutDetailSheet(w)}
-                  />
-                ))}
-            </div>
+            viewMode === 'grid' ? (
+              <div className="workout-history-grid">
+                {[...filteredWorkouts]
+                  .reverse()
+                  .map(w => {
+                    const glyph = glyphOf((S.routines.find(r => r.id === w.routineId) || {}).emoji)
+                    const doneS = setsDone(w)
+                    const dur = durPart(w.end - w.start)[0]
+                    return (
+                      <div
+                        key={w.id}
+                        className="wh-card"
+                        onClick={() => workoutDetailSheet(w)}
+                      >
+                        <div>
+                          <div className="wh-card-top">
+                            <span className="lrow-i"><Icon name={glyph} /></span>
+                            {w.prs && w.prs.length > 0 ? (
+                              <span className="pr" style={{ fontSize: 10, padding: '2px 5px' }}>
+                                <Icon name="trophy" /> {w.prs.length}
+                              </span>
+                            ) : (
+                              <span className="small dim" style={{ fontSize: 11 }}>
+                                {fmtDate(w.d, true)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="wh-card-title">{w.name}</div>
+                          <div className="wh-card-stats">
+                            {dur ? `${dur} · ` : ''}{t('{0} sets', doneS)}
+                            {w.vol ? ` · ${fmtVol(w.vol, S.unit)}` : ''}
+                          </div>
+                        </div>
+                        {w.prs && w.prs.length > 0 && (
+                          <div className="wh-card-date">{fmtDate(w.d, true)}</div>
+                        )}
+                      </div>
+                    )
+                  })}
+              </div>
+            ) : (
+              <div className="list">
+                {[...filteredWorkouts]
+                  .reverse()
+                  .map(w => (
+                    <WorkoutRow
+                      key={w.id}
+                      w={w}
+                      onClick={() => workoutDetailSheet(w)}
+                    />
+                  ))}
+              </div>
+            )
           ) : (
             <div className="empty small" style={{ padding: '24px 0' }}>
               <Icon name="magnifier" />

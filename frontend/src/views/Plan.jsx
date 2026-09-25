@@ -51,10 +51,16 @@ export default function Plan() {
           <Button size="sm" variant="tinted" icon="plus" onClick={addRoutine}>{t('New')}</Button>
         </div>
       </div>
-      {S.routines.length ? <div className="list">{S.routines.map(r => <div key={r.id} className="item" onClick={() => nav('/plan/r/' + r.id)}>
-        <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
-        <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
-        <Icon name="chevronRight" className="chev" /></div>)}</div> : <>
+      {S.routines.length ? <div className="workout-grid">{S.routines.map(r => <button key={r.id} type="button" className="workout-grid-card" onClick={() => nav('/plan/r/' + r.id)}>
+        <div className="workout-grid-top">
+          <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+          <Icon name="chevronRight" className="chev" style={{ fontSize: 13 }} />
+        </div>
+        <div>
+          <div className="workout-grid-name">{r.name}</div>
+          <div className="workout-grid-meta">{exCount(r.ex.length)}</div>
+        </div>
+      </button>)}</div> : <>
         <div className="empty"><div className="ico"><Icon name="clipboard" /></div>{t('No routines yet.')}<br />{t('Create one or load the starter plan.')}</div>
       </>}
     </div></div>

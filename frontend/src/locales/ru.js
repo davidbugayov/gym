@@ -170,6 +170,8 @@ export default {
   "Track waist, biceps, body fat and more over time.": "Записывайте обхват талии, бицепса, процент жира и следите за динамикой.",
   "Collapse": "Свернуть",
   "Expand": "Развернуть",
+  "Grid": "Сетка",
+  "List": "Список",
   "Enter new measurement for": "Введите значение для",
   "Enter new measurement": "Введите значение замера",
   "Measurement saved": "Замер сохранен",

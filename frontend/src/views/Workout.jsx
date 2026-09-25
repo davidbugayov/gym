@@ -79,11 +79,28 @@ function StartChooser() {
       </div>
     </div>
 
-    {others.length > 0 && <><h4 className="sec">{t('Other routines')}</h4>
-      <div className="list">{others.map(r => <div key={r.id} className="item" onClick={() => startFlow(r.id)}>
-        <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
-        <div className="grow"><div className="tt">{r.name}</div><div className="ss">{exCount(r.ex.length)}</div></div>
-        <span className="tag acc">{t('Start')}</span></div>)}</div></>}
+    {others.length > 0 && <>
+      <h4 className="sec">{t('Other routines')}</h4>
+      <div className="workout-grid">
+        {others.map(r => (
+          <button
+            key={r.id}
+            type="button"
+            className="workout-grid-card"
+            onClick={() => startFlow(r.id)}
+          >
+            <div className="workout-grid-top">
+              <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
+              <span className="tag acc" style={{ fontSize: 11, padding: '2px 7px' }}>{t('Start')}</span>
+            </div>
+            <div>
+              <div className="workout-grid-name">{r.name}</div>
+              <div className="workout-grid-meta">{exCount(r.ex.length)}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </>}
     <div style={{ height: 14 }} />
     <Button icon="shuffle" onClick={() => startFlow(null)}>{t('Freestyle workout (pick as you go)')}</Button>
     {!S.routines.length && <><div style={{ height: 10 }} /><Button variant="primary" onClick={() => nav('/plan')}>{t('Build a plan first')}</Button></>}
