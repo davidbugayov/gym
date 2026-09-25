@@ -17,13 +17,7 @@ export const WARMUP_POOL = [
   // ── Cardio ──
   { id: '3224', label: 'Jack jump',                       sec: 45, category: 'cardio' },
   { id: '0630', label: 'Mountain climber',                 sec: 45, category: 'cardio' },
-  { id: '3223', label: 'Star jump',                        sec: 40, category: 'cardio' },
-  { id: '3220', label: 'Astride jumps',                    sec: 40, category: 'cardio' },
-  { id: '3222', label: 'Semi squat jump',                  sec: 40, category: 'cardio' },
-  { id: '3219', label: 'Scissor jumps',                    sec: 40, category: 'cardio' },
-  { id: '3221', label: 'Half knee bends',                  sec: 40, category: 'cardio' },
   { id: '3655', label: 'Walking high knees lunge',         sec: 45, category: 'cardio' },
-  { id: '3636', label: 'High knee against wall',           sec: 40, category: 'cardio' },
   { id: '3656', label: 'Short stride run',                 sec: 60, category: 'cardio' },
 
   // ── Dynamic mobilisation ──
@@ -34,18 +28,13 @@ export const WARMUP_POOL = [
   { id: '1685', label: 'Squat to overhead reach',          sec: 40, category: 'dynamic' },
   { id: '1686', label: 'Squat to overhead reach with twist', sec: 40, category: 'dynamic' },
   { id: '1167', label: 'Dynamic chest stretch',            sec: 30, category: 'dynamic' },
-  { id: '3662', label: 'Pike-to-cobra push-up',            sec: 40, category: 'dynamic' },
-  { id: '1468', label: 'Crab twist toe touch',             sec: 30, category: 'dynamic' },
-  { id: '3360', label: 'Bear crawl',                       sec: 30, category: 'dynamic' },
   { id: '1428', label: 'Wrist circles',                    sec: 20, category: 'dynamic' },
   { id: '1368', label: 'Ankle circles',                    sec: 20, category: 'dynamic' },
-  { id: '0257', label: 'Circles knee stretch',             sec: 20, category: 'dynamic' },
 
   // ── Activation ──
   { id: '3561', label: 'Glute bridge march',               sec: 40, category: 'activation' },
   { id: '3013', label: 'Low glute bridge on floor',        sec: 40, category: 'activation' },
   { id: '3699', label: 'Shoulder tap',                     sec: 30, category: 'activation' },
-  { id: '2466', label: 'Bridge – mountain climber',        sec: 40, category: 'activation' },
 ]
 
 // ─── COOL-DOWN / STRETCHING EXERCISES ────────────────────────────────────────
@@ -56,15 +45,11 @@ export const WARMUP_POOL = [
 export const COOLDOWN_POOL = [
   // ── Upper body ──
   { id: '1271', label: 'Chest and front of shoulder stretch', sec: 45, category: 'upper' },
-  { id: '1259', label: 'Behind head chest stretch',        sec: 45, category: 'upper' },
   { id: '1365', label: 'Upper back stretch',               sec: 45, category: 'upper' },
   { id: '0669', label: 'Rear deltoid stretch',             sec: 40, category: 'upper' },
   { id: '0817', label: 'Triceps stretch',                  sec: 30, category: 'upper' },
   { id: '0643', label: 'Overhead triceps stretch',         sec: 30, category: 'upper' },
-  { id: '0716', label: 'Side push neck stretch',           sec: 30, category: 'upper' },
-  { id: '1403', label: 'Neck side stretch',                sec: 30, category: 'upper' },
   { id: '0721', label: 'Side wrist pull stretch',          sec: 20, category: 'upper' },
-  { id: '1167', label: 'Dynamic chest stretch',            sec: 30, category: 'upper' },
 
   // ── Lower body ──
   { id: '1511', label: 'Hamstring stretch',                sec: 45, category: 'lower' },
@@ -79,7 +64,6 @@ export const COOLDOWN_POOL = [
   { id: '1377', label: 'Calf stretch with hands against wall', sec: 40, category: 'lower' },
   { id: '1398', label: 'Standing calves calf stretch',     sec: 40, category: 'lower' },
   { id: '1390', label: 'Seated calf stretch',              sec: 40, category: 'lower' },
-  { id: '1419', label: 'Iron cross stretch',               sec: 45, category: 'lower' },
 
   // ── Back & spine ──
   { id: '0690', label: 'Seated lower back stretch',        sec: 45, category: 'back' },
@@ -91,9 +75,6 @@ export const COOLDOWN_POOL = [
   { id: '2329', label: 'Spine twist',                      sec: 40, category: 'back' },
   { id: '3639', label: 'Bent knee lying twist',            sec: 40, category: 'back' },
 
-  // ── Full body ──
-  { id: '1604', label: 'World greatest stretch',           sec: 60, category: 'full' },
-  { id: '1688', label: 'Lunge with twist',                 sec: 45, category: 'full' },
 ]
 
 // ─── PRESETS ──────────────────────────────────────────────────────────────────
@@ -103,16 +84,16 @@ export const COOLDOWN_POOL = [
 export const WARMUP_PRESETS = {
   quick:    { name: 'Quick (2 min)',      ids: ['3224', '0630', '1471'] },
   standard: { name: 'Standard (4 min)',   ids: ['3224', '0630', '1471', '1685', '3561', '1368'] },
-  full:     { name: 'Full (6 min)',       ids: ['3224', '0630', '3223', '1471', '1604', '1685', '3561', '3699', '1428', '1368'] },
-  cardio:   { name: 'Cardio focus',       ids: ['3224', '3223', '0630', '3220', '3655', '3636'] },
+  full:     { name: 'Full (6 min)',       ids: ['3224', '0630', '1471', '1604', '1685', '3561', '3699', '1428', '1368'] },
+  cardio:   { name: 'Cardio focus',       ids: ['3224', '0630', '3655', '3656'] },
   mobility: { name: 'Mobility focus',     ids: ['1471', '1604', '1688', '1687', '1685', '1686', '1368', '1428'] },
 }
 
 export const COOLDOWN_PRESETS = {
-  quick:    { name: 'Quick (2 min)',      ids: ['1604', '1585', '1365'] },
-  standard: { name: 'Standard (4 min)',   ids: ['1604', '1585', '1365', '1511', '1271', '0690'] },
-  full:     { name: 'Full (7 min)',       ids: ['1604', '1585', '1365', '1511', '1271', '1424', '0690', '1363', '0794', '0669'] },
-  upper:    { name: 'Upper body',         ids: ['1271', '1259', '1365', '0669', '0817', '0716', '1346'] },
+  quick:    { name: 'Quick (2 min)',      ids: ['1585', '1511', '1365'] },
+  standard: { name: 'Standard (4 min)',   ids: ['1585', '1365', '1511', '1271', '0690'] },
+  full:     { name: 'Full (7 min)',       ids: ['1585', '1365', '1511', '1271', '1424', '0690', '1363', '0794', '0669'] },
+  upper:    { name: 'Upper body',         ids: ['1271', '1365', '0669', '0817', '0643', '1346'] },
   lower:    { name: 'Lower body',         ids: ['1585', '1511', '1576', '0613', '1564', '1424', '1377'] },
 }
 
@@ -175,6 +156,7 @@ const chooseContextIds = (pool, routine, phase) => {
     candidates = pool.filter(item => (warmFocus[item.id] || []).some(group => wanted.has(group)))
       .sort((a, b) => {
         const score = item => (warmFocus[item.id] || []).reduce((n, group) => n + (focuses.has(group) ? 2 : group === 'general' ? 1 : 0), 0)
+          + (item.category === 'activation' ? 2 : 0)
         return score(b) - score(a)
       })
     const cardio = candidates.find(item => item.category === 'cardio')

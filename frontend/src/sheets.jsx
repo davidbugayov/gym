@@ -1911,18 +1911,19 @@ async function fetchAutoHealthParams() {
 }
 
 export async function startFlow(routineId) {
+  beginWorkout(routineId, lastBW(S())?.w || null)
   const autoWeight = await fetchAutoHealthParams()
-  if (autoWeight) {
-    update(s => {
-      const iso = todayISO()
-      const ex = s.bodyweight.find(b => b.d === iso)
-      if (ex) { ex.w = autoWeight; ex.t = Date.now() } else s.bodyweight.push({ d: iso, w: autoWeight, t: Date.now() })
-      s.bodyweight.sort((a, b) => (a.d < b.d ? -1 : 1))
-    })
-    beginWorkout(routineId, autoWeight)
-    return
-  }
-  bwSheet({ required: true, onDone: bw => beginWorkout(routineId, bw) })
+  if (autoWeight) saveAutoWeight(autoWeight)
+}
+
+function saveAutoWeight(weight) {
+  update(s => {
+    const iso = todayISO()
+    const entry = s.bodyweight.find(b => b.d === iso)
+    if (entry) { entry.w = weight; entry.t = Date.now() }
+    else s.bodyweight.push({ d: iso, w: weight, t: Date.now() })
+    s.bodyweight.sort((a, b) => (a.d < b.d ? -1 : 1))
+  })
 }
 
 export async function beginFreeleticsWorkout(name, specList, bw) {
@@ -1948,18 +1949,9 @@ export async function beginFreeleticsWorkout(name, specList, bw) {
 }
 
 export async function startFreeleticsFlow(name, specList) {
+  beginFreeleticsWorkout(name, specList, lastBW(S())?.w || null)
   const autoWeight = await fetchAutoHealthParams()
-  if (autoWeight) {
-    update(s => {
-      const iso = todayISO()
-      const ex = s.bodyweight.find(b => b.d === iso)
-      if (ex) { ex.w = autoWeight; ex.t = Date.now() } else s.bodyweight.push({ d: iso, w: autoWeight, t: Date.now() })
-      s.bodyweight.sort((a, b) => (a.d < b.d ? -1 : 1))
-    })
-    beginFreeleticsWorkout(name, specList, autoWeight)
-    return
-  }
-  bwSheet({ required: true, onDone: bw => beginFreeleticsWorkout(name, specList, bw) })
+  if (autoWeight) saveAutoWeight(autoWeight)
 }
 
 export function beginWorkout(routineId, bw) {

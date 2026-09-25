@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getWarmup, getCooldown } from './warmup-cooldown.js'
+import { getWarmup, getCooldown, WARMUP_POOL, COOLDOWN_POOL } from './warmup-cooldown.js'
 
 const config = (overrides = {}) => ({
   warmup: true,
@@ -14,7 +14,7 @@ describe('workout-specific warm-up and cooldown', () => {
     const routine = { ex: [{ id: '1429' }, { id: '0031' }] }
     const ids = getWarmup(config(), routine).map(entry => entry.id)
     expect(ids.some(id => ['3224', '0630', '3223', '3220', '3222', '3219', '3221', '3655', '3636', '3656'].includes(id))).toBe(true)
-    expect(ids).toContain('3360')
+    expect(ids).toContain('3699')
     expect(ids).not.toEqual(['3224', '0630', '1471', '1685', '3561', '1368'])
   })
 
@@ -32,5 +32,13 @@ describe('workout-specific warm-up and cooldown', () => {
     })
     expect(getWarmup(state, { ex: [{ id: '0043' }] }).map(entry => entry.id)).toEqual(['1428'])
     expect(getCooldown(state, { ex: [{ id: '0043' }] })).toEqual([])
+  })
+
+  it('keeps the default pools focused on familiar warm-up moves and static stretches', () => {
+    const poolIds = [...WARMUP_POOL, ...COOLDOWN_POOL].map(item => item.id)
+    expect(poolIds).not.toContain('3360') // bear crawl
+    expect(poolIds).not.toContain('3662') // pike-to-cobra push-up
+    expect(poolIds).not.toContain('1468') // crab twist toe touch
+    expect(poolIds).not.toContain('1419') // iron cross stretch
   })
 })
