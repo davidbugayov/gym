@@ -614,7 +614,7 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
       {best > 0 && <span className="tag nocap">{t('Best:')} {fmtNum(best)} {S.unit}</span>}
     </div>
     {last && <div className="small dim" style={{ marginBottom: 4 }}>{t('Last time')} ({fmtDate(last.d)}): {last.sets.map(s => setLabel(entry.id, s, last.target)).join(', ')}</div>}
-    
+
     {/* Technique Cues / Exercise Note Banner */}
     {S.exNotes?.[entry.id] ? (
       <div className="ex-note-banner">
@@ -698,7 +698,7 @@ function ActiveWorkout() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
-  const { startRest, stopRest } = useUI()
+  const { startRest, stopRest, stopWork } = useUI()
   const A = S.active
   const units = supersetUnits(A.entries)
   const cur = Math.min(A.cur, Math.max(0, A.entries.length - 1))
@@ -881,7 +881,7 @@ function ActiveWorkout() {
 
   return <div className="narrow">
     <div className="hdr">
-      <button className="iconbtn" aria-label={t('Discard')} onClick={() => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { clearActiveSessionBackup(); update(s => { s.active = null }); stopRest(); nav('/home') } })}><Icon name="xmark" /></button>
+      <button className="iconbtn" aria-label={t('Discard')} onClick={() => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { clearActiveSessionBackup(); stopWork(); update(s => { s.active = null }); stopRest(); nav('/home') } })}><Icon name="xmark" /></button>
       <div style={{ textAlign: 'center' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           <span style={{ fontWeight: 600 }}>{A.name}</span>

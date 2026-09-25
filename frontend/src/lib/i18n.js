@@ -14,7 +14,7 @@ export {
   t,
   dateLocale,
   instrFor,
+  instrIsTranslated,
   useLanguage,
   useLang
 } from './languageStore.js'
-

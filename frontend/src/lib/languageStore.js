@@ -233,6 +233,7 @@ export function dateLocale() {
  * Instructions for an exercise
  */
 export const instrFor = ex => (instr && instr[ex.id]) || ex.st || []
+export const instrIsTranslated = ex => currentLang === 'en' || !!instr?.[ex.id]
 
 /**
  * React hook for subscribing to language state changes.

@@ -5,7 +5,7 @@ import { EXDB, EXIDX, BODYPARTS, isCardio, allExercises, equipmentOf, exOr, find
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG, ACCENTS } from './lib/format.js'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, exLine } from './lib/history.js'
 import { beep, vibrate, hapticSetComplete } from './lib/sound.js'
-import { t, instrFor, getLang, INSTR_LANGS } from './lib/i18n.js'
+import { t, instrFor, instrIsTranslated, getLang } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
 import { READY_PROGRAMS, readyProgram, starterRoutines, makeRoutines, HERO_WARMUP, HERO_COOLDOWN } from './lib/starter.js'
 import { getWarmup, getCooldown, WARMUP_POOL, COOLDOWN_POOL, WARMUP_PRESETS, COOLDOWN_PRESETS, warmupCategoryName, cooldownCategoryName } from './lib/warmup-cooldown.js'
@@ -538,7 +538,7 @@ function ExerciseDetail({ ex, close }) {
     </div>
     {ex.desc && <div className="exnote">{ex.desc}</div>}
     {best > 0 && <div className="small row" style={{ marginBottom: 6, gap: 5 }}><Icon name="trophy" style={{ fontSize: 14, color: 'var(--yellow)' }} />{t('Best:')} <b className="accent">{fmtNum(best)} {st.unit}</b>{last ? ` · ${t('last')} ${fmtDate(last.d)}: ${last.sets.map(s => setLabel(ex.id, s, last.target)).join(', ')}` : ''}</div>}
-    
+
     {/* Technique Cues / Personal Note Field */}
     <div style={{ marginTop: 10, marginBottom: 10, padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 10, border: '1px solid var(--sep-op)' }}>
       <div className="row between" style={{ alignItems: 'center', marginBottom: 4 }}>
@@ -594,7 +594,7 @@ function ExerciseDetail({ ex, close }) {
       </div>
     </>}
 
-    {instrFor(ex).length > 0 &&<><h4 className="sec">{t('How to')}{!INSTR_LANGS.includes(getLang()) && <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}> · {t('instructions in English')}</span>}</h4><ol className="steps-list">{instrFor(ex).map((s, i) => <li key={i}>{s}</li>)}</ol></>}
+    {instrFor(ex).length > 0 &&<><h4 className="sec">{t('How to')}{!instrIsTranslated(ex) && <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}> · {t('instructions in English')}</span>}</h4><ol className="steps-list">{instrFor(ex).map((s, i) => <li key={i}>{s}</li>)}</ol></>}
   </>
 }
 export const exerciseDetailSheet = ex => ui().openSheet(close => <ExerciseDetail ex={ex} close={close} />)
@@ -1926,13 +1926,14 @@ export async function startFlow(routineId) {
 }
 
 export async function beginFreeleticsWorkout(name, specList, bw) {
+  useUI.getState().stopWork()
   const st = S()
   const buildEntries = (list, phase) => list.map(raw => {
     const cfg = Array.isArray(raw) ? { id: raw[0], sets: raw[1], reps: raw[2], weight: 0 } : raw
     const plan = nextPrescription(st, cfg, null)
     return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, phase: phase || cfg.phase, sets: applyPrescription(buildSets(st, cfg), plan) }
   })
-  
+
   const entries = [
     ...buildEntries(HERO_WARMUP, 'warmup'),
     ...buildEntries(specList, 'workout'),
@@ -1962,6 +1963,7 @@ export async function startFreeleticsFlow(name, specList) {
 }
 
 export function beginWorkout(routineId, bw) {
+  useUI.getState().stopWork()
   const st = S()
   const r = routineId ? st.routines.find(x => x.id === routineId) : null
   // The prescription is applied as the session is built, so you walk up to the bar with the
@@ -1979,8 +1981,8 @@ export function beginWorkout(routineId, bw) {
     return { id: cfg.id, sg: cfg.sg, target: { ...cfg }, plan, sets: applyPrescription(buildSets(st, cfg), plan) }
   })
   // Inject warmup/cooldown for all workouts (including freestyle)
-  const warmupList = getWarmup(st)
-  const cooldownList = getCooldown(st)
+  const warmupList = getWarmup(st, r)
+  const cooldownList = getCooldown(st, r)
   const entries = [
     ...buildPhaseEntries(warmupList, 'warmup'),
     ...mainEntries,
@@ -2089,6 +2091,9 @@ function FinishSummary({ w, prs, e1prs = [], close }) {
   const st = useStore(s => s.S)
   const coachOn = !!useStore(s => s.config)?.coach?.enabled && !!st.coach?.consent?.agreedAt
   const cal = estimateCalories(w, lastBW(st)?.w || 75)
+  const timedSeconds = w.entries.reduce((sum, entry) => sum + (modeOf(entry.target || {}, EXIDX[entry.id]) === 'time'
+    ? entry.sets.filter(set => set.done).reduce((n, set) => n + (Number(set.sec) || 0), 0)
+    : 0), 0)
 
   return <div style={{ textAlign: 'center', padding: '8px 0' }}>
     <div style={{ fontSize: 44, display: 'flex', justifyContent: 'center', color: 'var(--acc)' }}><Icon name="trophy" /></div>
@@ -2097,6 +2102,7 @@ function FinishSummary({ w, prs, e1prs = [], close }) {
       <div className="tile"><div className="l">{t('Duration')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{fmtDur(w.end - w.start)}</div></div>
       <div className="tile"><div className="l">{t('Volume')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{fmtVol(w.vol, st.unit)}</div></div>
       <div className="tile"><div className="l">{t('Sets')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{setsDone(w)}</div></div>
+      {timedSeconds > 0 && <div className="tile"><div className="l">{t('Seconds')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{timedSeconds} s</div></div>}
       <div className="tile"><div className="l">{t('Est. Burn')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{cal} kcal</div></div>
     </div>
     {(prs.length > 0 || e1prs.length > 0) && <div style={{ textAlign: 'left', marginBottom: 12 }}>
@@ -2159,6 +2165,7 @@ function doFinishWorkout() {
   const st = S()
   const A = st.active
   if (!A) return
+  useUI.getState().stopWork()
   const prs = []
   const e1prs = []
   A.entries.forEach(e => {
@@ -2212,10 +2219,10 @@ function doFinishWorkout() {
   }
 
   useUI.getState().stopRest()
-  
+
   // Log to Google Fit / HealthKit
   import('./lib/health.js').then(module => module.logWorkoutToHealth(w)).catch(console.error)
-  
+
   // Schedule inactivity reminder
   import('./lib/notifications.js').then(module => module.scheduleInactivityReminder()).catch(console.error)
 

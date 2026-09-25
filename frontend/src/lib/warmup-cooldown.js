@@ -6,6 +6,7 @@
 // which `beginWorkout` prepends / appends to the session.
 
 import { t } from './i18n.js'
+import { EXIDX } from './exercises.js'
 
 // ─── WARM-UP EXERCISES ──────────────────────────────────────────────────────
 // Each entry: { id, label (t-key for the UI), sec, category }
@@ -135,11 +136,64 @@ export const cooldownCategoryName = cat => {
  * Given the store state S, return the warmup exercise list in the format
  * expected by buildEntries: [{ id, sets, sec, weight, mode, phase }]
  */
-export function getWarmup(S) {
+const warmFocus = {
+  '3224': ['general'], '0630': ['general', 'core'], '3223': ['general'],
+  '3220': ['general', 'lower'], '3222': ['general', 'lower'], '3219': ['general', 'lower'],
+  '3221': ['general', 'lower'], '3655': ['general', 'lower'], '3636': ['general', 'lower'],
+  '3656': ['general'], '1471': ['general', 'upper', 'lower', 'back'],
+  '1604': ['lower', 'back'], '1688': ['lower', 'back'], '1687': ['lower', 'shoulders'],
+  '1685': ['lower', 'shoulders'], '1686': ['lower', 'back', 'shoulders'],
+  '1167': ['chest', 'shoulders'], '3662': ['chest', 'shoulders', 'arms'],
+  '1468': ['back', 'core'], '3360': ['back', 'shoulders', 'arms', 'core'],
+  '1428': ['arms'], '1368': ['lower'], '0257': ['lower'],
+  '3561': ['lower'], '3013': ['lower'], '3699': ['shoulders', 'arms'], '2466': ['lower', 'core']
+}
+const coolFocus = {
+  chest: ['upper'], shoulders: ['upper'], arms: ['upper'], lower: ['lower'],
+  back: ['back', 'full'], core: ['back', 'full']
+}
+const focusFor = routine => {
+  const groups = new Set()
+  for (const cfg of routine?.ex || []) {
+    const ex = EXIDX[cfg.id]
+    const terms = [ex?.bp, ex?.tg, ex?.mg, ...(ex?.sm || [])].filter(Boolean).join(' ').toLowerCase()
+    if (/chest|pectoral/.test(terms)) groups.add('chest')
+    if (/shoulder|deltoid/.test(terms)) groups.add('shoulders')
+    if (/back|lat|trap|rhomboid|spine/.test(terms)) groups.add('back')
+    if (/biceps|triceps|forearm|arm/.test(terms)) groups.add('arms')
+    if (/leg|quad|hamstring|glute|calf|hip/.test(terms)) groups.add('lower')
+    if (/abs|core|waist/.test(terms)) groups.add('core')
+  }
+  return groups
+}
+const chooseContextIds = (pool, routine, phase) => {
+  if (!routine?.ex?.length) return null
+  const focuses = focusFor(routine)
+  let candidates
+  if (phase === 'warmup') {
+    const wanted = new Set(['general', ...focuses])
+    candidates = pool.filter(item => (warmFocus[item.id] || []).some(group => wanted.has(group)))
+      .sort((a, b) => {
+        const score = item => (warmFocus[item.id] || []).reduce((n, group) => n + (focuses.has(group) ? 2 : group === 'general' ? 1 : 0), 0)
+        return score(b) - score(a)
+      })
+    const cardio = candidates.find(item => item.category === 'cardio')
+    if (cardio) candidates = [cardio, ...candidates.filter(item => item !== cardio)]
+  } else {
+    const wanted = new Set([...focuses].flatMap(group => coolFocus[group] || []))
+    candidates = pool.filter(item => wanted.has(item.category))
+      .sort((a, b) => Number(a.category === 'full') - Number(b.category === 'full'))
+  }
+  const limit = phase === 'warmup' ? 6 : 5
+  const picked = candidates.slice(0, limit).map(item => item.id)
+  return picked.length ? picked : null
+}
+
+export function getWarmup(S, routine) {
   if (S.warmup === false) return []
   const cfg = S.warmupCfg || {}
   const preset = cfg.preset || DEFAULT_WARMUP_PRESET
-  const ids = cfg.custom ? (cfg.ids || []) : (WARMUP_PRESETS[preset]?.ids || WARMUP_PRESETS[DEFAULT_WARMUP_PRESET].ids)
+  const ids = cfg.custom ? (cfg.ids || []) : (chooseContextIds(WARMUP_POOL, routine, 'warmup') || WARMUP_PRESETS[preset]?.ids || WARMUP_PRESETS[DEFAULT_WARMUP_PRESET].ids)
   const durations = cfg.durations || {}
   return ids.map(id => {
     const poolItem = WARMUP_POOL.find(e => e.id === id)
@@ -151,11 +205,12 @@ export function getWarmup(S) {
 /**
  * Given the store state S, return the cooldown exercise list.
  */
-export function getCooldown(S) {
+export function getCooldown(S, routine) {
   if (S.cooldown === false) return []
   const cfg = S.cooldownCfg || {}
   const preset = cfg.preset || DEFAULT_COOLDOWN_PRESET
-  const ids = cfg.custom ? (cfg.ids || []) : (COOLDOWN_PRESETS[preset]?.ids || COOLDOWN_PRESETS[DEFAULT_COOLDOWN_PRESET].ids)
+  const contextual = chooseContextIds(COOLDOWN_POOL, routine, 'cooldown')
+  const ids = cfg.custom ? (cfg.ids || []) : (contextual || COOLDOWN_PRESETS[preset]?.ids || COOLDOWN_PRESETS[DEFAULT_COOLDOWN_PRESET].ids)
   const durations = cfg.durations || {}
   return ids.map(id => {
     const poolItem = COOLDOWN_POOL.find(e => e.id === id)
