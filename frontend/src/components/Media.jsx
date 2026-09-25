@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { imgSrc, gifSrc, exOr } from '../lib/exercises.js'
+import { imgSrc, gifSrc, fallbackImgSrc, fallbackGifSrc, exOr } from '../lib/exercises.js'
 import { useStore } from '../store/useStore.js'
 import { t } from '../lib/i18n.js'
 import Icon from './Icon.jsx'
@@ -12,6 +12,7 @@ import Icon from './Icon.jsx'
 export default function Media({ ex, id, compact, minimizable }) {
   const [playing, setPlaying] = useState(true)
   const [err, setErr] = useState(false)
+  const [fallback, setFallback] = useState(false)
   const gifSize = useStore(s => s.S.gifSize)
   const update = useStore(s => s.update)
 
@@ -19,6 +20,7 @@ export default function Media({ ex, id, compact, minimizable }) {
 
   useEffect(() => {
     setErr(false)
+    setFallback(false)
     setPlaying(true)
   }, [resolvedEx?.id, resolvedEx?.img, resolvedEx?.gif])
 
@@ -38,7 +40,10 @@ export default function Media({ ex, id, compact, minimizable }) {
     )
   }
 
-  const src = (playing && resolvedEx.gif) ? gifSrc(resolvedEx) : imgSrc(resolvedEx)
+  const isGif = playing && resolvedEx.gif
+  const src = isGif
+    ? (fallback ? fallbackGifSrc(resolvedEx) : gifSrc(resolvedEx))
+    : (fallback ? fallbackImgSrc(resolvedEx) : imgSrc(resolvedEx))
 
   return (
     <div className={'exmedia' + (compact ? ' compact' : '') + (mini ? ' mini' : '')} id={id} onClick={() => setPlaying(p => !p)}>
@@ -47,8 +52,13 @@ export default function Media({ ex, id, compact, minimizable }) {
         src={src}
         alt={resolvedEx.n || ''}
         onError={() => {
-          if (playing && resolvedEx.gif && resolvedEx.img) {
+          if (isGif && !fallback) {
+            setFallback(true)
+          } else if (isGif && resolvedEx.img) {
             setPlaying(false)
+            setFallback(false)
+          } else if (!fallback && resolvedEx.img) {
+            setFallback(true)
           } else {
             setErr(true)
           }
@@ -70,10 +80,12 @@ export default function Media({ ex, id, compact, minimizable }) {
 
 export function Thumb({ ex }) {
   const [err, setErr] = useState(false)
+  const [fallback, setFallback] = useState(false)
   const resolvedEx = typeof ex === 'string' ? exOr(ex) : (ex || null)
 
   useEffect(() => {
     setErr(false)
+    setFallback(false)
   }, [resolvedEx?.id, resolvedEx?.img])
 
   if (!resolvedEx?.img || err) return <div className="thumb thumb-x"><Icon name="dumbbell" /></div>
@@ -82,9 +94,9 @@ export function Thumb({ ex }) {
       className="thumb"
       loading="lazy"
       decoding="async"
-      src={imgSrc(resolvedEx)}
+      src={fallback ? fallbackImgSrc(resolvedEx) : imgSrc(resolvedEx)}
       alt=""
-      onError={() => setErr(true)}
+      onError={() => fallback ? setErr(true) : setFallback(true)}
     />
   )
 }

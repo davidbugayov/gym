@@ -44,8 +44,8 @@ export const NEW_EXERCISES = [
       'Maintain continuous tension by avoiding bouncing out of the hole',
       'Keep 85% of your weight distributed on the front working leg'
     ],
-    img: '0289-eTzW4Fw.jpg',
-    gif: '0289-eTzW4Fw.gif'
+    img: '0289-SpYC0Kp.jpg',
+    gif: '0289-SpYC0Kp.gif'
   },
   {
     id: '9003',
@@ -87,8 +87,8 @@ export const NEW_EXERCISES = [
       'Do not hinge at the hips — maintain a rigid straight line from knee to shoulder',
       'Aim for a 3 to 5 second controlled eccentric descent'
     ],
-    img: '0585-X3Y8K8J.jpg',
-    gif: '0585-X3Y8K8J.gif'
+    img: '0585-my33uHU.jpg',
+    gif: '0585-my33uHU.gif'
   },
   {
     id: '9005',
@@ -109,8 +109,8 @@ export const NEW_EXERCISES = [
       'Do not flare elbows 90 degrees wide to protect rotator cuffs',
       'Squeeze the upper chest tightly at the peak of the press'
     ],
-    img: '0289-eTzW4Fw.jpg',
-    gif: '0289-eTzW4Fw.gif'
+    img: '0289-SpYC0Kp.jpg',
+    gif: '0289-SpYC0Kp.gif'
   },
   {
     id: '9006',
@@ -174,8 +174,8 @@ export const NEW_EXERCISES = [
       'Power stroke breakdown: 60% legs, 20% core hinge, 20% arm pull',
       'Sequencing rule: Legs-Body-Arms on drive; Arms-Body-Legs on recovery'
     ],
-    img: '0685-X84U40Q.jpg',
-    gif: '0685-X84U40Q.gif'
+    img: '0685-oLrKqDH.jpg',
+    gif: '0685-oLrKqDH.gif'
   },
   {
     id: '9009',
@@ -195,8 +195,8 @@ export const NEW_EXERCISES = [
       'Synchronize your push-pull arm rhythm with your leg drive',
       'Keep your breathing steady and rhythmic during interval pushes'
     ],
-    img: '0685-X84U40Q.jpg',
-    gif: '0685-X84U40Q.gif'
+    img: '0685-oLrKqDH.jpg',
+    gif: '0685-oLrKqDH.gif'
   },
   {
     id: '9010',
@@ -296,7 +296,7 @@ export function registerCustom(list) {
 export const allExercises = st => [...(st.customEx || []), ...EXDB]
 
 // Media CDN fallback to hasaneyldrm/exercises-dataset
-const GITHUB_RAW = 'https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/'
+const GITHUB_RAW = 'https://cdn.jsdelivr.net/gh/hasaneyldrm/exercises-dataset@7455efae41b330c265e7cd4b78dfa848e7ce5ebd/'
 const CDN_FALLBACK_IMG = GITHUB_RAW + 'images/'
 const CDN_FALLBACK_GIF = GITHUB_RAW + 'videos/'
 
@@ -305,6 +305,8 @@ const GIF_BASE = import.meta.env.VITE_GIF_BASE || '/gif/'
 
 export const imgSrc = ex => (ex?.img ? (IMG_BASE + ex.img) : '')
 export const gifSrc = ex => (ex?.gif ? (GIF_BASE + ex.gif) : '')
+export const fallbackImgSrc = ex => (ex?.img ? (CDN_FALLBACK_IMG + ex.img) : '')
+export const fallbackGifSrc = ex => (ex?.gif ? (CDN_FALLBACK_GIF + ex.gif) : '')
 
 // Cardio exercises log time + speed instead of weight × reps.
 export const isCardio = idOrEx => (typeof idOrEx === 'string' ? EXIDX[idOrEx] : idOrEx)?.bp === 'cardio'
@@ -326,4 +328,3 @@ export function findSubstitutes(ex, allList) {
     return a.n.localeCompare(b.n)
   })
 }
-
