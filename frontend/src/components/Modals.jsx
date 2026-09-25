@@ -32,7 +32,7 @@ function Sheet({ sheet }) {
     const el = ref.current, d = drag.current
     if (d.startY === null) return
     el.style.transition = 'transform .2s'
-    if (d.delta > 90 && !sheet.locked) { el.style.transform = 'translateY(110%)'; setTimeout(() => closeSheet(sheet.id), 180) }
+    if (d.delta > 80) { el.style.transform = 'translateY(110%)'; setTimeout(() => closeSheet(sheet.id), 180) }
     else el.style.transform = ''
     d.startY = null
   }
@@ -48,31 +48,9 @@ function Sheet({ sheet }) {
   const close = () => closeSheet(sheet.id)
   if (sheet.kind === 'center') {
     return (
-      <div>
-        <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
-        <div className="center" style={{ position: 'relative' }}>
-          {!sheet.locked && (
-            <button
-              type="button"
-              className="sheet-close-btn"
-              onClick={close}
-              aria-label="Close"
-              title="Close"
-            >
-              <Icon name="x" />
-            </button>
-          )}
-          {sheet.render(close)}
-        </div>
-      </div>
-    )
-  }
-  return (
-    <div>
-      <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
-      <div className="sheet" ref={ref} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ position: 'relative' }}>
-        <div className="grab" />
-        {!sheet.locked && (
+      <div className="modal-wrap">
+        <div className="mback" onClick={close} />
+        <div className="center">
           <button
             type="button"
             className="sheet-close-btn"
@@ -80,9 +58,27 @@ function Sheet({ sheet }) {
             aria-label="Close"
             title="Close"
           >
-            <Icon name="x" />
+            <Icon name="xmark" />
           </button>
-        )}
+          {sheet.render(close)}
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="modal-wrap">
+      <div className="mback" onClick={close} />
+      <div className="sheet" ref={ref} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <div className="grab" onClick={close} role="button" aria-label="Close" />
+        <button
+          type="button"
+          className="sheet-close-btn"
+          onClick={close}
+          aria-label="Close"
+          title="Close"
+        >
+          <Icon name="xmark" />
+        </button>
         {sheet.render(close)}
       </div>
     </div>
@@ -92,12 +88,12 @@ function Sheet({ sheet }) {
 export default function Modals() {
   const sheets = useUI(s => s.sheets)
 
-  // Escape key closes top sheet if not locked
+  // Escape key closes top sheet
   useEffect(() => {
     const onKeyDown = e => {
       if (e.key === 'Escape') {
         const top = sheets[sheets.length - 1]
-        if (top && !top.locked) {
+        if (top) {
           useUI.getState().closeSheet(top.id)
         }
       }

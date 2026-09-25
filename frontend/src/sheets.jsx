@@ -351,6 +351,7 @@ function BwSheet({ required, onDone, close }) {
     {required && <>
       <div style={{ height: 8 }} /><Button variant="ghost" className="dim" onClick={() => { close(); onDone && onDone(null) }}>{t('Start without weighing in')}</Button>
       <div style={{ height: 2 }} /><Button variant="ghost" className="dim" icon="reset" onClick={() => { close(); nav('/workout') }}>{t('Choose a different workout')}</Button>
+      <div style={{ height: 2 }} /><Button variant="ghost" className="dim" icon="xmark" onClick={close}>{t('Cancel')}</Button>
     </>}
     {!required && recent.length > 0 && <>
       <h4 className="sec">{t('Recent weigh-ins')}</h4>
@@ -365,7 +366,7 @@ function BwSheet({ required, onDone, close }) {
   </>
 }
 export function bwSheet(opts = {}) {
-  const h = ui().openSheet(close => <BwSheet {...opts} close={close} />, { locked: !!opts.required })
+  const h = ui().openSheet(close => <BwSheet {...opts} close={close} />, { locked: false })
   return h
 }
 
@@ -2053,7 +2054,7 @@ function doFinishWorkout() {
   import('./lib/notifications.js').then(module => module.scheduleInactivityReminder()).catch(console.error)
 
   beep(snd(), 880, 0.15); beep(snd(), 1100, 0.15, 0.18); beep(snd(), 1320, 0.3, 0.36)
-  ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: true })
+  ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: false })
 }
 
 /* ============================ Google Health Sheet ============================ */

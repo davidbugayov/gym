@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useStore } from '../store/useStore.js'
-import { fmtNum, fmtDate } from '../lib/format.js'
+import { fmtNum, fmtDate, todayISO } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import { bwSheet, goalSheet } from '../sheets.jsx'
 import Icon from './Icon.jsx'
@@ -31,7 +31,7 @@ export default function WeightTrendsCard({ S }) {
           <h2 style={{ margin: 0 }}>
             {t('Weight trends')}
           </h2>
-          <Button size="sm" icon="plus" onClick={() => bwSheet()}>
+          <Button size="sm" variant="primary" icon="plus" onClick={() => bwSheet()}>
             {t('Log weight')}
           </Button>
         </div>
@@ -113,8 +113,8 @@ export default function WeightTrendsCard({ S }) {
           >
             {targetW ? fmtNum(targetW) + ' ' + unit : t('Goal')}
           </Button>
-          <Button size="sm" icon="plus" onClick={() => bwSheet()}>
-            {t('Log')}
+          <Button size="sm" variant="primary" icon="plus" onClick={() => bwSheet()}>
+            {t('Log weight')}
           </Button>
         </div>
       </div>
@@ -133,6 +133,46 @@ export default function WeightTrendsCard({ S }) {
           ]}
         />
       </div>
+
+      {/* Quick weigh-in bar */}
+      {(() => {
+        const todayBW = bodyweight.find(b => b.d === todayISO())
+        return (
+          <div
+            className="row between"
+            style={{
+              background: 'var(--surface-2, rgba(255,255,255,0.04))',
+              border: '1px solid var(--sep, rgba(255,255,255,0.08))',
+              borderRadius: 'var(--r-md, 10px)',
+              padding: '8px 12px',
+              marginBottom: 12,
+              alignItems: 'center',
+              gap: 8
+            }}
+          >
+            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+              <Icon name="scale" size={15} className="dim" />
+              <span className="small">
+                {todayBW ? (
+                  <>
+                    <span className="dim">{t('Today:')}</span> <b>{fmtNum(todayBW.w)} {unit}</b>
+                  </>
+                ) : (
+                  <span className="muted">{t('No weigh-in logged today')}</span>
+                )}
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant={todayBW ? 'ghost' : 'primary'}
+              icon={todayBW ? 'edit' : 'plus'}
+              onClick={() => bwSheet()}
+            >
+              {todayBW ? t('Edit') : t('Quick log')}
+            </Button>
+          </div>
+        )
+      })()}
 
       {/* Primary KPI Tiles */}
       <div className="tiles" style={{ gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12 }}>

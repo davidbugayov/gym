@@ -7,7 +7,7 @@ import { effortOf } from '../lib/history.js'
 import { webauthnOK, passkeyLogin, passkeyRegister, IS_ANDROID } from '../lib/api.js'
 import { pushSupported, enablePush, disablePush, sendTestPush } from '../lib/push.js'
 import { wakeLockSupported } from '../lib/wakelock.js'
-import { t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
+import { t, LANGS, INSTR_LANGS, useLanguage } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, shareExport, syncReminder, isBackupOverdue, getDaysSinceLastBackup, BACKUP_PROMPT_INTERVAL_DAYS } from '../lib/mobile.js'
 import { programWizardSheet, confirmSheet, importFromApp, googleHealthSheet, importUrlSheet, warmupCooldownSheet } from '../sheets.jsx'
@@ -20,6 +20,7 @@ import Icon from '../components/Icon.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
 
 export default function Settings() {
+  const { lang, setLanguage } = useLanguage()
   const nav = useNavigate()
   const S = useStore(s => s.S)
   const user = useStore(s => s.user)

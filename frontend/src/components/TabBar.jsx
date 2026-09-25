@@ -2,10 +2,11 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { effectiveRoutine } from '../lib/history.js'
 import { todayISO } from '../lib/format.js'
-import { t } from '../lib/i18n.js'
+import { t, useLang } from '../lib/i18n.js'
 import Icon from './Icon.jsx'
 
 export default function TabBar({ onStart }) {
+  useLang()
   const nav = useNavigate()
   const loc = useLocation()
   const S = useStore(s => s.S)
@@ -23,7 +24,7 @@ export default function TabBar({ onStart }) {
     nav('/workout')
   }
   const Tab = ({ k, icon, to, label }) => (
-    <button className={on(k) ? 'on' : ''} onClick={() => nav(to)}>
+    <button className={on(k) ? 'on' : ''} onClick={() => nav(to)} aria-label={label} title={label}>
       <Icon name={icon} /><span>{label}</span>
     </button>
   )

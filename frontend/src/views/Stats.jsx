@@ -148,6 +148,8 @@ export default function Stats() {
     .map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.w, d: b.d }))
   const bw30 = S.bodyweight.filter(b => (b.t || new Date(b.d).getTime()) > now - 30 * 86400000)
   const bwDelta30 = bw30.length > 1 ? bw30[bw30.length - 1].w - bw30[0].w : null
+  const todayBW = S.bodyweight.find(b => b.d === todayISO())
+  const currentBW = lastBW(S)
   const monthW = S.workouts.filter(w => w.d.slice(0, 7) === todayISO().slice(0, 7)).length
 
   const exHist = [...new Set(S.workouts.flatMap(w => w.entries.map(e => e.id)))].filter(id => EXIDX[id]).sort((a, b) => EXIDX[a].n < EXIDX[b].n ? -1 : 1)
@@ -198,14 +200,41 @@ export default function Stats() {
   if (showEff) exOpts.push({ value: 'effort', label: t('Effort') })
 
   return <>
-    <div className="hdr"><div><h1>{t('Stats')}</h1><div className="sub">{t('Progress & history')}</div></div>
-      <button className="iconbtn" onClick={() => nav('/history')} aria-label={t('History')}><Icon name="history" /></button></div>
+    <div className="hdr">
+      <div><h1>{t('Stats')}</h1><div className="sub">{t('Progress & history')}</div></div>
+      <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+        <Button size="sm" variant="primary" icon="scale" onClick={() => bwSheet()} title={t('Log body weight')}>
+          {t('Log weight')}
+        </Button>
+        <button className="iconbtn" onClick={() => nav('/history')} aria-label={t('History')}><Icon name="history" /></button>
+      </div>
+    </div>
 
     <div className="tiles">
       <div className="tile"><div className="l"><Icon name="dumbbell" />{t('Workouts')}</div><div className="v">{S.workouts.length}</div></div>
       <div className="tile"><div className="l"><Icon name="calendar" />{t('This month')}</div><div className="v">{monthW}</div></div>
       <div className="tile"><div className="l"><Icon name="flame" />{t('Week streak')}</div><div className="v">{streakWeeks(S)}</div></div>
-      <div className="tile"><div className="l"><Icon name="scale" />{t('Weight 30d')}</div><div className="v" style={{ fontSize: 22, color: bwDelta30 === null ? 'inherit' : bwDeltaColor(bwDelta30, (lastBW(S) || {}).w || 0) }}>{bwDelta30 === null ? '—' : (bwDelta30 > 0 ? '+' : '') + fmtNum(bwDelta30) + ' ' + S.unit}</div></div>
+      <div
+        className="tile tappable"
+        onClick={() => bwSheet()}
+        role="button"
+        tabIndex={0}
+        title={t('Log body weight')}
+        style={{ cursor: 'pointer' }}
+      >
+        <div className="row between" style={{ width: '100%', alignItems: 'center' }}>
+          <div className="l" style={{ margin: 0 }}><Icon name="scale" />{t('Weight')}</div>
+          <span className="accent small" style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 11 }}>
+            <Icon name="plus" size={11} /> {t('Log')}
+          </span>
+        </div>
+        <div className="v" style={{ fontSize: 22, color: bwDelta30 === null ? 'inherit' : bwDeltaColor(bwDelta30, (currentBW || {}).w || 0) }}>
+          {currentBW ? `${fmtNum(currentBW.w)} ${S.unit}` : '—'}
+        </div>
+        <div className="small dim" style={{ fontSize: 11, marginTop: 2 }}>
+          {bwDelta30 === null ? t('Tap to log') : (bwDelta30 > 0 ? '+' : '') + fmtNum(bwDelta30) + ' ' + S.unit + ' (30d)'}
+        </div>
+      </div>
     </div>
 
     <div className="card">
@@ -218,12 +247,38 @@ export default function Stats() {
 
     <div className="cols">
       <div className="card">
-        <div className="row between" style={{ marginBottom: 8 }}>
+        <div className="row between" style={{ marginBottom: 8, alignItems: 'center' }}>
           <h2 style={{ margin: 0 }}>{t('Body weight')}</h2>
           <div className="row" style={{ gap: 8 }}>
             <Button size="sm" icon="target" style={S.targetW ? { color: 'var(--yellow)' } : undefined} onClick={goalSheet}>{S.targetW ? fmtNum(S.targetW) : t('Goal')}</Button>
-            <Button size="sm" icon="plus" onClick={() => bwSheet()}>{t('Log')}</Button>
+            <Button size="sm" variant="primary" icon="plus" onClick={() => bwSheet()}>{t('Log weight')}</Button>
           </div>
+        </div>
+        <div
+          className="row between"
+          style={{
+            background: 'var(--surface-2, rgba(255,255,255,0.04))',
+            border: '1px solid var(--sep, rgba(255,255,255,0.08))',
+            borderRadius: 'var(--r-md, 10px)',
+            padding: '8px 12px',
+            marginBottom: 10,
+            alignItems: 'center',
+            gap: 8
+          }}
+        >
+          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <Icon name="scale" size={15} className="dim" />
+            <span className="small">
+              {todayBW ? (
+                <><b>{t('Today:')}</b> {fmtNum(todayBW.w)} {S.unit}</>
+              ) : (
+                <span className="muted">{t('No weigh-in logged today')}</span>
+              )}
+            </span>
+          </div>
+          <Button size="sm" variant={todayBW ? 'ghost' : 'primary'} icon={todayBW ? 'edit' : 'plus'} onClick={() => bwSheet()}>
+            {todayBW ? t('Edit') : t('Quick log')}
+          </Button>
         </div>
         <Segmented className="seg-range" value={range} onChange={setRange}
           options={[{ value: 30, label: '1M' }, { value: 90, label: '3M' }, { value: 365, label: '1Y' }, { value: 0, label: t('All') }]} />

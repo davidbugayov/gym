@@ -67,9 +67,9 @@ function Shell() {
   return (
     <>
       <HeaderSync />
-      {/* keyed on the route: a view that throws is contained, and switching tabs
-          re-mounts the boundary, so the tab bar is always a way out */}
-      <div id="app" className="vfade" key={loc.pathname}>
+      {/* keyed on the route and language: switching tabs or changing language
+          re-mounts cleanly with the updated dictionary */}
+      <div id="app" className="vfade" key={`${loc.pathname}-${S.lang || 'en'}-${langV}`}>
         <ErrorBoundary>
           {!authed ? <Login /> : (
             <Routes>

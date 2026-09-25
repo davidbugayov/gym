@@ -5,6 +5,7 @@ import { registerCustom } from '../lib/exercises.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { MOBILE, nativeLoad, nativeSave, syncReminder } from '../lib/mobile.js'
 import { notifySyncing, notifySynced, notifySaved, notifySavePulse } from '../lib/syncStatus.js'
+import { LANG_STORAGE_KEY, readPersistedLanguage } from '../lib/languageStore.js'
 
 const KEY = 'gym_state_v1'
 export const DEF = {
@@ -32,6 +33,10 @@ function loadState() {
   try {
     const raw = localStorage.getItem(KEY)
     const loaded = raw ? Object.assign(clone(DEF), JSON.parse(raw)) : clone(DEF)
+    // Synchronize language with central localStorage system
+    const savedLang = readPersistedLanguage()
+    if (savedLang) loaded.lang = savedLang
+
     // If active session wasn't in raw state (or was lost), check the periodic auto-save backup
     if (!loaded.active) {
       const backupRaw = localStorage.getItem('gym_active_session_backup_v1')
@@ -47,7 +52,9 @@ function loadState() {
     }
     return loaded
   } catch (e) { /* ignore */ }
-  return clone(DEF)
+  const fallback = clone(DEF)
+  fallback.lang = readPersistedLanguage()
+  return fallback
 }
 
 const hasData = st => !!((st.workouts || []).length || (st.routines || []).length || (st.bodyweight || []).length)
@@ -119,7 +126,9 @@ export const useStore = create((set, get) => {
     localStorage.removeItem(KEY)
     localStorage.removeItem('gym_active_session_backup_v1')
     localStorage.removeItem('gym_active_session_meta_v1')
-    persist(clone(DEF), false)
+    const fresh = clone(DEF)
+    fresh.lang = readPersistedLanguage()
+    persist(fresh, false)
   }
 
   return {
@@ -135,6 +144,11 @@ export const useStore = create((set, get) => {
     update(mut, push = true) {
       const S = clone(get().S)
       mut(S)
+      if (S.lang) {
+        try {
+          localStorage.setItem(LANG_STORAGE_KEY, S.lang)
+        } catch (e) { /* ignore */ }
+      }
       persist(S, push)
     },
     replaceState(S, push = false) { persist(clone(S), push) },
@@ -171,6 +185,9 @@ export const useStore = create((set, get) => {
           const active = S.active
           const next = Object.assign(clone(DEF), state)
           if (active) next.active = active
+          // Preserve the user's explicit local device language selection
+          const persistentLang = readPersistedLanguage()
+          if (persistentLang) next.lang = persistentLang
           persist(next, false)
         } else if (hasData(S)) { await get().pushState() }
         notifySynced('Synced')

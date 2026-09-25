@@ -48,6 +48,11 @@ export default {
   // --- body weight & goal ---
   'Quick check-in': 'Kurzer Check-in',
   'Log body weight': 'Körpergewicht eintragen',
+  'Log weight': 'Gewicht eintragen',
+  'Quick log': 'Schnelleintrag',
+  'Today:': 'Heute:',
+  'No weigh-in logged today': 'Heute kein Gewicht eingetragen',
+  'Tap to log': 'Tippen zum Eintragen',
   'Slide or tap to set your weight — tracked before every workout so your curve stays honest.': 'Schieben oder tippen, um dein Gewicht zu setzen — vor jedem Training erfasst, damit deine Kurve ehrlich bleibt.',
   'Save & start workout': 'Speichern & Training starten',
   'Start without weighing in': 'Ohne Wiegen starten',

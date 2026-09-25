@@ -184,6 +184,7 @@ function LogMeasurementModal({ initialMetric = 'waist', close }) {
 
 export default function BodyMeasurementsCard({ S }) {
   const [metric, setMetric] = useState('waist')
+  const [collapsed, setCollapsed] = useState(false)
 
   const metrics = [
     { value: 'waist', label: t('Waist') },
@@ -191,6 +192,7 @@ export default function BodyMeasurementsCard({ S }) {
     { value: 'bodyfat', label: t('Body Fat %') }
   ]
 
+  const currentLabel = metrics.find(m => m.value === metric)?.label || metric
   const isPercent = metric === 'bodyfat'
   const unitStr = isPercent ? '%' : (S.unit === 'lb' ? 'in' : 'cm')
 
@@ -200,71 +202,205 @@ export default function BodyMeasurementsCard({ S }) {
     ))
   }
 
-  const data = (S.measurements || [])
+  const allMeasurements = S.measurements || []
+  if (allMeasurements.length === 0) {
+    return (
+      <div className="card">
+        <div className="row between" style={{ marginBottom: 10, alignItems: 'center' }}>
+          <h2 style={{ margin: 0 }}>{t('Body Measurements')}</h2>
+          <Button
+            size="sm"
+            variant="tinted"
+            icon="plus"
+            onClick={openLogSheet}
+            title={t('Log measurement')}
+          >
+            {t('Log')}
+          </Button>
+        </div>
+        <div style={{ textAlign: 'center', padding: '16px 12px' }}>
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              background: 'var(--surface-2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 10px',
+              color: 'var(--acc)'
+            }}
+          >
+            <Icon name="target" style={{ fontSize: 20 }} />
+          </div>
+          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
+            {t('No measurements logged yet.')}
+          </div>
+          <div className="muted small" style={{ maxWidth: 300, margin: '0 auto 12px', lineHeight: 1.45 }}>
+            {t('Track waist, biceps, body fat and more over time.')}
+          </div>
+          <Button size="sm" variant="primary" icon="plus" onClick={openLogSheet}>
+            {t('Log first measurement')}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const data = allMeasurements
     .filter(m => m.type === metric)
     .sort((a, b) => new Date(a.d) - new Date(b.d))
     .map(m => ({
       name: fmtDate(m.d, true),
-      value: m.value
+      value: m.value,
+      d: m.d
     }))
+
+  const latest = data.length > 0 ? data[data.length - 1] : null
+  const first = data.length > 0 ? data[0] : null
+  const delta = (latest && first && data.length >= 2) ? (latest.value - first.value) : null
 
   return (
     <div className="card">
-      <div className="row between" style={{ marginBottom: 12, alignItems: 'center' }}>
-        <h2 style={{ margin: 0 }}>{t('Body Measurements')}</h2>
-        <Button
-          size="sm"
-          variant="tinted"
-          icon="plus"
-          onClick={openLogSheet}
-          title={t('Log measurement')}
-        >
-          {t('Log')}
-        </Button>
+      <div className="row between" style={{ marginBottom: 10, alignItems: 'center' }}>
+        <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>{t('Body Measurements')}</span>
+        </h2>
+        <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+          <button
+            type="button"
+            className="iconbtn"
+            style={{ width: 28, height: 28, borderRadius: 6 }}
+            onClick={() => setCollapsed(c => !c)}
+            title={collapsed ? t('Expand') : t('Collapse')}
+            aria-label={collapsed ? t('Expand') : t('Collapse')}
+          >
+            <Icon name={collapsed ? 'chevronDown' : 'chevronUp'} style={{ fontSize: 13 }} />
+          </button>
+          <Button
+            size="sm"
+            variant="tinted"
+            icon="plus"
+            onClick={openLogSheet}
+            title={t('Log measurement')}
+          >
+            {t('Log')}
+          </Button>
+        </div>
       </div>
 
-      <Segmented
-        className="seg-range"
-        value={metric}
-        onChange={setMetric}
-        options={metrics}
-      />
+      {!collapsed && (
+        <>
+          <Segmented
+            className="seg-range"
+            value={metric}
+            onChange={setMetric}
+            options={metrics}
+          />
 
-      <div className="chart" style={{ height: 200, marginTop: 16 }}>
-        {data.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <XAxis dataKey="name" stroke="var(--dim)" fontSize={12} tickMargin={10} />
-              <YAxis domain={['auto', 'auto']} stroke="var(--dim)" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'var(--bg2)',
-                  borderColor: 'var(--sep)',
-                  borderRadius: 8,
-                  color: 'var(--fg)'
-                }}
-                formatter={val => [`${fmtNum(val)} ${unitStr}`, t('Value')]}
-                itemStyle={{ color: 'var(--acc)', fontWeight: 600 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="var(--acc)"
-                strokeWidth={3}
-                dot={{ r: 4, fill: 'var(--acc)' }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="muted small" style={{ textAlign: 'center', paddingTop: 40, paddingBottom: 20 }}>
-            <div style={{ marginBottom: 10 }}>{t('No measurements logged yet.')}</div>
-            <Button size="sm" variant="primary" icon="plus" onClick={openLogSheet}>
-              {t('Log measurement')}
-            </Button>
-          </div>
-        )}
-      </div>
+          {data.length >= 2 ? (
+            <>
+              <div className="row between" style={{ marginTop: 8, marginBottom: 4, alignItems: 'baseline' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--acc)' }}>
+                    {fmtNum(latest.value)} {unitStr}
+                  </span>
+                  <span className="small dim">{fmtDate(latest.d, true)}</span>
+                </div>
+                {delta !== null && (
+                  <span
+                    className="small"
+                    style={{
+                      fontWeight: 600,
+                      color: delta === 0 ? 'var(--label-2)' : (metric === 'waist' || metric === 'bodyfat')
+                        ? (delta < 0 ? 'var(--green, #10b981)' : 'var(--yellow, #f59e0b)')
+                        : (delta > 0 ? 'var(--green, #10b981)' : 'var(--label-2)')
+                    }}
+                  >
+                    {delta > 0 ? `+${fmtNum(delta)}` : fmtNum(delta)} {unitStr}
+                  </span>
+                )}
+              </div>
+
+              <div className="chart" style={{ height: 180, marginTop: 8 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="name" stroke="var(--dim)" fontSize={11} tickMargin={8} />
+                    <YAxis domain={['auto', 'auto']} stroke="var(--dim)" fontSize={11} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'var(--surface-2)',
+                        borderColor: 'var(--sep)',
+                        borderRadius: 8,
+                        color: 'var(--fg)',
+                        fontSize: 12
+                      }}
+                      formatter={val => [`${fmtNum(val)} ${unitStr}`, currentLabel]}
+                      itemStyle={{ color: 'var(--acc)', fontWeight: 600 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="var(--acc)"
+                      strokeWidth={2.5}
+                      dot={{ r: 4, fill: 'var(--acc)' }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          ) : data.length === 1 ? (
+            <div
+              style={{
+                padding: '12px 14px',
+                background: 'var(--surface-2)',
+                borderRadius: 10,
+                marginTop: 10,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12
+              }}
+            >
+              <div>
+                <div className="small dim">{t('Current measurement')}</div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--acc)', marginTop: 2 }}>
+                  {fmtNum(data[0].value)} {unitStr}
+                  <span className="small dim" style={{ marginLeft: 8, fontWeight: 400 }}>
+                    {fmtDate(data[0].d, true)}
+                  </span>
+                </div>
+                <div className="small dim" style={{ marginTop: 2 }}>
+                  {t('Add another measurement to see progress chart')}
+                </div>
+              </div>
+              <Button size="sm" variant="tinted" icon="plus" onClick={openLogSheet}>
+                {t('Log')}
+              </Button>
+            </div>
+          ) : (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '16px 12px',
+                background: 'var(--surface-2)',
+                borderRadius: 10,
+                marginTop: 10,
+                border: '1px dashed var(--sep)'
+              }}
+            >
+              <div className="small muted" style={{ marginBottom: 10 }}>
+                {t('No measurements for {0} yet', currentLabel)}
+              </div>
+              <Button size="sm" variant="tinted" icon="plus" onClick={openLogSheet}>
+                {t('Log {0}', currentLabel)}
+              </Button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }
