@@ -44,9 +44,9 @@ export default function Plan() {
         })}
       </div>
     </div><div>
-      <div className="row between" style={{ marginTop: 22, marginBottom: 10 }}>
+      <div className="plan-routines-toolbar" style={{ marginTop: 22, marginBottom: 10 }}>
         <h4 className="sec" style={{ margin: 0 }}>{t('Routines')}</h4>
-        <div className="row" style={{ gap: 6 }}>
+        <div className="plan-routines-actions">
           <Button size="sm" variant="tinted" icon="globe" onClick={() => importUrlSheet()}>{t('URL')}</Button>
           <Button size="sm" variant="tinted" icon="sparkles" onClick={readyProgramsSheet}>{t('Ready-made programs')}</Button>
           <Button size="sm" variant="tinted" icon="plus" onClick={addRoutine}>{t('New')}</Button>

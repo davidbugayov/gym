@@ -18,41 +18,41 @@ export default function Library() {
   const [shown, setShown] = useState(40)
   const base = allExercises(S).filter(e => (!bp || e.bp === bp) && matchesExerciseQuery(e, q))
   const eqOpts = equipmentOf(base)
-  // Drop the equipment filter if the search narrowed it away, so you never hit a dead end.
-  const eqOn = eqOpts.includes(eq) ? eq : ''
+  // Keep the first results in view; show the extra equipment row once the list is narrowed.
+  const showEquipment = eqOpts.length > 1 && Boolean(bp || q.trim())
+  const eqOn = showEquipment && eqOpts.includes(eq) ? eq : ''
   const f = eqOn ? base.filter(e => e.eq === eqOn) : base
 
-  return <>
+  const createExercise = <div className="item" onClick={() => customExSheet(null, ex => exerciseDetailSheet(ex), q.trim())}>
+    <div className="thumb thumb-x"><Icon name="sparkles" /></div>
+    <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name + body part, no animation')}</div></div><Icon name="plus" className="chev" />
+  </div>
+
+  return <div className="exercise-library">
     <div className="hdr">
       <div>
         <h1>{t('Exercises')}</h1>
-        <div className="sub">
-          {t('{0} exercises with animations', EXDB.length)}
-          <span style={{ opacity: 0.6, marginLeft: 6 }}>· github.com/hasaneyldrm/exercises-dataset</span>
-        </div>
+        <div className="sub">{t('{0} exercises with animations', EXDB.length)}</div>
       </div>
     </div>
-    <div className="search" style={{ marginBottom: 10 }}><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+    <div className="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
       <input className="input" placeholder={t('Search…')} value={q} onChange={e => { setQ(e.target.value); setShown(40) }} /></div>
-    <div className="chips" style={{ marginBottom: eqOpts.length > 1 ? 8 : 12 }}>
+    <div className="chips">
       <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(40) }}>{t('All')}</button>
       {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setEq(''); setShown(40) }}>{t(b)}</button>)}
     </div>
-    {eqOpts.length > 1 && <div className="chips" style={{ marginBottom: 12 }}>
+    {showEquipment && <div className="chips equipment-chips">
       <button className={'chip nocap' + (!eqOn ? ' on' : '')} onClick={() => { setEq(''); setShown(40) }}>{t('Any equipment')}</button>
       {eqOpts.map(x => <button key={x} className={'chip' + (eqOn === x ? ' on' : '')} onClick={() => { setEq(x); setShown(40) }}>{t(x)}</button>)}
     </div>}
 
     <div className="list">
-      <div className="item" onClick={() => customExSheet(null, ex => exerciseDetailSheet(ex), q.trim())}>
-        <div className="thumb thumb-x"><Icon name="sparkles" /></div>
-        <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name + body part, no animation')}</div></div><Icon name="plus" className="chev" />
-      </div>
       {f.slice(0, shown).map(e => {
         const pr = personalRecordFor(S, e.id)
+        const name = t(e.n)
         return <div key={e.id} className="item" onClick={() => exerciseDetailSheet(e)}>
           <Thumb ex={e} />
-          <div className="grow"><div className="tt capitalize">{e.n}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div></div>
+          <div className="grow"><div className="tt">{name.charAt(0).toLocaleUpperCase() + name.slice(1)}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div></div>
           <div className="item-badges">
             <ExerciseEffortSparkline exercise={e} />
             {pr && (
@@ -94,8 +94,8 @@ export default function Library() {
         </div>
       })}
       {f.length === 0 && <div className="empty"><div className="ico"><Icon name="magnifier" /></div>{t('No match')}</div>}
+      {createExercise}
     </div>
     {f.length > shown && <><div style={{ height: 10 }} /><Button onClick={() => setShown(s => s + 40)}>{t('Show more')}</Button></>}
-  </>
+  </div>
 }
-

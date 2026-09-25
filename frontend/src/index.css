@@ -444,6 +444,25 @@ h4.sec{
   width:16px;height:16px;stroke:var(--label-3);fill:none;stroke-width:2.1;stroke-linecap:round;
 }
 
+/* Exercise library: let results appear above the fold on phone screens. */
+.exercise-library .hdr{align-items:center;margin:0 0 8px}
+.exercise-library .hdr h1{font-size:26px;line-height:1.1}
+.exercise-library .hdr .sub{font-size:12px;margin-top:2px}
+.exercise-library .search{margin-bottom:8px}
+.exercise-library .search .input{padding-top:9px;padding-bottom:9px}
+.exercise-library .chips{gap:6px;margin-bottom:8px}
+.exercise-library .chip{padding:5px 10px;font-size:13px}
+.exercise-library .equipment-chips{margin-top:-2px}
+.exercise-library .list{gap:6px}
+.exercise-library .item{min-height:54px;padding:6px 9px;gap:10px}
+.exercise-library .thumb{width:42px;height:42px}
+
+@media (max-height:740px){
+  .exercise-library .hdr h1{font-size:24px}
+  .exercise-library .search .input{padding-top:7px;padding-bottom:7px}
+  .exercise-library .chip{padding-top:4px;padding-bottom:4px}
+}
+
 /* --- switch --- */
 .sw{
   width:51px;height:31px;border-radius:99px;background:var(--surface-3);
@@ -655,7 +674,7 @@ h4.sec{
   flex:1 1 0;text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .sethead .eff-sp{flex:0.85 1 0;text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sethead .go-sp{width:34px;flex-shrink:0}
+.sethead .go-sp{width:84px;flex-shrink:0;text-align:center}
 .sethead .ck-sp{width:32px;flex-shrink:0}
 
 .setrow{
@@ -1257,15 +1276,16 @@ h4.sec{
 
 /* start a timed set (issue #16) — prominent, comfortable hit target */
 .setrow .setgo{
-  width:34px;height:34px;border-radius:9px;flex-shrink:0;
+  width:84px;height:38px;border-radius:9px;flex-shrink:0;gap:4px;
   display:flex;align-items:center;justify-content:center;
-  background:var(--acc);color:var(--on-acc);font-size:15px;
+  background:var(--acc);color:var(--on-acc);font-size:12px;font-weight:700;
   border:none;box-shadow:0 2px 8px color-mix(in srgb,var(--acc) 35%,transparent);
   transition:transform var(--fast),background var(--fast),opacity var(--fast);
   cursor:pointer;
 }
 .setrow .setgo:not(:disabled):active{transform:scale(0.92)}
 .setrow .setgo:disabled{opacity:.35;cursor:default;background:var(--surface-3);color:var(--label-3);box-shadow:none}
+.setrow .setgo.is-timing{background:color-mix(in srgb,var(--acc) 18%,var(--surface));color:var(--acc);font-family:'JetBrains Mono',monospace}
 /* exercise-config sheet: three steppers side by side on narrow phones */
 .cfgrow{gap:8px}
 .cfgrow>div{flex:1;min-width:0}
@@ -1387,9 +1407,25 @@ h4.sec{
 #timer.working{border:var(--hair) solid var(--acc)}
 #timer.working .t{color:var(--acc)}
 #timer.working .grow{flex:1;min-width:0}
+#timer.working .working-head{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+#timer.working .working-controls{display:flex;align-items:center;gap:8px;flex:none}
+#timer.working .timer-toggle{width:34px;height:34px;flex:none;padding:4px;justify-content:center}
 #timer.working .lbl{
   font-size:12px;color:var(--label-2);margin-bottom:5px;text-transform:capitalize;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+@media (max-width: 520px){
+  #timer.working{flex-direction:column;align-items:stretch;gap:10px;padding:10px 12px}
+  #timer.working .working-head{width:100%}
+  #timer.working .working-controls{display:grid;grid-template-columns:42px 42px minmax(66px,1fr) minmax(76px,1.1fr);gap:8px;width:100%}
+  #timer.working .timer-toggle{width:42px;height:40px;border-radius:12px;padding:4px}
+  #timer.working .work-action{width:100%;min-width:0;height:40px;padding:6px 8px;gap:5px;font-size:13px;white-space:normal;line-height:1.1}
+  #timer.working .work-action .icn{font-size:15px}
+}
+@media (max-width: 360px){
+  #timer.working .working-controls{grid-template-columns:38px 38px minmax(56px,1fr) minmax(64px,1fr);gap:6px}
+  #timer.working .work-action{font-size:12px;padding:5px 4px}
+  #timer.working .work-action .icn{display:none}
 }
 
 /* ---------------------------------------------------------------- modal -- */
@@ -1423,7 +1459,8 @@ h4.sec{
 .sheet h3{font-size:20px;font-weight:700;letter-spacing:-.021em;margin-bottom:14px;padding-right:38px}
 .center{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:min(88vw,340px);background:var(--bg-el);border-radius:var(--r-lg);padding:22px;
+  width:min(92vw,480px);max-height:90vh;max-height:90dvh;overflow-y:auto;overscroll-behavior:contain;
+  background:var(--bg-el);border-radius:var(--r-lg);padding:22px;
   box-shadow:0 20px 60px -12px rgba(0,0,0,.65);border:1px solid var(--sep);
   animation:pop .25s var(--ease);z-index:105;
 }
@@ -1848,6 +1885,20 @@ h4.sec{
 }
 .tile.tappable{cursor:pointer}
 .tile.tappable:active{background:var(--surface-2);transform:scale(.98);border-color:var(--acc)}
+
+.finish-summary{min-width:0}
+.finish-summary .tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.finish-summary .tile{min-width:0;padding:12px}
+.finish-summary .tile .l{font-size:11px;line-height:1.3;overflow-wrap:anywhere}
+.finish-summary .tile .v{font-size:clamp(18px,5vw,23px)!important;overflow-wrap:anywhere}
+.finish-sync-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;
+  background:var(--surface-2);padding:10px 12px;border-radius:10px;margin:12px 0;text-align:left;
+}
+.finish-sync-label{display:flex;align-items:center;gap:8px;min-width:0;font-size:.88rem;line-height:1.35}
+.finish-sync-label .icn{flex:none}
+.finish-sync-label span{min-width:0;overflow-wrap:anywhere}
+.finish-sync-button{flex:none;max-width:42%;height:auto;min-height:32px;padding:6px 10px;white-space:normal;line-height:1.2}
 
 /* --- PR badge --- */
 .pr{
@@ -2900,6 +2951,51 @@ h4.sec{
   margin-bottom: 10px;
 }
 
+.plan-routines-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.plan-routines-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .hero-workout-card.is-rest > .row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .hero-workout-card.is-rest > .row .btn {
+    width: 100%;
+  }
+
+  .quick-actions-grid.is-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .plan-routines-toolbar {
+    justify-content: flex-start;
+  }
+
+  .plan-routines-actions {
+    width: 100%;
+  }
+
+  .plan-routines-actions .btn {
+    font-size: 12px;
+    padding-inline: 9px;
+  }
+}
+
 .hero-badge {
   display: inline-flex;
   align-items: center;
@@ -3213,7 +3309,6 @@ h4.sec{
   height: 100%;
   box-sizing: border-box;
 }
-
 
 
 

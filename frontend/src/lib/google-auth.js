@@ -40,7 +40,8 @@ const healthProvider = new GoogleAuthProvider()
 healthProvider.addScope('email')
 healthProvider.addScope('profile')
 GOOGLE_HEALTH_SCOPES.forEach(scope => healthProvider.addScope(scope))
-healthProvider.setCustomParameters({ prompt: 'select_account', include_granted_scopes: 'true' })
+// Consent is needed when we add or repair a Health API scope on an already-connected account.
+healthProvider.setCustomParameters({ prompt: 'consent select_account', include_granted_scopes: 'true' })
 
 // In-memory access token cache (CRITICAL: never in localStorage)
 let cachedAccessToken = null

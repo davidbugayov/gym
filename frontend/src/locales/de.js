@@ -71,7 +71,7 @@ export default {
   'reached!': 'erreicht!',
   '{0} to gain': 'noch {0} zunehmen',
   '{0} to lose': 'noch {0} abnehmen',
-  "No entries yet — log your weight to start the curve. It's also asked before every workout.": 'Noch keine Einträge — trag dein Gewicht ein, um die Kurve zu starten. Es wird auch vor jedem Training abgefragt.',
+  "No entries yet — log your weight to track progress. You can update it any time.": 'Noch keine Einträge — trage dein Gewicht ein, um deinen Fortschritt zu verfolgen. Du kannst es jederzeit aktualisieren.',
   // --- exercise detail / picker / config ---
   'Best:': 'Bestwert:',
   'Add to my plan': 'Zu meinem Plan',
@@ -489,7 +489,7 @@ export default {
   'Best estimated 1RM:': 'Bestes geschätztes 1RM:',
   'Time': 'Zeit',
   'Seconds': 'Sekunden',
-  'A timer runs while you hold the set. Leave the weight at 0 for bodyweight holds.': 'Während des Satzes läuft ein Timer. Für Halteübungen ohne Zusatzgewicht das Gewicht auf 0 lassen.',
+  "Start the timer when you are ready. The set is logged automatically when the countdown ends.": 'Tippe auf „Start“, wenn du bereit bist. Der Satz wird automatisch gespeichert, sobald der Timer abläuft.',
   'Done': 'Fertig',
   'Start set': 'Satz starten',
   'Hold logged': 'Haltezeit gespeichert',

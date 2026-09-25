@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { exOr } from '../lib/exercises.js'
-import { effectiveRoutine, lastEntryFor, bestWeightFor, buildSets, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, EFFORT, effortOf, stepEffort, capEffort } from '../lib/history.js'
+import { effectiveRoutine, lastEntryFor, bestWeightFor, buildSets, setsDoneActive, supersetUnits, unitOf, setLabel, modeOf, fmtSec, EFFORT, effortOf, stepEffort, capEffort } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, exCount, DAYN } from '../lib/format.js'
 import { beep, vibrate, hapticClick, hapticSetComplete } from '../lib/sound.js'
 import { t } from '../lib/i18n.js'
@@ -31,9 +31,6 @@ function StartChooser() {
         <h1>{t('Start workout')}</h1>
         <div className="sub">{t(DAYN[new Date().getDay()])} — {todayR ? t('today is {0}', todayR.name) : t('rest day, but no one’s stopping you')}</div>
       </div>
-      <button className="iconbtn" onClick={showProgramSheet} aria-label={t('Show program')} title={t('Show program')}>
-        <Icon name="clipboard" />
-      </button>
     </div>
 
     {/* Quick program info & switch banner */}
@@ -745,29 +742,34 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
 
     <div className="card sets-card" style={{ marginTop: 0, marginBottom: 0 }}>
       {/* the header carries the same eff3 sizing as the rows, or the labels drift off their columns */}
-      <div className={'sethead' + (isEff3 ? ' eff3' : '') + (!hasWeight ? ' no-weight' : '')}>
+      <div className={'sethead' + (isEff3 ? ' eff3' : '') + (!hasWeight ? ' no-weight' : '') + (timed ? ' timed' : '')}>
         <span className="n-sp" />
         <span className="col-sp c1-sp">{col1.hd}</span>
         {col2 && <span className="col-sp c2-sp">{col2.hd}</span>}
         {col3 && <span className="col-sp eff-sp">{col3.hd}</span>}
-        {timed && <span className="go-sp" />}
+        {timed && <span className="go-sp">{t('Start')}</span>}
         <span className="ck-sp" />
       </div>
       {entry.sets.map((s, i) => {
         const isWorking = i === workingSetIdx && !s.done
+        const isTimedWork = timed && working?.entryIdx === entryIdx && working?.setIdx === i
         const tagClass = s.tag === 'W' ? ' tag-w' : s.tag === 'D' ? ' tag-d' : s.tag === 'F' ? ' tag-f' : (isWorking ? ' working' : '')
         const tagLabel = s.tag === 'W' ? 'W' : s.tag === 'D' ? 'D' : s.tag === 'F' ? 'F' : (i + 1)
-        return <div key={i} className={'setrow' + (s.done ? ' done' : '') + (isWorking ? ' is-working' : '') + (isEff3 ? ' eff3' : '') + (!hasWeight ? ' no-weight' : '')}>
+        return <div key={i} className={'setrow' + (s.done ? ' done' : '') + (isWorking ? ' is-working' : '') + (isEff3 ? ' eff3' : '') + (!hasWeight ? ' no-weight' : '') + (timed ? ' timed' : '')}>
           <button type="button" className={'n' + tagClass} onClick={() => onChangeSet?.(i)} title={t('Set {0} · Tap to change set', i + 1)} aria-label={t('Set {0}', i + 1)}>
             {tagLabel}
           </button>
           {cell(s, i, col1, 'c1' + (col1.f === 'w' ? ' w' : col1.f === 'r' ? ' r' : ''))}
           {col2 && cell(s, i, col2, 'c2' + (col2.f === 'r' ? ' r' : col2.f === 'speed' ? ' speed' : col2.f === 'w' ? ' w' : ''))}
           {col3 && cell(s, i, col3, 'eff')}
-          {/* A timed set is started, not typed: the timer counts the hold down and checks the
-              set off itself. The checkbox stays for anyone who timed it on their own watch. */}
-          {timed && <button className="setgo" aria-label={t('Start set')} disabled={s.done || !!working}
-            onClick={() => onStartTimed(i)} title={t('Start timer')}><Icon name="play" /></button>}
+          {/* Timed holds use an explicit start control; completion is recorded by the timer. */}
+          {timed && <button type="button" className={'setgo' + (isTimedWork ? ' is-timing' : '')}
+            aria-label={isTimedWork ? fmtSec(working.left) : t('Start set')}
+            disabled={s.done || (!!working && !isTimedWork)}
+            onClick={() => onStartTimed(i)}>
+            <Icon name={isTimedWork ? 'timer' : 'play'} />
+            <span>{isTimedWork ? fmtSec(working.left) : t('Start')}</span>
+          </button>}
           <Check checked={s.done} onChange={() => onToggle(i)} />
         </div>
       })}
@@ -858,10 +860,10 @@ function ActiveWorkout() {
   // behave exactly as they do for a reps set.
   const startTimed = (idx, i) => {
     const e = A.entries[idx]
-    useUI.getState().startWork(e.sets[i].sec || 45, exOr(e.id).n, elapsed => {
+    useUI.getState().startWork(e.sets[i].sec || 45, t(exOr(e.id).n), elapsed => {
       mutEntry(idx, en => { en.sets[i].sec = elapsed })
       if (!useStore.getState().S.active.entries[idx].sets[i].done) toggle(idx, i)
-    })
+    }, { entryIdx: idx, setIdx: i })
   }
 
   const toggle = (idx, i) => {

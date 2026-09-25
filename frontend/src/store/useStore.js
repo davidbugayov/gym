@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { api } from '../lib/api.js'
 import { localTZ } from '../lib/format.js'
 import { registerCustom } from '../lib/exercises.js'
+import { normalizeActiveSession } from '../lib/history.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { MOBILE, nativeLoad, nativeSave, syncReminder } from '../lib/mobile.js'
 import { notifySyncing, notifySynced, notifySaved, notifySavePulse } from '../lib/syncStatus.js'
@@ -42,12 +43,12 @@ function loadState() {
     }
 
     // If active session wasn't in raw state (or was lost), check the periodic auto-save backup
-    if (!loaded.active) {
+    if (!Array.isArray(loaded.active?.entries) || !loaded.active.entries.length) {
       const backupRaw = localStorage.getItem('gym_active_session_backup_v1')
       if (backupRaw) {
         try {
           const backup = JSON.parse(backupRaw)
-          if (backup?.active?.entries && (Date.now() - (backup.savedAt || 0) < 48 * 3600 * 1000)) {
+          if (Array.isArray(backup?.active?.entries) && backup.active.entries.length && (Date.now() - (backup.savedAt || 0) < 48 * 3600 * 1000)) {
             loaded.active = backup.active
             loaded._recoveredFromAutoSave = true
           }
@@ -58,6 +59,13 @@ function loadState() {
   } catch (e) { /* ignore */ }
   const fallback = clone(DEF)
   fallback.lang = readPersistedLanguage()
+  try {
+    const backup = JSON.parse(localStorage.getItem('gym_active_session_backup_v1') || 'null')
+    if (Array.isArray(backup?.active?.entries) && backup.active.entries.length && Date.now() - (backup.savedAt || 0) < 48 * 3600 * 1000) {
+      fallback.active = backup.active
+      fallback._recoveredFromAutoSave = true
+    }
+  } catch (e) { /* ignore */ }
   return fallback
 }
 
@@ -75,6 +83,7 @@ export const useStore = create((set, get) => {
   }
 
   const persist = (S, push = true) => {
+    if (S.active) S.active = normalizeActiveSession(S.active, S)
     S._ts = Date.now()
     registerCustom(S.customEx)
     localStorage.setItem(KEY, JSON.stringify(S))
@@ -138,7 +147,12 @@ export const useStore = create((set, get) => {
   }
 
   return {
-    S: (() => { const s = loadState(); registerCustom(s.customEx); return s })(),
+    S: (() => {
+      const s = loadState()
+      registerCustom(s.customEx)
+      if (s.active) s.active = normalizeActiveSession(s.active, s)
+      return s
+    })(),
     user: (() => { try { return JSON.parse(localStorage.getItem('gym_user')) || null } catch { return null } })(),
     ready: false,
     // Instance capabilities from GET /api/config. `config.coach` is present only when the

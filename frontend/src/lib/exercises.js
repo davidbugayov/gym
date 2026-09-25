@@ -234,7 +234,9 @@ const RU_ALIASES = {
   'ноги': ['legs', 'quads', 'hamstrings', 'squat', 'lunges', 'calf', 'glutes'],
   'плечи': ['shoulders', 'delts', 'overhead press', 'lateral raise', 'military'],
   'бицепс': ['biceps', 'curl', 'upper arms'],
+  'бицепсы': ['biceps', 'curl', 'upper arms'],
   'трицепс': ['triceps', 'pushdown', 'extension', 'dip'],
+  'трицепсы': ['triceps', 'pushdown', 'extension', 'dip'],
   'пресс': ['abs', 'waist', 'crunch', 'plank', 'sit up', 'hanging leg'],
   'ягодицы': ['glutes', 'hip thrust', 'deadlift', 'squat', 'split squat'],
   'руки': ['upper arms', 'lower arms', 'biceps', 'triceps', 'forearms'],
@@ -251,13 +253,16 @@ const RU_ALIASES = {
 export function matchesExerciseQuery(e, query) {
   if (!query) return true
   const q = query.toLowerCase().trim()
-  if (e.n.toLowerCase().includes(q) || (e.tg && e.tg.includes(q)) || (e.eq && e.eq.includes(q)) || (e.bp && e.bp.includes(q)) || (e.desc || '').toLowerCase().includes(q)) {
+  const fields = [e.n, t(e.n), e.tg, t(e.tg), e.eq, t(e.eq), e.bp, t(e.bp), e.desc, t(e.desc), ...(e.sm || []), ...(e.sm || []).map(t)]
+    .filter(Boolean)
+    .map(value => value.toLowerCase())
+  if (fields.some(value => value.includes(q))) {
     return true
   }
   // Check Russian aliases
   for (const [ruTerm, enKeywords] of Object.entries(RU_ALIASES)) {
     if (q.includes(ruTerm) || ruTerm.includes(q)) {
-      if (enKeywords.some(k => e.n.toLowerCase().includes(k) || (e.tg && e.tg.includes(k)) || (e.bp && e.bp.includes(k)) || (e.eq && e.eq.includes(k)))) {
+      if (enKeywords.some(k => fields.some(value => value.includes(k)))) {
         return true
       }
     }
@@ -267,7 +272,7 @@ export function matchesExerciseQuery(e, query) {
 
 // Get pro tips / execution cues for an exercise
 export function getFormCues(ex) {
-  if (ex?.cues && ex.cues.length > 0) return ex.cues
+  if (ex?.cues && ex.cues.length > 0) return ex.cues.map(cue => t(cue))
   // Generate helpful context cues based on target muscle and equipment
   const cues = []
   if (ex?.eq === 'barbell') cues.push(t('Keep bar path vertical and grip firmly locked'))

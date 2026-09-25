@@ -119,14 +119,14 @@ export const useUI = create((set, get) => ({
      `onDone(elapsedSec)` is called both when the countdown reaches zero and on an early
      finish; the elapsed time is what actually gets logged, so stopping at 0:38 of a 0:45
      hold records 0:38 rather than crediting the full target. */
-  startWork(sec, label, onDone) {
+  startWork(sec, label, onDone, context = {}) {
     get().stopWork()
     get().stopRest()
     getAudioContext()
     const total = Math.max(1, Math.round(sec) || 1)
     const endsAt = Date.now() + total * 1000
     workDone = onDone
-    set({ work: { left: total, total, endsAt, label, milestones: {} } })
+    set({ work: { left: total, total, endsAt, label, ...context, milestones: {} } })
     workTick = () => {
       const wk = get().work
       if (!wk) return

@@ -232,11 +232,11 @@ export default function Home() {
       )}
 
       {/* Quick Launch Action Bar */}
-      <div className="quick-actions-grid">
-        <button type="button" className="quick-action-btn" onClick={() => startFlow(null)}>
+      <div className={`quick-actions-grid${!routine || S.active ? ' is-compact' : ''}`}>
+        {routine && !S.active && <button type="button" className="quick-action-btn" onClick={() => startFlow(null)}>
           <div className="qa-icon"><Icon name="dumbbell" /></div>
           <span className="qa-label">{t('Freestyle')}</span>
-        </button>
+        </button>}
         <button type="button" className="quick-action-btn" onClick={() => bwSheet()}>
           <div className="qa-icon"><Icon name="scale" /></div>
           <span className="qa-label">{t('Log weight')}</span>
@@ -366,7 +366,7 @@ export default function Home() {
           </>
         ) : (
           <div className="muted small">
-            {t("No entries yet — log your weight to start the curve. It's also asked before every workout.")}
+            {t('No entries yet — log your weight to track progress. You can update it any time.')}
           </div>
         )}
       </div>

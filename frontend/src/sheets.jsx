@@ -538,7 +538,7 @@ function ExerciseDetail({ ex, close }) {
       <span className="tag"><Icon name="dumbbell" />{t(ex.eq)}</span>
       {(ex.sm || []).slice(0, 3).map((s, i) => <span key={i} className="tag">{t(s)}</span>)}
     </div>
-    {ex.desc && <div className="exnote">{ex.desc}</div>}
+    {ex.desc && <div className="exnote">{t(ex.desc)}</div>}
     {best > 0 && <div className="small row" style={{ marginBottom: 6, gap: 5 }}><Icon name="trophy" style={{ fontSize: 14, color: 'var(--yellow)' }} />{t('Best:')} <b className="accent">{fmtNum(best)} {st.unit}</b>{last ? ` · ${t('last')} ${fmtDate(last.d)}: ${last.sets.map(s => setLabel(ex.id, s, last.target)).join(', ')}` : ''}</div>}
 
     {/* Technique Cues / Personal Note Field */}
@@ -587,7 +587,7 @@ function ExerciseDetail({ ex, close }) {
           <div key={sub.id} className="item" style={{ cursor: 'pointer' }} onClick={() => { close(); exerciseDetailSheet(sub) }}>
             <Thumb ex={sub} />
             <div className="grow">
-              <div className="tt capitalize">{sub.n}</div>
+              <div className="tt capitalize">{t(sub.n)}</div>
               <div className="ss capitalize">{t(sub.tg || sub.bp)} · {t(sub.eq)}</div>
             </div>
             <Icon name="chevronRight" className="chev" />
@@ -1085,7 +1085,7 @@ function ExConfig({ ex, existing, onSave, onDelete, onSwap, close, routine }) {
     if (c.prog) prog.prog = c.prog
     if (c.inc > 0) prog.inc = c.inc
     if (cardio) onSave({ sets, min: Math.max(1, Math.round(c.min) || 20), speed: Math.max(0, c.speed || 8) })
-    else if (mode === 'time') onSave({ sets, mode: 'time', sec: Math.max(1, Math.round(c.sec) || 45), weight: Math.max(0, c.weight || 0), ...prog })
+    else if (mode === 'time') onSave({ sets, mode: 'time', sec: Math.max(1, Math.round(c.sec) || 45), ...prog })
     else {
       const reps = Math.max(1, Math.round(c.reps) || 10)
       const out = { sets, mode: 'reps', reps, weight: Math.max(0, c.weight || 0), ...prog }
@@ -1113,7 +1113,6 @@ function ExConfig({ ex, existing, onSave, onDelete, onSwap, close, routine }) {
       </> : mode === 'time' ? <>
         <Stepper label={t('Sets')} value={c.sets} step={1} decimal={false} onChange={v => setC(x => ({ ...x, sets: v }))} />
         <Stepper label={t('Seconds')} value={c.sec} step={5} decimal={false} onChange={v => setC(x => ({ ...x, sec: v }))} />
-        <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} onChange={v => setC(x => ({ ...x, weight: v }))} />
       </> : <>
         <Stepper label={t('Sets')} value={c.sets} step={1} decimal={false} onChange={v => setC(x => ({ ...x, sets: v }))} />
         <Stepper label={t('Reps')} value={c.reps} step={1} decimal={false} onChange={v => setC(x => ({ ...x, reps: v }))} />
@@ -1121,7 +1120,7 @@ function ExConfig({ ex, existing, onSave, onDelete, onSwap, close, routine }) {
       </>}
     </div>
     {mode === 'time' && <div className="small dim" style={{ marginBottom: 18 }}>
-      {t('A timer runs while you hold the set. Leave the weight at 0 for bodyweight holds.')}
+      {t('Start the timer when you are ready. The set is logged automatically when the countdown ends.')}
     </div>}
     <ProgressionFields ex={ex} mode={mode} c={c} setC={setC} routine={routine} unit={st.unit} />
     <Button variant="primary" onClick={save}>{existing ? t('Save') : t('Add to routine')}</Button>
@@ -2138,6 +2137,8 @@ function FinishSummary({ w, prs, e1prs = [], close }) {
       {prs.map(id => <div key={id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="trophy" style={{ fontSize: 13 }} />{t('New PR:')} {(EXIDX[id] || {}).n || id}</div>)}
       {e1prs.map(p => <div key={p.id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="chartLine" style={{ fontSize: 13 }} />{t('Best estimated 1RM:')} {(EXIDX[p.id] || {}).n || p.id} · {fmtNum(p.est)} {st.unit}</div>)}
     </div>}
+
+    {!Capacitor.isNativePlatform() && <GoogleHealthDisclosure compact />}
 
     <div className="pws-details-wrap">
       <h4 className="sec" style={{ textAlign: 'left' }}>{t('What you just trained')}</h4>

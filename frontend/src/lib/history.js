@@ -231,6 +231,64 @@ export function buildSets(S, cfg) {
   }
   return sets
 }
+
+// Sessions can outlive the build that created them. Normalize the persisted workout shape
+// before rendering so an interrupted/older save cannot take down the entire workout screen.
+export function normalizeActiveSession(active, state = {}) {
+  if (!active || typeof active !== 'object' || Array.isArray(active)) return null
+  const workouts = Array.isArray(state.workouts) ? state.workouts : []
+  const exWeights = state.exWeights && typeof state.exWeights === 'object' ? state.exWeights : {}
+  const safeState = { ...state, workouts, exWeights }
+  const entries = (Array.isArray(active.entries) ? active.entries : [])
+    .filter(entry => entry && typeof entry === 'object' && !Array.isArray(entry))
+    .map(entry => {
+      const id = String(entry.id ?? entry.target?.id ?? 'unknown')
+      const target = entry.target && typeof entry.target === 'object' && !Array.isArray(entry.target)
+        ? { ...entry.target, id }
+        : { id }
+      const mode = modeOf({ ...target, id })
+      const storedSets = Array.isArray(entry.sets)
+        ? entry.sets.filter(set => set && typeof set === 'object' && !Array.isArray(set)).slice(0, 100)
+        : []
+      const requestedSets = Number(target.sets)
+      const setCount = storedSets.length || (Number.isFinite(requestedSets) && requestedSets > 0 ? Math.min(100, Math.round(requestedSets)) : 1)
+      const fallbackSets = buildSets(safeState, { ...target, id, sets: setCount })
+      const sets = (storedSets.length ? storedSets : fallbackSets).map((set, index) => {
+        const fallback = fallbackSets[index] || fallbackSets[fallbackSets.length - 1] || {}
+        const done = set.done === true
+        if (mode === 'time') {
+          const sec = Number(set.sec)
+          return { ...fallback, ...set, sec: Number.isFinite(sec) && sec > 0 ? Math.round(sec) : fallback.sec || 45, w: Number.isFinite(Number(set.w)) ? Math.max(0, Number(set.w)) : 0, done }
+        }
+        if (mode === 'cardio') {
+          const min = Number(set.min)
+          const speed = Number(set.speed)
+          return { ...fallback, ...set, min: Number.isFinite(min) && min > 0 ? min : fallback.min || 20, speed: Number.isFinite(speed) ? Math.max(0, speed) : fallback.speed || 8, done }
+        }
+        const weight = Number(set.w)
+        const reps = Number(set.r)
+        return {
+          ...fallback,
+          ...set,
+          w: Number.isFinite(weight) ? Math.max(0, weight) : fallback.w || 0,
+          r: Number.isFinite(reps) && reps > 0 ? Math.round(reps) : fallback.r || target.reps || 10,
+          done
+        }
+      })
+      return { ...entry, id, target, sets }
+    })
+  const requestedCur = Number(active.cur)
+  const cur = Number.isFinite(requestedCur) ? Math.max(0, Math.min(Math.floor(requestedCur), Math.max(0, entries.length - 1))) : 0
+  const start = Number(active.start)
+  return {
+    ...active,
+    name: typeof active.name === 'string' && active.name ? active.name : 'Workout',
+    start: Number.isFinite(start) && start > 0 ? start : Date.now(),
+    cur,
+    entries
+  }
+}
+
 export function workoutVolume(w) {
   let v = 0
   w.entries.forEach(e => e.sets.forEach(s => { if (s.done) v += (s.w || 0) * (s.r || 0) }))
