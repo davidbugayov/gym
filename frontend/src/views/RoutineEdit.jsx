@@ -13,6 +13,7 @@ import { Button, SelectRow } from '../components/ui.jsx'
 import { POLICIES_FOR, POLICY_NAME, POLICY_DESC } from '../lib/progression.js'
 import BodyMap from '../components/BodyMap.jsx'
 import { loadOfRoutine, rankOf, MUSCLE_NAME } from '../lib/muscles.js'
+import SwipeToDelete from '../components/SwipeToDelete.jsx'
 
 export default function RoutineEdit() {
   const nav = useNavigate()

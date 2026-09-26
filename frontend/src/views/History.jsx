@@ -30,10 +30,14 @@ import Icon from '../components/Icon.jsx'
 import { Button, Segmented, SelectRow, SearchField } from '../components/ui.jsx'
 import { getExerciseTrend } from '../lib/trends.js'
 import { ExerciseTrendBadge } from '../components/ExerciseTrend.jsx'
+import SwipeToDelete from '../components/SwipeToDelete.jsx'
+import { useUI } from '../store/useUI.js'
 
 export default function History() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
+  const update = useStore(s => s.update)
+  const toast = useUI(s => s.toast)
   const workouts = S.workouts || []
 
   // Volume & Frequency state
@@ -682,34 +686,44 @@ export default function History() {
                     const doneS = setsDone(w)
                     const dur = durPart(w.end - w.start)[0]
                     return (
-                      <div
+                      <SwipeToDelete
                         key={w.id}
-                        className="wh-card"
-                        onClick={() => workoutDetailSheet(w)}
+                        className="wh-card-swipe"
+                        onDelete={() => {
+                          update(s => { s.workouts = s.workouts.filter(x => x.id !== w.id) })
+                          toast(t('Workout deleted'))
+                        }}
+                        confirmTitle={t('Delete workout?')}
+                        confirmMessage={t('This removes it from your history for good.')}
                       >
-                        <div>
-                          <div className="wh-card-top">
-                            <span className="lrow-i"><Icon name={glyph} /></span>
-                            {w.prs && w.prs.length > 0 ? (
-                              <span className="pr" style={{ fontSize: 10, padding: '2px 5px' }}>
-                                <Icon name="trophy" /> {w.prs.length}
-                              </span>
-                            ) : (
-                              <span className="small dim" style={{ fontSize: 11 }}>
-                                {fmtDate(w.d, true)}
-                              </span>
-                            )}
+                        <div
+                          className="wh-card"
+                          onClick={() => workoutDetailSheet(w)}
+                        >
+                          <div>
+                            <div className="wh-card-top">
+                              <span className="lrow-i"><Icon name={glyph} /></span>
+                              {w.prs && w.prs.length > 0 ? (
+                                <span className="pr" style={{ fontSize: 10, padding: '2px 5px' }}>
+                                  <Icon name="trophy" /> {w.prs.length}
+                                </span>
+                              ) : (
+                                <span className="small dim" style={{ fontSize: 11 }}>
+                                  {fmtDate(w.d, true)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="wh-card-title">{w.name}</div>
+                            <div className="wh-card-stats">
+                              {dur ? `${dur} · ` : ''}{t('{0} sets', doneS)}
+                              {w.vol ? ` · ${fmtVol(w.vol, S.unit)}` : ''}
+                            </div>
                           </div>
-                          <div className="wh-card-title">{w.name}</div>
-                          <div className="wh-card-stats">
-                            {dur ? `${dur} · ` : ''}{t('{0} sets', doneS)}
-                            {w.vol ? ` · ${fmtVol(w.vol, S.unit)}` : ''}
-                          </div>
+                          {w.prs && w.prs.length > 0 && (
+                            <div className="wh-card-date">{fmtDate(w.d, true)}</div>
+                          )}
                         </div>
-                        {w.prs && w.prs.length > 0 && (
-                          <div className="wh-card-date">{fmtDate(w.d, true)}</div>
-                        )}
-                      </div>
+                      </SwipeToDelete>
                     )
                   })}
               </div>
@@ -718,11 +732,20 @@ export default function History() {
                 {[...filteredWorkouts]
                   .reverse()
                   .map(w => (
-                    <WorkoutRow
+                    <SwipeToDelete
                       key={w.id}
-                      w={w}
-                      onClick={() => workoutDetailSheet(w)}
-                    />
+                      onDelete={() => {
+                        update(s => { s.workouts = s.workouts.filter(x => x.id !== w.id) })
+                        toast(t('Workout deleted'))
+                      }}
+                      confirmTitle={t('Delete workout?')}
+                      confirmMessage={t('This removes it from your history for good.')}
+                    >
+                      <WorkoutRow
+                        w={w}
+                        onClick={() => workoutDetailSheet(w)}
+                      />
+                    </SwipeToDelete>
                   ))}
               </div>
             )

@@ -10,7 +10,7 @@ import { LANG_STORAGE_KEY, readPersistedLanguage } from '../lib/languageStore.js
 const KEY = 'gym_state_v1'
 export const DEF = {
   unit: 'kg', restSec: 90, restPresets: [60, 90, 120], sound: true, haptics: true, keepAwake: true, lang: 'en',
-  theme: 'dark', accent: 'lime', body: 'male', targetW: null, warmup: true, cooldown: true,
+  theme: 'auto', themeConfig: { mode: 'auto', sunrise: '07:00', sunset: '20:00' }, accent: 'lime', body: 'male', targetW: null, warmup: true, cooldown: true,
   warmupCfg: { preset: 'standard', custom: false, ids: [] },
   cooldownCfg: { preset: 'standard', custom: false, ids: [] },
   bodyweight: [], routines: [], week: {}, dayPlan: {},
@@ -36,6 +36,9 @@ function loadState() {
     // Synchronize language with central localStorage system
     const savedLang = readPersistedLanguage()
     if (savedLang) loaded.lang = savedLang
+    if (!loaded.themeConfig) {
+      loaded.themeConfig = { mode: loaded.theme || 'auto', sunrise: '07:00', sunset: '20:00' }
+    }
 
     // If active session wasn't in raw state (or was lost), check the periodic auto-save backup
     if (!loaded.active) {

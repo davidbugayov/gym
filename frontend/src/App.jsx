@@ -7,6 +7,7 @@ import { ACCENTS } from './lib/format.js'
 import { setLang, useLang } from './lib/i18n.js'
 import { setNav } from './lib/nav.js'
 import { useWakeLock } from './lib/wakelock.js'
+import { resolveEffectiveTheme, subscribeThemeChange } from './lib/theme.js'
 import { startFlow } from './sheets.jsx'
 import Icon from './components/Icon.jsx'
 import TabBar from './components/TabBar.jsx'
@@ -47,7 +48,15 @@ function Shell() {
   const isGuest = useStore(s => s.isGuest())
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
   useEffect(() => { setNav(navigate) }, [navigate])
-  useEffect(() => { applyPrefs(S.theme, S.accent) }, [S.theme, S.accent])
+  useEffect(() => {
+    const handleUpdate = () => {
+      const resolved = resolveEffectiveTheme(S.theme, S.themeConfig)
+      applyPrefs(resolved, S.accent)
+    }
+    handleUpdate()
+    const unsubscribe = subscribeThemeChange(handleUpdate)
+    return unsubscribe
+  }, [S.theme, S.themeConfig, S.accent])
   useEffect(() => { setLang(S.lang || 'en') }, [S.lang])
   useEffect(() => { document.documentElement.lang = S.lang || 'en' }, [langV, S.lang])
   // every tab/route change starts at the top of the page

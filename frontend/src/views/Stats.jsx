@@ -17,6 +17,8 @@ import {
   effortHistogram, isHardSet, HARD_RIR
 } from '../lib/effort.js'
 import { Button, Segmented, SelectRow } from '../components/ui.jsx'
+import SwipeToDelete from '../components/SwipeToDelete.jsx'
+import { useUI } from '../store/useUI.js'
 
 import BodyMeasurementsCard from '../components/BodyMeasurementsCard.jsx'
 import WeightTrendsCard from '../components/WeightTrendsCard.jsx'
@@ -136,6 +138,8 @@ function EffortCard({ S }) {
 export default function Stats() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
+  const update = useStore(s => s.update)
+  const toast = useUI(s => s.toast)
   const [range, setRange] = useState(90)
   const [exId, setExId] = useState(null)
   const [exMetric, setExMetric] = useState('top')
@@ -323,7 +327,21 @@ export default function Stats() {
         <h4 className="sec" style={{ margin: 0 }}>{t('Recent workouts')}</h4>
         <Button size="sm" variant="ghost" trailingIcon="chevronRight" onClick={() => nav('/history')}>{t('All')} {S.workouts.length}</Button>
       </div>
-      <div className="list">{[...S.workouts].reverse().slice(0, 6).map(w => <WorkoutRow key={w.id} w={w} onClick={() => workoutDetailSheet(w)} />)}</div>
+      <div className="list">
+        {[...S.workouts].reverse().slice(0, 6).map(w => (
+          <SwipeToDelete
+            key={w.id}
+            onDelete={() => {
+              update(s => { s.workouts = s.workouts.filter(x => x.id !== w.id) })
+              toast(t('Workout deleted'))
+            }}
+            confirmTitle={t('Delete workout?')}
+            confirmMessage={t('This removes it from your history for good.')}
+          >
+            <WorkoutRow w={w} onClick={() => workoutDetailSheet(w)} />
+          </SwipeToDelete>
+        ))}
+      </div>
     </>}
   </>
 }

@@ -32,6 +32,7 @@ import { getCachedToken, googleSignIn, setCachedToken } from './lib/google-auth.
 import { clearActiveSessionBackup } from './lib/autosave.js'
 import { getExerciseTrend } from './lib/trends.js'
 import { ExerciseTrendBadge, ExerciseTrendMini } from './components/ExerciseTrend.jsx'
+import SwipeToDelete from './components/SwipeToDelete.jsx'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -1551,7 +1552,19 @@ function Calendar({ start, close }) {
     cells.push(<button key={d} className={'cal-d' + (ws ? ' has' : '') + (iso === todayISO() ? ' today' : '')} onClick={() => {
       if (!ws) { close(); dayOverrideSheet(iso); return }
       if (ws.length === 1) { close(); workoutDetailSheet(ws[0]); return }
-      close(); ui().openSheet(c2 => <><h3>{fmtDate(iso, true)}</h3><div className="list">{ws.map(w => <WorkoutRow key={w.id} w={w} onClick={() => { c2(); workoutDetailSheet(w) }} />)}</div></>)
+      close(); ui().openSheet(c2 => <><h3>{fmtDate(iso, true)}</h3><div className="list">{ws.map(w => (
+        <SwipeToDelete
+          key={w.id}
+          onDelete={() => {
+            update(s => { s.workouts = s.workouts.filter(x => x.id !== w.id) })
+            toast(t('Workout deleted'))
+          }}
+          confirmTitle={t('Delete workout?')}
+          confirmMessage={t('This removes it from your history for good.')}
+        >
+          <WorkoutRow w={w} onClick={() => { c2(); workoutDetailSheet(w) }} />
+        </SwipeToDelete>
+      ))}</div></>)
     }}><span>{d}</span><i className={dotCls} /></button>)
   }
   return <>
@@ -2101,8 +2114,6 @@ function FinishSummary({ w, prs, e1prs = [], close }) {
       {prs.map(id => <div key={id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="trophy" style={{ fontSize: 13 }} />{t('New PR:')} {(EXIDX[id] || {}).n || id}</div>)}
       {e1prs.map(p => <div key={p.id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="chartLine" style={{ fontSize: 13 }} />{t('Best estimated 1RM:')} {(EXIDX[p.id] || {}).n || p.id} · {fmtNum(p.est)} {st.unit}</div>)}
     </div>}
-
-    {!Capacitor.isNativePlatform() && <GoogleHealthDisclosure compact />}
 
     <div className="row between" style={{ alignItems: 'center', background: 'var(--surface-2)', padding: '10px 14px', borderRadius: 10, margin: '12px 0', textAlign: 'left' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.88rem' }}>
