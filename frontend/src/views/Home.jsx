@@ -4,7 +4,7 @@ import { useStore } from '../store/useStore.js'
 import { effectiveRoutine, effectiveRoutineId, streakWeeks, lastBW, setsDoneActive } from '../lib/history.js'
 import { fmtNum, fmtDate, todayISO, isoOf, weekKey, DAYS } from '../lib/format.js'
 import { t, dateLocale, useLang } from '../lib/i18n.js'
-import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, startFlow, readyProgramsSheet, programWizardSheet, bwDeltaColor } from '../sheets.jsx'
+import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, startFlow, readyProgramsSheet, programWizardSheet, bwDeltaColor, singleWorkoutCalendarSheet } from '../sheets.jsx'
 import LineChart from '../components/LineChart.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
@@ -195,6 +195,9 @@ export default function Home() {
             </Button>
             <Button size="sm" variant="ghost" onClick={() => dayOverrideSheet(todayISO())}>
               {t('Reschedule')}
+            </Button>
+            <Button size="sm" variant="ghost" icon="calendar" onClick={() => singleWorkoutCalendarSheet(routine, todayISO())} title={t('Add to Calendar')}>
+              {t('Calendar')}
             </Button>
           </div>
         </div>

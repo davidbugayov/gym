@@ -457,6 +457,108 @@ const routes = {
     json(res, 200, { ok: true });
   },
 
+  // Live RFC 5545 iCalendar feed for Apple Calendar, Google Calendar, Outlook subscriptions
+  'GET /api/calendar.ics': async (req, res) => {
+    let user = readSession(req);
+    const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
+    const uid = url.searchParams.get('user');
+    const key = url.searchParams.get('key');
+    if (!user && uid) {
+      const match = db.users.find(u => u.id === uid && !u.disabled);
+      if (match) {
+        const userState = readState(match.id);
+        if (!key || (userState?.calSync?.calKey && userState.calSync.calKey === key)) {
+          user = match;
+        }
+      }
+    }
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('Unauthorized calendar feed');
+    }
+
+    const S = readState(user.id);
+    if (!S) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('State not found');
+    }
+
+    const time = S.calSync?.time || '09:00';
+    const duration = S.calSync?.duration || 60;
+    const reminder = S.calSync?.reminder !== undefined ? S.calSync.reminder : 15;
+    const location = S.calSync?.location || 'Gym';
+    const [hh, mm] = time.split(':').map(Number);
+    const now = new Date();
+    const dtstamp = now.toISOString().replace(/[-:]/g, '').replace(/\..+/, 'Z');
+
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Gymly//Workout Planner//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'X-WR-CALNAME:Gymly Workouts'
+    ];
+
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(now);
+      d.setDate(now.getDate() + i);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const rId = effectiveRoutineId(S, iso);
+      if (!rId) continue;
+      const routine = (S.routines || []).find(r => r.id === rId);
+      if (!routine) continue;
+
+      const startD = new Date(d);
+      startD.setHours(hh, mm, 0, 0);
+      const endD = new Date(startD.getTime() + duration * 60 * 1000);
+
+      const fmtIcs = dt => {
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        const h = String(dt.getHours()).padStart(2, '0');
+        const min = String(dt.getMinutes()).padStart(2, '0');
+        const s = String(dt.getSeconds()).padStart(2, '0');
+        return `${y}${m}${day}T${h}${min}${s}`;
+      };
+
+      const uidStr = `gymly-${routine.id}-${iso.replace(/-/g, '')}@gymly.app`;
+      const esc = str => String(str || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${uidStr}`);
+      lines.push(`DTSTAMP:${dtstamp}`);
+      lines.push(`DTSTART:${fmtIcs(startD)}`);
+      lines.push(`DTEND:${fmtIcs(endD)}`);
+      lines.push(`SUMMARY:🏋️ ${esc(routine.name)} (Gymly)`);
+      lines.push(`DESCRIPTION:Gymly Workout: ${esc(routine.name)}\\nPlanned session with ${(routine.ex || []).length} exercises`);
+      if (location) lines.push(`LOCATION:${esc(location)}`);
+      lines.push('STATUS:CONFIRMED');
+      lines.push('CATEGORIES:Fitness,Workout,Health');
+
+      if (reminder >= 0) {
+        lines.push('BEGIN:VALARM');
+        lines.push('ACTION:DISPLAY');
+        lines.push(`DESCRIPTION:Gymly Workout: ${esc(routine.name)}`);
+        lines.push(reminder === 0 ? 'TRIGGER:-PT0M' : reminder === 1440 ? 'TRIGGER:-P1D' : `TRIGGER:-PT${reminder}M`);
+        lines.push('END:VALARM');
+      }
+
+      lines.push('END:VEVENT');
+    }
+
+    lines.push('END:VCALENDAR');
+    const icsText = lines.join('\r\n') + '\r\n';
+
+    res.writeHead(200, {
+      'Content-Type': 'text/calendar; charset=utf-8',
+      'Content-Disposition': 'inline; filename="gymly-workouts.ics"',
+      'Cache-Control': 'no-cache, no-store, must-revalidate'
+    });
+    res.end(icsText);
+  },
+
   // Live-workout heartbeat: client pings while a workout is on screen; { active:false } drops it.
   'POST /api/activity': async (req, res) => {
     const user = readSession(req);

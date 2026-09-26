@@ -6,7 +6,7 @@ import { MONTHS_LONG, DAYN, fmtDate, fmtDur, fmtVol, fmtNum, durPart, exCount, t
 import { effectiveRoutine, effectiveRoutineId, setsDone, setLabel } from '../lib/history.js'
 import { glyphOf } from '../lib/glyphs.js'
 import { exOr } from '../lib/exercises.js'
-import { workoutDetailSheet, dayOverrideSheet, startFlow } from '../sheets.jsx'
+import { workoutDetailSheet, dayOverrideSheet, startFlow, calendarSyncSheet, singleWorkoutCalendarSheet } from '../sheets.jsx'
 import Icon from './Icon.jsx'
 import { Button } from './ui.jsx'
 
@@ -75,6 +75,9 @@ export default function PlanCalendar({ onSwitchToSchedule }) {
         <div className="row" style={{ gap: 6 }}>
           <Button size="sm" variant="tinted" icon="calendar" onClick={goToday}>
             {t('Today')}
+          </Button>
+          <Button size="sm" variant="tinted" icon="download" onClick={calendarSyncSheet} title={t('Sync with System Calendar')}>
+            {t('Sync Calendar')}
           </Button>
           {onSwitchToSchedule && (
             <Button size="sm" variant="ghost" icon="list" onClick={onSwitchToSchedule}>
@@ -291,6 +294,12 @@ export default function PlanCalendar({ onSwitchToSchedule }) {
                 })}
               </div>
             )}
+
+            <div className="row" style={{ gap: 8, marginTop: 8 }}>
+              <Button size="sm" variant="tinted" icon="calendar" onClick={() => singleWorkoutCalendarSheet(selPlanned, selectedDate)}>
+                {t('Add to Calendar')}
+              </Button>
+            </div>
           </div>
         ) : (
           /* Rest day */

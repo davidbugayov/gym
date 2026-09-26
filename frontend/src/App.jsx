@@ -45,18 +45,18 @@ function Shell() {
   const navigate = useNavigate()
   const loc = useLocation()
   const { S, user, ready } = useStore()
-  const isGuest = useStore(s => s.isGuest())
+  const isGuest = useStore(s => (typeof s.isGuest === 'function' ? s.isGuest() : !!s.isGuest))
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
   useEffect(() => { setNav(navigate) }, [navigate])
   useEffect(() => {
     const handleUpdate = () => {
-      const resolved = resolveEffectiveTheme(S.theme, S.themeConfig)
+      const resolved = resolveEffectiveTheme(S.theme)
       applyPrefs(resolved, S.accent)
     }
     handleUpdate()
     const unsubscribe = subscribeThemeChange(handleUpdate)
     return unsubscribe
-  }, [S.theme, S.themeConfig, S.accent])
+  }, [S.theme, S.accent])
   useEffect(() => { setLang(S.lang || 'en') }, [S.lang])
   useEffect(() => { document.documentElement.lang = S.lang || 'en' }, [langV, S.lang])
   // every tab/route change starts at the top of the page

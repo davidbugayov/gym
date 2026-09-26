@@ -46,11 +46,12 @@ function Sheet({ sheet }) {
   }, [])
 
   const close = () => closeSheet(sheet.id)
+  const wrapCls = `modal-wrap${sheet.className ? ` ${sheet.className}-wrap` : ''}`
   if (sheet.kind === 'center') {
     return (
-      <div className="modal-wrap">
+      <div className={wrapCls}>
         <div className="mback" onClick={close} />
-        <div className="center">
+        <div className={`center${sheet.className ? ` ${sheet.className}` : ''}`}>
           <button
             type="button"
             className="sheet-close-btn"
@@ -66,9 +67,9 @@ function Sheet({ sheet }) {
     )
   }
   return (
-    <div className="modal-wrap">
+    <div className={wrapCls}>
       <div className="mback" onClick={close} />
-      <div className="sheet" ref={ref} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className={`sheet${sheet.className ? ` ${sheet.className}` : ''}`} ref={ref} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div className="grab" onClick={close} role="button" aria-label="Close" />
         <button
           type="button"

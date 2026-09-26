@@ -104,28 +104,22 @@ export function isDaytime(sunrise = '07:00', sunset = '20:00', now = new Date())
  * Resolves the effective active theme ('light' or 'dark').
  */
 export function resolveEffectiveTheme(themeSetting, themeConfig = {}) {
-  // If themeSetting is 'light' or 'dark' and themeConfig is not set, honor it
-  // Otherwise default to automatic switching
-  const mode = themeConfig?.mode || (themeSetting === 'light' || themeSetting === 'dark' || themeSetting === 'system' ? themeSetting : 'auto')
-
-  if (mode === 'light') return 'light'
-  if (mode === 'dark') return 'dark'
-
+  const mode = themeConfig?.mode || themeSetting
+  if (mode === 'light' || themeSetting === 'light') return 'light'
+  if (mode === 'dark' || themeSetting === 'dark') return 'dark'
   if (mode === 'system') {
     if (typeof window !== 'undefined' && window.matchMedia) {
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
     }
-    return isDaytime(themeConfig?.sunrise, themeConfig?.sunset) ? 'light' : 'dark'
   }
-
-  // mode === 'auto' (sunset/sunrise based on device system time)
-  const sunrise = themeConfig?.sunrise || '07:00'
-  const sunset = themeConfig?.sunset || '20:00'
-  return isDaytime(sunrise, sunset) ? 'light' : 'dark'
+  if (mode === 'auto') {
+    return isDaytime(themeConfig?.sunrise || '07:00', themeConfig?.sunset || '20:00') ? 'light' : 'dark'
+  }
+  return 'dark'
 }
 
 /**
- * Subscribes to time ticks, system theme changes, and window focus/visibility changes.
+ * Subscribes to system theme changes and window visibility changes.
  * Returns an unsubscribe cleanup function.
  */
 export function subscribeThemeChange(callback) {
@@ -147,22 +141,16 @@ export function subscribeThemeChange(callback) {
     }
   } catch (e) { /* ignore */ }
 
-  // 2. Periodic timer to detect crossing sunrise or sunset time (every 20 seconds)
-  const interval = setInterval(callback, 20000)
-
-  // 3. Document visibility & window focus (e.g. unlocking device or resuming tab)
+  // 2. Document visibility (e.g. unlocking device or resuming tab)
   const handleVisibility = () => {
     if (typeof document !== 'undefined' && !document.hidden) {
       callback()
     }
   }
   document.addEventListener('visibilitychange', handleVisibility)
-  window.addEventListener('focus', handleVisibility)
 
   return () => {
     removeMq()
-    clearInterval(interval)
     document.removeEventListener('visibilitychange', handleVisibility)
-    window.removeEventListener('focus', handleVisibility)
   }
 }

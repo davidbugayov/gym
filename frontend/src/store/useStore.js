@@ -10,7 +10,7 @@ import { LANG_STORAGE_KEY, readPersistedLanguage } from '../lib/languageStore.js
 const KEY = 'gym_state_v1'
 export const DEF = {
   unit: 'kg', restSec: 90, restPresets: [60, 90, 120], sound: true, haptics: true, keepAwake: true, lang: 'en',
-  theme: 'auto', themeConfig: { mode: 'auto', sunrise: '07:00', sunset: '20:00' }, accent: 'lime', body: 'male', targetW: null, warmup: true, cooldown: true,
+  theme: 'dark', accent: 'lime', body: 'male', targetW: null, warmup: true, cooldown: true,
   warmupCfg: { preset: 'standard', custom: false, ids: [] },
   cooldownCfg: { preset: 'standard', custom: false, ids: [] },
   bodyweight: [], routines: [], week: {}, dayPlan: {},
@@ -22,6 +22,7 @@ export const DEF = {
   // server pull, backup import) still falls back to the `showRir` boolean this replaced and
   // keeps the column it had. See effortOf.
   reminder: { on: false, time: '08:00', tz: null }, effort: null,
+  calSync: { time: '09:00', duration: 60, reminder: 15, weeks: 4, location: 'Gym', includeDetails: true, calKey: null },
   // AI Coach (issue: AI enablement). null until the profile opts in — a null namespace is the
   // same app it was before the feature existed, which is what Epic F asks for. Shape and
   // bounds live in lib/coach.js.
@@ -36,8 +37,8 @@ function loadState() {
     // Synchronize language with central localStorage system
     const savedLang = readPersistedLanguage()
     if (savedLang) loaded.lang = savedLang
-    if (!loaded.themeConfig) {
-      loaded.themeConfig = { mode: loaded.theme || 'auto', sunrise: '07:00', sunset: '20:00' }
+    if (loaded.theme !== 'light' && loaded.theme !== 'dark') {
+      loaded.theme = 'dark'
     }
 
     // If active session wasn't in raw state (or was lost), check the periodic auto-save backup
@@ -124,11 +125,13 @@ export const useStore = create((set, get) => {
   // Everything a sign-out leaves behind on this device, whichever way it was triggered.
   const clearLocalSession = () => {
     get().setUser(null)
-    localStorage.removeItem('gym_guest')
-    localStorage.removeItem('gym_dirty')
-    localStorage.removeItem(KEY)
-    localStorage.removeItem('gym_active_session_backup_v1')
-    localStorage.removeItem('gym_active_session_meta_v1')
+    try {
+      localStorage.removeItem('gym_guest')
+      localStorage.removeItem('gym_dirty')
+      localStorage.removeItem(KEY)
+      localStorage.removeItem('gym_active_session_backup_v1')
+      localStorage.removeItem('gym_active_session_meta_v1')
+    } catch (e) { /* ignore */ }
     const fresh = clone(DEF)
     fresh.lang = readPersistedLanguage()
     persist(fresh, false)
@@ -156,12 +159,22 @@ export const useStore = create((set, get) => {
     },
     replaceState(S, push = false) { persist(clone(S), push) },
 
-    isGuest: () => localStorage.getItem('gym_guest') === '1',
-    setGuest(v) { if (v) localStorage.setItem('gym_guest', '1'); else localStorage.removeItem('gym_guest'); set({}) },
+    isGuest: () => {
+      try { return localStorage.getItem('gym_guest') === '1' } catch { return false }
+    },
+    setGuest(v) {
+      try {
+        if (v) localStorage.setItem('gym_guest', '1')
+        else localStorage.removeItem('gym_guest')
+      } catch (e) { /* ignore */ }
+      set({})
+    },
 
     setUser(u) {
-      if (u) { localStorage.setItem('gym_user', JSON.stringify(u)); localStorage.removeItem('gym_guest') }
-      else localStorage.removeItem('gym_user')
+      try {
+        if (u) { localStorage.setItem('gym_user', JSON.stringify(u)); localStorage.removeItem('gym_guest') }
+        else localStorage.removeItem('gym_user')
+      } catch (e) { /* ignore */ }
       set({ user: u })
     },
 

@@ -10,7 +10,7 @@ import { wakeLockSupported } from '../lib/wakelock.js'
 import { t, LANGS, INSTR_LANGS, useLanguage } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, shareExport, syncReminder, isBackupOverdue, getDaysSinceLastBackup, BACKUP_PROMPT_INTERVAL_DAYS } from '../lib/mobile.js'
-import { programWizardSheet, confirmSheet, importFromApp, googleHealthSheet, importUrlSheet, warmupCooldownSheet } from '../sheets.jsx'
+import { programWizardSheet, confirmSheet, importFromApp, googleHealthSheet, importUrlSheet, warmupCooldownSheet, calendarSyncSheet } from '../sheets.jsx'
 import { coachAvailable, hasConsent } from '../lib/coach.js'
 import { forgetCoach } from '../lib/coach-api.js'
 import { playRestTimerAlert, hapticSetComplete } from '../lib/sound.js'
@@ -18,7 +18,6 @@ import { googleSignIn, googleSignOut } from '../lib/google-auth.js'
 import GoogleSignInButton from '../components/GoogleSignInButton.jsx'
 import Icon from '../components/Icon.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
-import { calcSolarTimes, isDaytime, DEF_THEME_CONFIG } from '../lib/theme.js'
 
 export default function Settings() {
   const { lang, setLanguage } = useLanguage()
@@ -31,86 +30,6 @@ export default function Settings() {
   const fileRef = useRef(null)
   const importRef = useRef(null)
   const wakeOK = wakeLockSupported()
-
-  const themeCfg = S.themeConfig || DEF_THEME_CONFIG
-  const themeMode = themeCfg.mode || (S.theme === 'light' || S.theme === 'dark' || S.theme === 'system' ? S.theme : 'auto')
-  const isDay = isDaytime(themeCfg.sunrise, themeCfg.sunset)
-  const now = new Date()
-  const curTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-
-  const onThemeModeChange = mode => {
-    update(s => {
-      s.theme = mode
-      s.themeConfig = {
-        ...(s.themeConfig || DEF_THEME_CONFIG),
-        mode
-      }
-    })
-  }
-
-  const onSunriseChange = val => {
-    if (!val) return
-    update(s => {
-      s.themeConfig = {
-        ...(s.themeConfig || DEF_THEME_CONFIG),
-        sunrise: val
-      }
-    })
-  }
-
-  const onSunsetChange = val => {
-    if (!val) return
-    update(s => {
-      s.themeConfig = {
-        ...(s.themeConfig || DEF_THEME_CONFIG),
-        sunset: val
-      }
-    })
-  }
-
-  const detectSolarTimes = () => {
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          const { latitude, longitude } = pos.coords
-          const times = calcSolarTimes(new Date(), latitude, longitude)
-          update(s => {
-            s.themeConfig = {
-              ...(s.themeConfig || DEF_THEME_CONFIG),
-              sunrise: times.sunrise,
-              sunset: times.sunset,
-              lat: latitude,
-              lon: longitude
-            }
-          })
-          toast(t('Updated: Sunrise {0} · Sunset {1}', times.sunrise, times.sunset))
-        },
-        () => {
-          const estLon = -new Date().getTimezoneOffset() / 4
-          const times = calcSolarTimes(new Date(), 50, estLon)
-          update(s => {
-            s.themeConfig = {
-              ...(s.themeConfig || DEF_THEME_CONFIG),
-              sunrise: times.sunrise,
-              sunset: times.sunset
-            }
-          })
-          toast(t('Estimated: Sunrise {0} · Sunset {1}', times.sunrise, times.sunset))
-        },
-        { timeout: 5000 }
-      )
-    } else {
-      const times = calcSolarTimes(new Date())
-      update(s => {
-        s.themeConfig = {
-          ...(s.themeConfig || DEF_THEME_CONFIG),
-          sunrise: times.sunrise,
-          sunset: times.sunset
-        }
-      })
-      toast(t('Sunrise {0} · Sunset {1}', times.sunrise, times.sunset))
-    }
-  }
 
   const doExport = async () => {
     const json = JSON.stringify(S, null, 2)
@@ -440,83 +359,18 @@ export default function Settings() {
     {(user || MOBILE) && <NotificationsCard S={S} update={update} toast={toast} />}
 
     {/* ---------- appearance ---------- */}
-    <Section title={t('Appearance')} footer={t('Theme automatically adjusts based on sunrise, sunset, and device system time.')}>
-      <Row icon="sun" iconTint="var(--gold, #ffd60a)" title={t('Theme Mode')}>
+    <Section title={t('Appearance')}>
+      <Row icon="sun" iconTint="var(--gold, #ffd60a)" title={t('Theme')}>
         <Segmented
           className="seg-inline"
           options={[
-            { value: 'auto', label: t('Auto (Sun)') },
-            { value: 'system', label: t('System') },
-            { value: 'dark', label: t('Dark') },
-            { value: 'light', label: t('Light') }
+            { value: 'light', label: t('Light') },
+            { value: 'dark', label: t('Dark') }
           ]}
-          value={themeMode}
-          onChange={onThemeModeChange}
+          value={S.theme === 'light' ? 'light' : 'dark'}
+          onChange={v => update(s => { s.theme = v })}
         />
       </Row>
-
-      {themeMode === 'auto' && (
-        <div className="theme-schedule-card">
-          <div className="theme-schedule-head">
-            <div className={`theme-schedule-icon ${isDay ? 'day' : 'night'}`}>
-              <Icon name={isDay ? 'sun' : 'moon'} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="theme-schedule-title">
-                {isDay ? t('Daytime — Light mode active') : t('Nighttime — Dark mode active')}
-              </div>
-              <div className="theme-schedule-sub">
-                {t('Device time: {0} · Switches at sunrise & sunset', curTimeStr)}
-              </div>
-            </div>
-          </div>
-
-          <div className="theme-sun-inputs">
-            <div className="theme-sun-input-box">
-              <label className="theme-sun-label">
-                <Icon name="sun" style={{ color: 'var(--gold, #ffd60a)', fontSize: 13 }} />
-                <span>{t('Sunrise')}</span>
-              </label>
-              <input
-                type="time"
-                className="theme-sun-time"
-                value={themeCfg.sunrise || '07:00'}
-                onChange={e => onSunriseChange(e.target.value)}
-              />
-            </div>
-            <div className="theme-sun-input-box">
-              <label className="theme-sun-label">
-                <Icon name="moon" style={{ color: 'var(--indigo, #5e5ce6)', fontSize: 13 }} />
-                <span>{t('Sunset')}</span>
-              </label>
-              <input
-                type="time"
-                className="theme-sun-time"
-                value={themeCfg.sunset || '20:00'}
-                onChange={e => onSunsetChange(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div style={{ marginTop: 10 }}>
-            <Button
-              size="sm"
-              variant="tinted"
-              icon="sparkles"
-              onClick={detectSolarTimes}
-              style={{ width: '100%', justifyContent: 'center' }}
-            >
-              {t('Detect local sunrise & sunset')}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {themeMode === 'system' && (
-        <div className="small muted" style={{ padding: '6px 14px 10px', lineHeight: 1.4 }}>
-          {t('Follows device system dark mode settings. If your phone has an automatic sunset-to-sunrise schedule enabled, Gymly will match it.')}
-        </div>
-      )}
 
       {/* Purely how the muscle map is drawn — nothing else in the app reads this. */}
       <Row icon="figureStrength" iconTint="var(--teal)" title={t('Body diagram')}>
@@ -543,6 +397,18 @@ export default function Settings() {
       <Row icon="heart" iconTint="#4285F4" title={t('Google Health')}
         subtitle={S.googleHealth?.connected ? `${t('Connected')} (${S.googleHealth?.email || ''})` : t('Sync workouts and body weight with Google Health')}
         accessory="chevron" onClick={googleHealthSheet} />
+    </Section>
+
+    {/* ---------- calendar sync integration ---------- */}
+    <Section title={t('System Calendar Sync')} footer={t('Sync scheduled workouts with Apple Calendar, Google Calendar, Outlook, or system calendar via standard iCal (.ics) format or live feed.')}>
+      <Row
+        icon="calendar"
+        iconTint="var(--acc)"
+        title={t('Sync scheduled workouts')}
+        subtitle={t('Default: {0} · {1} min · {2}', S.calSync?.time || '09:00', S.calSync?.duration || 60, (S.calSync?.reminder ?? 15) >= 0 ? `${S.calSync?.reminder ?? 15}m alert` : t('No alert'))}
+        accessory="chevron"
+        onClick={calendarSyncSheet}
+      />
     </Section>
 
     {/* ---------- data: fill it, bring things over, back it up, wipe it ---------- */}

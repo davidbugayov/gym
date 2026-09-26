@@ -11,7 +11,7 @@ export default function TabBar({ onStart }) {
   const loc = useLocation()
   const S = useStore(s => s.S)
   const user = useStore(s => s.user)
-  const isGuest = useStore(s => s.isGuest())
+  const isGuest = useStore(s => (typeof s.isGuest === 'function' ? s.isGuest() : !!s.isGuest))
   if (!user && !isGuest) return null
   const cur = loc.pathname.split('/')[1] || 'home'
   const on = k => cur === k || (cur === 'history' && k === 'stats') || (cur === 'settings' && k === 'home')
@@ -35,7 +35,7 @@ export default function TabBar({ onStart }) {
       <Tab k="plan" icon="calendar" to="/plan" label={t('Plan')} />
       <button className={'start' + (S.active ? ' rec' : '')} onClick={startWorkout}>
         <span className="cir"><Icon name={S.active ? 'play' : 'dumbbell'} /></span>
-        <span>{S.active ? t('Resume') : t('Start')}</span>
+        <span style={{ fontSize: 10, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>{S.active ? t('Resume') : t('Start')}</span>
       </button>
       <Tab k="stats" icon="chart" to="/stats" label={t('Stats')} />
       <Tab k="library" icon="list" to="/library" label={t('Exercises')} />

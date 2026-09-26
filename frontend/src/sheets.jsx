@@ -33,6 +33,7 @@ import { clearActiveSessionBackup } from './lib/autosave.js'
 import { getExerciseTrend } from './lib/trends.js'
 import { ExerciseTrendBadge, ExerciseTrendMini } from './components/ExerciseTrend.jsx'
 import SwipeToDelete from './components/SwipeToDelete.jsx'
+import CalendarSyncModal, { SingleWorkoutCalendarModal } from './components/CalendarSyncModal.jsx'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -1155,6 +1156,10 @@ export const glyphPicker = (current, onPick) => {
   </>)
 }
 
+/* ============================ calendar sync ============================ */
+export const calendarSyncSheet = () => ui().openSheet(close => <CalendarSyncModal close={close} />)
+export const singleWorkoutCalendarSheet = (routine, isoDate) => ui().openSheet(close => <SingleWorkoutCalendarModal routine={routine} isoDate={isoDate} close={close} />)
+
 /* ============================ share / print / import a plan ============================ */
 export const planToolsSheet = () => ui().openSheet(close => <PlanTools close={close} />)
 
@@ -1188,6 +1193,9 @@ function PlanTools({ close }) {
     <div className="muted small" style={{ marginBottom: 16 }}>{t('Send your routines to a friend, or put your week on paper.')}</div>
     <Button variant="primary" icon="upload" onClick={exportFile} disabled={!hasRoutines}>{t('Export plan file')}</Button>
     <div className="dim small" style={{ margin: '7px 2px 0', lineHeight: 1.4 }}>{t('A small file a friend imports into their own Gymly — routines only, none of your workouts or weigh-ins.')}</div>
+    <div style={{ height: 12 }} />
+    <Button variant="tinted" icon="calendar" onClick={() => { close(); calendarSyncSheet() }} disabled={!hasRoutines}>{t('Sync with System Calendar')}</Button>
+    <div className="dim small" style={{ margin: '7px 2px 0', lineHeight: 1.4 }}>{t('Export workouts to Apple Calendar, Google Calendar, Outlook, or iCal.')}</div>
     {!MOBILE && <>
       <div style={{ height: 12 }} />
       <Button variant="tinted" icon="download" onClick={() => { close(); printPlan(st, user?.name || '') }} disabled={!hasRoutines}>{t('Print / Save as PDF')}</Button>
@@ -1894,8 +1902,20 @@ function WarmupCooldownConfig({ mode, close }) {
       </div>
     })}
 
-    <div style={{ height: 12 }} />
-    <Button variant="primary" onClick={close}>{t('Done')}</Button>
+    <div style={{ height: 14 }} />
+    <div style={{
+      position: 'sticky',
+      bottom: -10,
+      background: 'color-mix(in srgb, var(--bg-el) 94%, transparent)',
+      backdropFilter: 'blur(14px)',
+      WebkitBackdropFilter: 'blur(14px)',
+      padding: '8px 0 calc(10px + var(--sab))',
+      zIndex: 20,
+      width: '100%',
+      boxSizing: 'border-box'
+    }}>
+      <Button variant="primary" onClick={close}>{t('Done')}</Button>
+    </div>
   </>
 }
 export function warmupCooldownSheet(mode) {
@@ -2100,36 +2120,34 @@ function FinishSummary({ w, prs, e1prs = [], close }) {
     ? entry.sets.filter(set => set.done).reduce((n, set) => n + (Number(set.sec) || 0), 0)
     : 0), 0)
 
-  return <div style={{ textAlign: 'center', padding: '8px 0' }}>
-    <div style={{ fontSize: 44, display: 'flex', justifyContent: 'center', color: 'var(--acc)' }}><Icon name="trophy" /></div>
-    <h3 style={{ margin: '8px 0' }}>{t('Workout complete!')}</h3>
-    <div className="tiles" style={{ textAlign: 'left' }}>
+  return <div className="pws-summary-body" style={{ textAlign: 'center', padding: '4px 0 2px' }}>
+    <div className="pws-trophy-wrap">
+      <div className="pws-trophy-badge">
+        <Icon name="trophy" />
+      </div>
+    </div>
+    <h3 className="pws-summary-title" style={{ margin: '8px 0 12px' }}>{t('Workout complete!')}</h3>
+    <div className="tiles pws-tiles-wrap" style={{ textAlign: 'left' }}>
       <div className="tile"><div className="l">{t('Duration')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{fmtDur(w.end - w.start)}</div></div>
       <div className="tile"><div className="l">{t('Volume')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{fmtVol(w.vol, st.unit)}</div></div>
       <div className="tile"><div className="l">{t('Sets')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{setsDone(w)}</div></div>
       {timedSeconds > 0 && <div className="tile"><div className="l">{t('Seconds')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{timedSeconds} s</div></div>}
       <div className="tile"><div className="l">{t('Est. Burn')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{cal} kcal</div></div>
     </div>
-    {(prs.length > 0 || e1prs.length > 0) && <div style={{ textAlign: 'left', marginBottom: 12 }}>
+    {(prs.length > 0 || e1prs.length > 0) && <div className="pws-prs-wrap" style={{ textAlign: 'left', marginBottom: 12 }}>
       {prs.map(id => <div key={id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="trophy" style={{ fontSize: 13 }} />{t('New PR:')} {(EXIDX[id] || {}).n || id}</div>)}
       {e1prs.map(p => <div key={p.id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="chartLine" style={{ fontSize: 13 }} />{t('Best estimated 1RM:')} {(EXIDX[p.id] || {}).n || p.id} · {fmtNum(p.est)} {st.unit}</div>)}
     </div>}
 
-    <div className="row between" style={{ alignItems: 'center', background: 'var(--surface-2)', padding: '10px 14px', borderRadius: 10, margin: '12px 0', textAlign: 'left' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.88rem' }}>
-        <Icon name="heart" style={{ color: '#4285F4' }} />
-        <span>{st.googleHealth?.connected ? t('Google Health auto-synced') : t('Google Health')}</span>
-      </div>
-      <button className="chip" style={{ fontSize: '0.8rem', padding: '4px 10px', height: 28 }} onClick={() => googleHealthSheet()}>
-        {st.googleHealth?.connected ? t('Synced') : t('Sync')}
-      </button>
+    <div className="pws-details-wrap">
+      <h4 className="sec" style={{ textAlign: 'left' }}>{t('What you just trained')}</h4>
+      <BodyMap load={loadOfWorkouts([w])} body={st.body} />
+      {coachOn && <SessionRating w={w} />}
     </div>
-
-    <h4 className="sec" style={{ textAlign: 'left' }}>{t('What you just trained')}</h4>
-    <BodyMap load={loadOfWorkouts([w])} body={st.body} />
-    {coachOn && <SessionRating w={w} />}
     <div style={{ height: 14 }} />
-    <Button variant="primary" onClick={() => { close(); nav('/home') }}>{t('Nice!')}</Button>
+    <div className="pws-action-wrap">
+      <Button variant="primary" onClick={() => { close(); nav('/home') }}>{t('Nice!')}</Button>
+    </div>
   </div>
 }
 export function finishWorkout() {
@@ -2230,7 +2248,7 @@ function doFinishWorkout() {
   import('./lib/notifications.js').then(module => module.scheduleInactivityReminder()).catch(console.error)
 
   beep(snd(), 880, 0.15); beep(snd(), 1100, 0.15, 0.18); beep(snd(), 1320, 0.3, 0.36)
-  ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: false })
+  ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: false, className: 'pws-modal' })
 }
 
 /* ============================ Google Health Sheet ============================ */
