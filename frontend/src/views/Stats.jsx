@@ -30,15 +30,19 @@ function MuscleBalance({ S }) {
   const [hard, setHard] = useState(false)
   const [sel, setSel] = useState(null)
   const now = Date.now()
-  const inWin = S.workouts.filter(w =>
-    win === 0 ? true
-      : win === 7 ? weekKey(w.d) === weekKey(todayISO())
-        : (w.start || new Date(w.d).getTime()) > now - win * 86400000)
+  const inWin = (S.workouts || []).filter(w => {
+    if (!w || typeof w !== 'object') return false
+    const date = typeof w.d === 'string' ? w.d : ''
+    const timestamp = Number(w.start) || (date ? new Date(date).getTime() : NaN)
+    return win === 0 ? true
+      : win === 7 ? date && weekKey(date) === weekKey(todayISO())
+        : Number.isFinite(timestamp) && timestamp > now - win * 86400000
+  })
   // Counting only the sets taken near failure turns the map from "where did the volume go"
   // into "where did the stimulus go" — a muscle can lead on sets and still never be trained
   // hard. Offered only when the window holds ratings at all, since with none the hard map
   // would just be empty and read as "you trained nothing".
-  const rated = inWin.some(w => w.entries.some(e => e.sets.some(s => s.done && isHardSet(s))))
+  const rated = inWin.some(w => (w.entries || []).some(e => (e?.sets || []).some(s => s?.done && isHardSet(s))))
   const on = hard && rated
   const load = loadOfWorkouts(inWin, on ? isHardSet : null)
   const { worked, missed } = rankOf(load)
@@ -146,13 +150,15 @@ export default function Stats() {
   const kind = displayScale(S)
   const hd = scaleName(kind)
 
-  const bwPts = S.bodyweight.filter(b => range === 0 || (b.t || new Date(b.d).getTime()) > now - range * 86400000)
-    .map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.w, d: b.d }))
-  const bw30 = S.bodyweight.filter(b => (b.t || new Date(b.d).getTime()) > now - 30 * 86400000)
+  const validWeights = (S.bodyweight || []).filter(b => b && typeof b.d === 'string' && Number.isFinite(Number(b.w)) && Number(b.w) > 0)
+  const bwPts = validWeights.filter(b => range === 0 || (Number(b.t) || new Date(b.d).getTime()) > now - range * 86400000)
+    .map(b => ({ t: Number(b.t) || new Date(b.d).getTime(), y: Number(b.w), d: b.d }))
+  const bw30 = validWeights.filter(b => (Number(b.t) || new Date(b.d).getTime()) > now - 30 * 86400000)
   const bwDelta30 = bw30.length > 1 ? bw30[bw30.length - 1].w - bw30[0].w : null
-  const todayBW = S.bodyweight.find(b => b.d === todayISO())
+  const todayBW = validWeights.find(b => b.d === todayISO())
   const currentBW = lastBW(S)
-  const monthW = S.workouts.filter(w => w.d.slice(0, 7) === todayISO().slice(0, 7)).length
+  const workouts = (S.workouts || []).filter(w => w && typeof w === 'object')
+  const monthW = workouts.filter(w => typeof w.d === 'string' && w.d.slice(0, 7) === todayISO().slice(0, 7)).length
 
   return <>
     <div className="hdr">
@@ -166,7 +172,7 @@ export default function Stats() {
     </div>
 
     <div className="tiles">
-      <div className="tile"><div className="l"><Icon name="dumbbell" />{t('Workouts')}</div><div className="v">{S.workouts.length}</div></div>
+      <div className="tile"><div className="l"><Icon name="dumbbell" />{t('Workouts')}</div><div className="v">{workouts.length}</div></div>
       <div className="tile"><div className="l"><Icon name="calendar" />{t('This month')}</div><div className="v">{monthW}</div></div>
       <div className="tile"><div className="l"><Icon name="flame" />{t('Week streak')}</div><div className="v">{streakWeeks(S)}</div></div>
       <div
@@ -194,12 +200,12 @@ export default function Stats() {
 
     <div className="card">
       <h2>{t('Activity — last 12 months')} <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}>· {t('by time trained')}</span></h2>
-      <Heatmap S={S} onDay={iso => { const ws = S.workouts.filter(w => w.d === iso); if (ws.length === 1) workoutDetailSheet(ws[0]); else if (ws.length) calendarSheet(iso) }} />
+      <Heatmap S={{ ...S, workouts }} onDay={iso => { const ws = workouts.filter(w => w.d === iso); if (ws.length === 1) workoutDetailSheet(ws[0]); else if (ws.length) calendarSheet(iso) }} />
     </div>
 
-    {S.workouts.length > 0 && <MuscleBalance S={S} />}
+    {workouts.length > 0 && <MuscleBalance S={{ ...S, workouts }} />}
     {anyEffort && <EffortCard S={S} />}
-    {S.workouts.length > 0 && <TopExercisesVolumeCard S={S} />}
+    {workouts.length > 0 && <TopExercisesVolumeCard S={{ ...S, workouts }} />}
 
     <div className="cols">
       <div className="card">
@@ -248,13 +254,13 @@ export default function Stats() {
       <ExerciseWeightProgressionCard S={S} />
     </div>
 
-    {S.workouts.length > 0 && <>
+    {workouts.length > 0 && <>
       <div className="row between" style={{ marginBottom: 10 }}>
         <h4 className="sec" style={{ margin: 0 }}>{t('Recent workouts')}</h4>
-        <Button size="sm" variant="ghost" trailingIcon="chevronRight" onClick={() => nav('/history')}>{t('All')} {S.workouts.length}</Button>
+        <Button size="sm" variant="ghost" trailingIcon="chevronRight" onClick={() => nav('/history')}>{t('All')} {workouts.length}</Button>
       </div>
       <div className="list">
-        {[...S.workouts].reverse().slice(0, 6).map(w => (
+        {[...workouts].reverse().slice(0, 6).map(w => (
           <SwipeToDelete
             key={w.id}
             onDelete={() => {
