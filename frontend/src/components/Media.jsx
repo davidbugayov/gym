@@ -64,12 +64,12 @@ export default function Media({ ex, id, compact, minimizable }) {
     }
   }
 
-  // Athletic dumbbell placeholder matching the list view aesthetic
+  // Keep the still frame visible while the larger animation downloads.
   const renderPlaceholder = () => (
     <div className={'exmedia-placeholder' + (compact ? ' compact' : '') + (mini ? ' mini' : '')}>
-      <div className="exmedia-dumbbell-box">
-        <Icon name="dumbbell" />
-      </div>
+      {currentCandidate?.isGif && resolvedEx.img
+        ? <StillPreview ex={resolvedEx} />
+        : <div className="exmedia-dumbbell-box"><Icon name="dumbbell" /></div>}
       {!compact && !mini && (
         <span className="exmedia-placeholder-label">
           {resolvedEx.n || t('Exercise')}
@@ -89,9 +89,7 @@ export default function Media({ ex, id, compact, minimizable }) {
     )
   }
 
-  const currentSrc = currentCandidate.isGif && !playing && resolvedEx.img
-    ? (fallbackImgSrc(resolvedEx) || imgSrc(resolvedEx) || currentCandidate.url)
-    : currentCandidate.url
+  const currentSrc = currentCandidate.url
 
   return (
     <div
@@ -105,6 +103,9 @@ export default function Media({ ex, id, compact, minimizable }) {
     >
       {/* While image is loading or before loaded, show placeholder with dumbbell */}
       {!loaded && renderPlaceholder()}
+      {loaded && !playing && currentCandidate.isGif && resolvedEx.img && (
+        <div className="exmedia-placeholder exmedia-paused"><StillPreview ex={resolvedEx} /></div>
+      )}
 
       <img
         key={currentSrc}
@@ -112,7 +113,7 @@ export default function Media({ ex, id, compact, minimizable }) {
         src={currentSrc}
         alt=""
         style={{
-          display: loaded ? 'block' : 'none',
+          display: loaded && playing ? 'block' : 'none',
           opacity: loaded ? 1 : 0
         }}
         onLoad={e => {
@@ -141,6 +142,30 @@ export default function Media({ ex, id, compact, minimizable }) {
       )}
     </div>
   )
+}
+
+function StillPreview({ ex }) {
+  const [fallback, setFallback] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    setFallback(false)
+    setFailed(false)
+    setLoaded(false)
+  }, [ex.id, ex.img])
+
+  return <>
+    {!loaded && <div className="exmedia-dumbbell-box"><Icon name="dumbbell" /></div>}
+    {!failed && <img
+      className="exmedia-still"
+      src={fallback ? fallbackImgSrc(ex) : imgSrc(ex)}
+      alt=""
+      style={{ display: loaded ? 'block' : 'none' }}
+      onLoad={() => setLoaded(true)}
+      onError={() => fallback ? setFailed(true) : (setLoaded(false), setFallback(true))}
+    />}
+  </>
 }
 
 export function Thumb({ ex }) {

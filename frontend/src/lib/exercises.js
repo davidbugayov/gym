@@ -300,8 +300,8 @@ export function registerCustom(list) {
 }
 export const allExercises = st => [...(st.customEx || []), ...EXDB]
 
-// Media CDN fallback to hasaneyldrm/exercises-dataset
-const GITHUB_RAW = 'https://cdn.jsdelivr.net/gh/hasaneyldrm/exercises-dataset@7455efae41b330c265e7cd4b78dfa848e7ce5ebd/'
+// Independent host so a jsDelivr outage does not break both media attempts.
+const GITHUB_RAW = 'https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/7455efae41b330c265e7cd4b78dfa848e7ce5ebd/'
 const CDN_FALLBACK_IMG = GITHUB_RAW + 'images/'
 const CDN_FALLBACK_GIF = GITHUB_RAW + 'videos/'
 

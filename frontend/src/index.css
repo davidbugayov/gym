@@ -638,6 +638,8 @@ h4.sec{
   box-shadow:0 0 20px -2px color-mix(in srgb, var(--acc) 30%, transparent), inset 0 1px 0 rgba(255,255,255,.1);
 }
 .exmedia.compact .exmedia-dumbbell-box{width:46px;height:46px;border-radius:13px;font-size:23px}
+.exmedia .exmedia-placeholder .exmedia-still{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:inherit}
+.exmedia .exmedia-placeholder:has(.exmedia-still) .exmedia-placeholder-label{position:relative;z-index:1;margin-top:auto;width:100%;padding:8px;text-align:center;background:var(--surface-2)}
 .exmedia.mini .exmedia-dumbbell-box{width:36px;height:36px;border-radius:10px;font-size:18px}
 .exmedia-placeholder-label{
   font-size:13px;font-weight:600;color:var(--label-2);
@@ -3309,7 +3311,3 @@ h4.sec{
   height: 100%;
   box-sizing: border-box;
 }
-
-
-
-
