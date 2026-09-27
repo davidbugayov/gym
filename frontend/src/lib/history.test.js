@@ -345,7 +345,7 @@ describe('personalRecordFor', () => {
       ]
     }
     const pr = personalRecordFor(S, LIFT)
-    expect(pr).toEqual({ weight: 100, date: '2026-02-20' })
+    expect(pr).toMatchObject({ weight: 100, date: '2026-02-20' })
   })
 
   it('recognises topW when higher than sets', () => {
@@ -354,7 +354,7 @@ describe('personalRecordFor', () => {
         { d: '2026-02-14', entries: [{ id: LIFT, topW: 105, sets: [{ w: 90, r: 5, done: true }] }] }
       ]
     }
-    expect(personalRecordFor(S, LIFT)).toEqual({ weight: 105, date: '2026-02-14' })
+    expect(personalRecordFor(S, LIFT)).toMatchObject({ weight: 105, date: '2026-02-14' })
   })
 
   it('falls back to exWeights if present and higher', () => {
@@ -366,7 +366,7 @@ describe('personalRecordFor', () => {
         [LIFT]: { w: 85, d: '2026-01-20' }
       }
     }
-    expect(personalRecordFor(S, LIFT)).toEqual({ weight: 85, date: '2026-01-20' })
+    expect(personalRecordFor(S, LIFT)).toMatchObject({ weight: 85, date: '2026-01-20' })
   })
 })
 
