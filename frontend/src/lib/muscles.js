@@ -78,7 +78,7 @@ export function musclesOf(ex) {
     if (slug) out[slug] = Math.max(out[slug] || 0, w)
   }
   add(ex.tg, 1)
-  ;(ex.sm || []).forEach(m => add(m, SECONDARY))
+  ;(Array.isArray(ex.sm) ? ex.sm : []).forEach(m => add(m, SECONDARY))
   // Nothing recognised (custom exercises, or a target we don't draw) — use the body part.
   if (!Object.keys(out).length) Object.assign(out, BY_BODYPART[ex.bp] || {})
   return out
@@ -135,7 +135,7 @@ export function levelsOf(load) {
 
 /** Muscles sorted hardest-worked first; untrained ones last, in body order. */
 export function rankOf(load) {
-  const worked = MUSCLES.filter(m => (load[m] || 0) > 0).sort((a, b) => load[b] - load[a])
-  const missed = MUSCLES.filter(m => !(load[m] > 0))
+  const worked = MUSCLES.filter(m => Number(load?.[m]) > 0).sort((a, b) => Number(load[b]) - Number(load[a]))
+  const missed = MUSCLES.filter(m => !(Number(load?.[m]) > 0))
   return { worked, missed }
 }
