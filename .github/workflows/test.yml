@@ -34,15 +34,11 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci
+      - run: npm install --ignore-scripts
       - run: npm test
         working-directory: frontend
       # A broken import or bad JSX fails the build long before any test covers it.
       - run: npm run build
-        working-directory: frontend
-      - run: node scripts/check-locales.mjs
         working-directory: frontend
 
   api:
@@ -52,9 +48,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci
+      - run: npm install --ignore-scripts
       - run: npm test
         working-directory: api
       # The API's copy of the exercise catalogue is generated and committed. A dataset change

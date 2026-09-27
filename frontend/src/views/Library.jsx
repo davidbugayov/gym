@@ -9,6 +9,8 @@ import { exerciseDetailSheet, addToRoutineSheet, customExSheet } from '../sheets
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import ExerciseEffortSparkline from '../components/ExerciseEffortSparkline.jsx'
+import WeightGuide from '../components/WeightGuide.jsx'
+import { weightGuideFor } from '../lib/weightGuide.js'
 
 export default function Library() {
   const S = useStore(s => s.S)
@@ -49,10 +51,11 @@ export default function Library() {
     <div className="list">
       {f.slice(0, shown).map(e => {
         const pr = personalRecordFor(S, e.id)
+        const guide = weightGuideFor(S, e)
         const name = t(e.n)
         return <div key={e.id} className="item" onClick={() => exerciseDetailSheet(e)}>
           <Thumb ex={e} />
-          <div className="grow"><div className="tt">{name.charAt(0).toLocaleUpperCase() + name.slice(1)}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div></div>
+          <div className="grow"><div className="tt">{name.charAt(0).toLocaleUpperCase() + name.slice(1)}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div><WeightGuide guide={guide} ex={e} compact /></div>
           <div className="item-badges">
             <ExerciseEffortSparkline exercise={e} />
             {pr && (

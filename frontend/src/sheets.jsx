@@ -20,6 +20,8 @@ import { loadOfWorkouts } from './lib/muscles.js'
 import { parseImport, mergeImport } from './lib/import-csv.js'
 import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-share.js'
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
+import { weightGuideFor } from './lib/weightGuide.js'
+import WeightGuide from './components/WeightGuide.jsx'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC } from './lib/progression.js'
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { estimateCalories, exportGoogleHealthJSON, exportGoogleHealthCSV } from './lib/googleHealth.js'
@@ -527,6 +529,7 @@ function ExerciseDetail({ ex, close }) {
   const st = useStore(s => s.S)
   const last = lastEntryFor(st, ex.id)
   const best = bestWeightFor(st, ex.id)
+  const guide = weightGuideFor(st, ex)
   const cues = getFormCues(ex)
   const subs = findSubstitutes(ex).slice(0, 4)
 
@@ -539,6 +542,7 @@ function ExerciseDetail({ ex, close }) {
       <span className="tag"><Icon name="dumbbell" />{t(ex.eq)}</span>
       {(ex.sm || []).slice(0, 3).map((s, i) => <span key={i} className="tag">{t(s)}</span>)}
     </div>
+    <WeightGuide guide={guide} ex={ex} />
     {ex.desc && <div className="exnote">{t(ex.desc)}</div>}
     {best > 0 && <div className="small row" style={{ marginBottom: 6, gap: 5 }}><Icon name="trophy" style={{ fontSize: 14, color: 'var(--yellow)' }} />{t('Best:')} <b className="accent">{fmtNum(best)} {st.unit}</b>{last ? ` · ${t('last')} ${fmtDate(last.d)}: ${last.sets.map(s => setLabel(ex.id, s, last.target)).join(', ')}` : ''}</div>}
 

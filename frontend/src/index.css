@@ -458,6 +458,17 @@ h4.sec{
 .exercise-library .list{gap:6px}
 .exercise-library .item{min-height:54px;padding:6px 9px;gap:10px}
 .exercise-library .thumb{width:42px;height:42px}
+.weight-guide{border:1px solid color-mix(in srgb,var(--acc) 25%,var(--sep));border-radius:12px;background:color-mix(in srgb,var(--acc) 7%,var(--surface));padding:10px 12px;margin:10px 0}
+.weight-guide-main{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.weight-guide-label{color:var(--label-2);font-size:12px;font-weight:600}
+.weight-guide-main strong{color:var(--acc);font-size:19px}
+.weight-guide-scope,.weight-guide-source{color:var(--label-2);font-size:12px}
+.weight-guide-source{margin-top:3px}
+.weight-guide.compact{border:0;background:none;border-radius:0;padding:0;margin:3px 0 0}
+.weight-guide.compact .weight-guide-main{gap:4px}
+.weight-guide.compact .weight-guide-main strong{font-size:12px}
+.weight-guide.compact .weight-guide-label,.weight-guide.compact .weight-guide-scope{font-size:11px}
+.weight-guide.compact .weight-guide-source{font-size:10px;margin-top:0}
 
 @media (max-height:740px){
   .exercise-library .hdr h1{font-size:24px}

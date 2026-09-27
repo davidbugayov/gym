@@ -210,10 +210,6 @@ export default function Home() {
               <span className="hero-rest-badge-icon">
                 <Icon name="moon" />
               </span>
-              <span>{t('Rest & Recovery day')}</span>
-            </div>
-            <div className="hero-rest-deco" aria-hidden="true">
-              <Icon name="moon" />
             </div>
           </div>
           <div className="hero-title">{t('Recovery Day')}</div>

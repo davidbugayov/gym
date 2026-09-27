@@ -7,6 +7,7 @@ import { useSyncExternalStore } from 'react'
 import exerciseOverrides from '../locales/exercise-overrides.js'
 import techniqueOverrides from '../locales/exercise-technique-overrides.js'
 import nameOverrides from '../locales/exercise-name-overrides.js'
+import weightGuideTranslations from '../locales/weight-guide.js'
 
 export const LANG_STORAGE_KEY = 'gymly_lang'
 export const LEGACY_STORAGE_KEY = 'gym_lang'
@@ -143,7 +144,8 @@ async function loadBundle(code) {
       ...(cuesMod?.default || {}),
       ...(exerciseOverrides[code] || {}),
       ...(techniqueOverrides[code] || {}),
-      ...(nameOverrides[code] || {})
+      ...(nameOverrides[code] || {}),
+      ...(weightGuideTranslations[code] || {})
     }
     instr = { ...(instrMod?.default || {}), ...(customInstrMod?.default || {}) }
   } catch (err) {
