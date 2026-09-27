@@ -90,7 +90,7 @@ export default function Home() {
     const ovr = S.dayPlan[iso] !== undefined
     const done = doneDays.has(iso)
     const isToday = iso === todayISO()
-    const dot = done ? ' done' : ovr && eff ? ' ovr' : eff ? ' plan' : ''
+    const dot = done ? ' done' : ovr && eff ? ' ovr' : eff ? ' plan' : ' rest'
     strip.push(
       <div
         key={i}
@@ -205,9 +205,16 @@ export default function Home() {
         </div>
       ) : (
         <div className="hero-workout-card is-rest">
-          <div className="hero-badge rest">
-            <Icon name="moon" />
-            <span>{t('Rest & Recovery day')}</span>
+          <div className="hero-rest-header">
+            <div className="hero-badge rest">
+              <span className="hero-rest-badge-icon">
+                <Icon name="moon" />
+              </span>
+              <span>{t('Rest & Recovery day')}</span>
+            </div>
+            <div className="hero-rest-deco" aria-hidden="true">
+              <Icon name="moon" />
+            </div>
           </div>
           <div className="hero-title">{t('Recovery Day')}</div>
           <div className="hero-meta">

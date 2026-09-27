@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   rirOf, toScale, displayScale, avgRir, effortSummary, hasEffort, effortWeeks,
-  effortHistogram, isHardSet, HARD_RIR, MIN_RATED
+  effortHistogram, isHardSet, getExerciseEffortHistory, effortLevel, EFFORT_ROWS, HARD_RIR, MIN_RATED
 } from './effort.js'
 import { isoOf } from './format.js'
 
@@ -173,3 +173,98 @@ describe('isHardSet', () => {
     expect(isHardSet({})).toBe(false)          // unrated is not hard, and not easy either
   })
 })
+
+describe('getExerciseEffortHistory', () => {
+  it('returns an empty array when there are no workouts or exercise is missing', () => {
+    expect(getExerciseEffortHistory(null, '0025')).toEqual([])
+    expect(getExerciseEffortHistory({ workouts: [] }, '0025')).toEqual([])
+    expect(getExerciseEffortHistory({ workouts: [{ entries: [] }] }, '0025')).toEqual([])
+  })
+
+  it('gathers chronological effort sessions and scales them according to display preference', () => {
+    const S = {
+      effort: 'rpe',
+      workouts: [
+        { id: 'w1', d: '2026-03-01', start: 100, entries: [{ id: '0025', sets: [{ w: 60, r: 8, rpe: 7, done: true }, { w: 60, r: 8, rpe: 8, done: true }] }] },
+        { id: 'w2', d: '2026-03-08', start: 200, entries: [{ id: '0025', sets: [{ w: 65, r: 8, rpe: 8.5, done: true }] }] },
+        { id: 'w3', d: '2026-03-15', start: 300, entries: [{ id: '0025', sets: [{ w: 70, r: 8, rpe: 9, done: true }] }] }
+      ]
+    }
+    const history = getExerciseEffortHistory(S, '0025', 5)
+    expect(history.length).toBe(3)
+    expect(history[0].date).toBe('2026-03-01')
+    expect(history[0].val).toBe(7.5)
+    expect(history[0].scale).toBe('rpe')
+    expect(history[1].val).toBe(8.5)
+    expect(history[2].val).toBe(9)
+  })
+
+  it('filters out warmups when working sets are rated', () => {
+    const S = {
+      effort: 'rir',
+      workouts: [
+        { id: 'w1', d: '2026-03-01', start: 100, entries: [{ id: '0025', sets: [
+          { tag: 'W', w: 40, r: 10, rir: 5, done: true },
+          { w: 60, r: 8, rir: 1, done: true },
+          { w: 60, r: 8, rir: 2, done: true }
+        ] }] }
+      ]
+    }
+    const history = getExerciseEffortHistory(S, '0025')
+    expect(history.length).toBe(1)
+    expect(history[0].rir).toBe(1.5)
+    expect(history[0].val).toBe(1.5)
+  })
+
+  it('limits to maxSessions', () => {
+    const S = {
+      effort: 'rpe',
+      workouts: [1, 2, 3, 4, 5, 6].map(i => ({
+        id: `w${i}`,
+        d: `2026-03-0${i}`,
+        start: i * 100,
+        entries: [{ id: '0025', sets: [{ w: 60, r: 8, rpe: 8, done: true }] }]
+      }))
+    }
+    const history = getExerciseEffortHistory(S, '0025', 3)
+    expect(history.length).toBe(3)
+    expect(history[0].date).toBe('2026-03-04')
+    expect(history[2].date).toBe('2026-03-06')
+  })
+
+  it('includes sets data when requested', () => {
+    const S = {
+      effort: 'rpe',
+      workouts: [{
+        id: 'w1',
+        d: '2026-03-01',
+        entries: [{ id: '0025', sets: [{ w: 100, r: 5, rpe: 9, done: true }] }]
+      }]
+    }
+    const history = getExerciseEffortHistory(S, '0025')
+    expect(history[0].sets.length).toBe(1)
+    expect(history[0].sets[0].w).toBe(100)
+    expect(history[0].sets[0].r).toBe(5)
+    expect(history[0].sets[0].rpe).toBe(9)
+    expect(history[0].sets[0].rir).toBe(1)
+  })
+})
+
+describe('effortLevel', () => {
+  it('correctly classifies RIR intensity buckets', () => {
+    expect(effortLevel(0).tag).toBe('max')
+    expect(effortLevel(0.5).tag).toBe('max')
+    expect(effortLevel(1).tag).toBe('heavy')
+    expect(effortLevel(2).tag).toBe('hard')
+    expect(effortLevel(3).tag).toBe('moderate')
+    expect(effortLevel(4).tag).toBe('light')
+    expect(effortLevel(null).tag).toBe('unrated')
+  })
+
+  it('provides EFFORT_ROWS reference structure', () => {
+    expect(EFFORT_ROWS.length).toBe(5)
+    expect(EFFORT_ROWS[0][0]).toBe('0')
+    expect(EFFORT_ROWS[0][1]).toBe('10')
+  })
+})
+

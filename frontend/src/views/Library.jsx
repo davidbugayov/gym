@@ -8,6 +8,7 @@ import { Thumb } from '../components/Media.jsx'
 import { exerciseDetailSheet, addToRoutineSheet, customExSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
+import ExerciseEffortSparkline from '../components/ExerciseEffortSparkline.jsx'
 
 export default function Library() {
   const S = useStore(s => s.S)
@@ -52,16 +53,43 @@ export default function Library() {
         return <div key={e.id} className="item" onClick={() => exerciseDetailSheet(e)}>
           <Thumb ex={e} />
           <div className="grow"><div className="tt capitalize">{e.n}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div></div>
-          {pr && (
-            <div className="pr-badge" title={pr.date ? `${fmtNum(pr.weight)} ${S.unit || 'kg'} · ${fmtDate(pr.date)}` : `${fmtNum(pr.weight)} ${S.unit || 'kg'}`}>
-              <div className="pr-main">
-                <Icon name="trophy" className="pr-icon" />
-                <span className="pr-tag">PR</span>
-                <span className="pr-weight">{fmtNum(pr.weight)} {S.unit || 'kg'}</span>
+          <div className="item-badges">
+            <ExerciseEffortSparkline exercise={e} />
+            {pr && (
+              <div
+                className={`pr-badge trend-${pr.trend || 'first'}`}
+                title={
+                  pr.trend === 'up'
+                    ? `${t('New personal record!')} +${fmtNum(pr.diff)} ${S.unit || 'kg'} (${t('prev')}: ${fmtNum(pr.prevWeight)} ${S.unit || 'kg'}) · ${pr.date ? fmtDate(pr.date) : ''}`
+                    : pr.trend === 'down'
+                    ? `${fmtNum(pr.weight)} ${S.unit || 'kg'} · ${pr.date ? fmtDate(pr.date) : ''}`
+                    : `${t('First recorded personal best')}: ${fmtNum(pr.weight)} ${S.unit || 'kg'} · ${pr.date ? fmtDate(pr.date) : ''}`
+                }
+              >
+                <div className="pr-main">
+                  <Icon name="trophy" className="pr-icon" />
+                  <span className="pr-tag">PR</span>
+                  {pr.trend === 'up' && (
+                    <span className="pr-arrow up" title={`+${fmtNum(pr.diff)} ${S.unit || 'kg'}`}>
+                      <Icon name="arrowUp" size={11} />
+                    </span>
+                  )}
+                  {pr.trend === 'down' && (
+                    <span className="pr-arrow down">
+                      <Icon name="arrowDown" size={11} />
+                    </span>
+                  )}
+                  {pr.trend === 'first' && (
+                    <span className="pr-arrow first" title={t('First record')}>
+                      <span className="pr-first-dot">•</span>
+                    </span>
+                  )}
+                  <span className="pr-weight">{fmtNum(pr.weight)} {S.unit || 'kg'}</span>
+                </div>
+                {pr.date && <div className="pr-date">{fmtDate(pr.date)}</div>}
               </div>
-              {pr.date && <div className="pr-date">{fmtDate(pr.date)}</div>}
-            </div>
-          )}
+            )}
+          </div>
           <Button size="sm" variant="tinted" icon="plus" onClick={ev => { ev.stopPropagation(); addToRoutineSheet(e) }}>{t('Plan')}</Button>
         </div>
       })}

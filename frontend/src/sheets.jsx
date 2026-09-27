@@ -1397,7 +1397,7 @@ function DayOverride({ iso, close }) {
           </div>
         )
       })}
-      <div className="item" onClick={() => set('rest')}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="moon" /></span><div className="grow"><div className="tt">{t('Rest / skip this day')}</div></div>{effId === null && <Icon name="check" className="accent" />}</div>
+      <div className="item" onClick={() => set('rest')}><span className="lrow-i rest-icon-avatar" style={{ width: 30, height: 30, borderRadius: 8, fontSize: 16 }}><Icon name="moon" /></span><div className="grow"><div className="tt">{t('Rest / skip this day')}</div></div>{effId === null && <Icon name="check" className="accent" />}</div>
       {hasOvr && <div className="item" onClick={() => set('')}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="reset" /></span><div className="grow"><div className="tt">{t('Back to weekly plan')}</div></div></div>}
     </div>
   </>
@@ -1424,7 +1424,7 @@ function DayAssign({ day, close }) {
   return <>
     <h3>{t(DAYN[day])}</h3>
     <div className="list">
-      <div className="item" onClick={() => set('')}><span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="moon" /></span><div className="grow"><div className="tt">{t('Rest day')}</div></div>{!st.week[day] && <Icon name="check" className="accent" />}</div>
+      <div className="item" onClick={() => set('')}><span className="lrow-i rest-icon-avatar" style={{ width: 30, height: 30, borderRadius: 8, fontSize: 16 }}><Icon name="moon" /></span><div className="grow"><div className="tt">{t('Rest day')}</div></div>{!st.week[day] && <Icon name="check" className="accent" />}</div>
       {st.routines.map(r => {
         const isExp = expandedId === r.id
         const exPreview = (r.ex || []).slice(0, 3).map(e => exOr(e.id).n).join(' · ')
@@ -2797,7 +2797,9 @@ function ShowProgramSheet({ close }) {
               <Icon name={glyphOf(r.emoji)} /> {r.name} ({r.ex.length})
             </span>
           ) : (
-            <span className="tag">{t('Rest day')}</span>
+            <span className="tag rest-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <Icon name="moon" style={{ fontSize: 11 }} /> {t('Rest day')}
+            </span>
           )}
           <Icon name="pencil" className="chev" style={{ fontSize: 13 }} />
         </div>

@@ -4,74 +4,139 @@ import { useStore } from '../store/useStore.js'
 import { t } from '../lib/i18n.js'
 import Icon from './Icon.jsx'
 
-// Big autoplaying animation; tap toggles to the still frame. `compact` shrinks it (superset cards).
-// If image fails to load or is missing, shows dumbbell icon as a clean athletic placeholder.
-// `minimizable` (workout view) adds a persistent minimize/expand control so the animation stops
-// eating the screen; the chosen size is saved to settings and carries across exercises and
-// future workouts (issue #12).
+/**
+ * High-performance athletic Media component.
+ * Displays exercise animation/image with seamless fallbacks.
+ * When media is missing, loading, or fails to load, gracefully displays an
+ * athletic dumbbell placeholder with glowing accent border, matching the list view style.
+ */
 export default function Media({ ex, id, compact, minimizable }) {
   const [playing, setPlaying] = useState(true)
-  const [err, setErr] = useState(false)
-  const [fallback, setFallback] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const [candidateIdx, setCandidateIdx] = useState(0)
+  const [hasError, setHasError] = useState(false)
   const gifSize = useStore(s => s.S.gifSize)
   const update = useStore(s => s.update)
 
   const resolvedEx = typeof ex === 'string' ? exOr(ex) : (ex || null)
 
+  // Assemble candidate URLs in prioritized order:
+  // 1. Local GIF, 2. CDN GIF, 3. Local IMG, 4. CDN IMG
+  const candidates = []
+  if (resolvedEx?.gif) {
+    const gLocal = gifSrc(resolvedEx)
+    const gCdn = fallbackGifSrc(resolvedEx)
+    if (gLocal) candidates.push({ url: gLocal, isGif: true })
+    if (gCdn && gCdn !== gLocal) candidates.push({ url: gCdn, isGif: true })
+  }
+  if (resolvedEx?.img) {
+    const iLocal = imgSrc(resolvedEx)
+    const iCdn = fallbackImgSrc(resolvedEx)
+    if (iLocal) candidates.push({ url: iLocal, isGif: false })
+    if (iCdn && iCdn !== iLocal) candidates.push({ url: iCdn, isGif: false })
+  }
+
   useEffect(() => {
-    setErr(false)
-    setFallback(false)
+    setCandidateIdx(0)
+    setLoaded(false)
+    setHasError(false)
     setPlaying(true)
   }, [resolvedEx?.id, resolvedEx?.img, resolvedEx?.gif])
 
   if (!resolvedEx) return null
 
   const mini = minimizable && gifSize === 'mini'
-  const toggleSize = e => { e.stopPropagation(); update(s => { s.gifSize = mini ? 'full' : 'mini' }) }
+  const toggleSize = e => {
+    e.stopPropagation()
+    update(s => { s.gifSize = mini ? 'full' : 'mini' })
+  }
 
-  // If no image or if loading failed, show the dumbbell placeholder
-  if ((!resolvedEx.gif && !resolvedEx.img) || err) {
+  const currentCandidate = candidates[candidateIdx] || null
+  const isFailed = hasError || !currentCandidate || candidates.length === 0
+
+  const handleNextCandidate = () => {
+    if (candidateIdx < candidates.length - 1) {
+      setCandidateIdx(i => i + 1)
+      setLoaded(false)
+    } else {
+      setHasError(true)
+      setLoaded(false)
+    }
+  }
+
+  // Athletic dumbbell placeholder matching the list view aesthetic
+  const renderPlaceholder = () => (
+    <div className={'exmedia-placeholder' + (compact ? ' compact' : '') + (mini ? ' mini' : '')}>
+      <div className="exmedia-dumbbell-box">
+        <Icon name="dumbbell" />
+      </div>
+      {!compact && !mini && (
+        <span className="exmedia-placeholder-label">
+          {resolvedEx.n || t('Exercise')}
+        </span>
+      )}
+    </div>
+  )
+
+  if (isFailed) {
     return (
-      <div className={'exmedia exmedia-placeholder' + (compact ? ' compact' : '') + (mini ? ' mini' : '')} id={id}>
-        <div className="exmedia-dumbbell">
-          <Icon name="dumbbell" />
-        </div>
+      <div
+        className={'exmedia standalone-placeholder' + (compact ? ' compact' : '') + (mini ? ' mini' : '')}
+        id={id}
+      >
+        {renderPlaceholder()}
       </div>
     )
   }
 
-  const isGif = playing && resolvedEx.gif
-  const src = isGif
-    ? (fallback ? fallbackGifSrc(resolvedEx) : gifSrc(resolvedEx))
-    : (fallback ? fallbackImgSrc(resolvedEx) : imgSrc(resolvedEx))
+  const currentSrc = currentCandidate.isGif && !playing && resolvedEx.img
+    ? (fallbackImgSrc(resolvedEx) || imgSrc(resolvedEx) || currentCandidate.url)
+    : currentCandidate.url
 
   return (
-    <div className={'exmedia' + (compact ? ' compact' : '') + (mini ? ' mini' : '')} id={id} onClick={() => setPlaying(p => !p)}>
+    <div
+      className={'exmedia' + (compact ? ' compact' : '') + (mini ? ' mini' : '') + (loaded ? ' is-loaded' : '')}
+      id={id}
+      onClick={() => {
+        if (loaded && currentCandidate.isGif) {
+          setPlaying(p => !p)
+        }
+      }}
+    >
+      {/* While image is loading or before loaded, show placeholder with dumbbell */}
+      {!loaded && renderPlaceholder()}
+
       <img
+        key={currentSrc}
         decoding="async"
-        src={src}
-        alt={resolvedEx.n || ''}
-        onError={() => {
-          if (isGif && !fallback) {
-            setFallback(true)
-          } else if (isGif && resolvedEx.img) {
-            setPlaying(false)
-            setFallback(false)
-          } else if (!fallback && resolvedEx.img) {
-            setFallback(true)
+        src={currentSrc}
+        alt=""
+        style={{
+          display: loaded ? 'block' : 'none',
+          opacity: loaded ? 1 : 0
+        }}
+        onLoad={e => {
+          if (e.target.naturalWidth > 0) {
+            setLoaded(true)
+            setHasError(false)
           } else {
-            setErr(true)
+            handleNextCandidate()
           }
         }}
+        onError={handleNextCandidate}
       />
+
       {minimizable && (
         <button className="giftoggle" onClick={toggleSize}>
-          <Icon name={mini ? 'expand' : 'minimize'} />{mini ? t('Expand') : t('Minimize')}
+          <Icon name={mini ? 'expand' : 'minimize'} />
+          {mini ? t('Expand') : t('Minimize')}
         </button>
       )}
-      {!mini && resolvedEx.gif && (
+
+      {loaded && !mini && currentCandidate.isGif && (
         <span className="gifhint">
-          <Icon name={playing ? 'pause' : 'play'} />{playing ? t('tap to pause') : t('tap to play')}
+          <Icon name={playing ? 'pause' : 'play'} />
+          {playing ? t('tap to pause') : t('tap to play')}
         </span>
       )}
     </div>
@@ -88,7 +153,14 @@ export function Thumb({ ex }) {
     setFallback(false)
   }, [resolvedEx?.id, resolvedEx?.img])
 
-  if (!resolvedEx?.img || err) return <div className="thumb thumb-x"><Icon name="dumbbell" /></div>
+  if (!resolvedEx?.img || err) {
+    return (
+      <div className="thumb thumb-x" title={resolvedEx?.n || ''}>
+        <Icon name="dumbbell" />
+      </div>
+    )
+  }
+
   return (
     <img
       className="thumb"
@@ -96,7 +168,13 @@ export function Thumb({ ex }) {
       decoding="async"
       src={fallback ? fallbackImgSrc(resolvedEx) : imgSrc(resolvedEx)}
       alt=""
-      onError={() => fallback ? setErr(true) : setFallback(true)}
+      onError={() => {
+        if (!fallback) {
+          setFallback(true)
+        } else {
+          setErr(true)
+        }
+      }}
     />
   )
 }

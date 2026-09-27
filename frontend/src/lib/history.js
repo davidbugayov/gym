@@ -124,6 +124,9 @@ export function personalRecordFor(S, exId) {
   let bestW = 0
   let bestDate = null
 
+  // Track all unique PR milestones over time to know previous best and trend
+  const milestones = []
+
   if (Array.isArray(S.workouts)) {
     const ws = [...S.workouts].sort((a, b) => (a.d || '').localeCompare(b.d || ''))
     for (const w of ws) {
@@ -138,8 +141,10 @@ export function personalRecordFor(S, exId) {
           }
           if (e.topW && e.topW > maxW) maxW = e.topW
           if (maxW > bestW) {
+            const date = w.d || (w.start ? isoOf(new Date(w.start)) : null)
+            milestones.push({ weight: maxW, date, prev: bestW })
             bestW = maxW
-            bestDate = w.d || (w.start ? isoOf(new Date(w.start)) : null)
+            bestDate = date
           }
         }
       }
@@ -148,6 +153,7 @@ export function personalRecordFor(S, exId) {
 
   const ew = S.exWeights && S.exWeights[exId]
   if (ew && ew.w > bestW) {
+    milestones.push({ weight: ew.w, date: ew.d || bestDate, prev: bestW })
     bestW = ew.w
     bestDate = ew.d || bestDate
   } else if (ew && ew.w === bestW && !bestDate && ew.d) {
@@ -155,7 +161,30 @@ export function personalRecordFor(S, exId) {
   }
 
   if (bestW <= 0) return null
-  return { weight: bestW, date: bestDate }
+
+  // Determine trend: 'up' (improved over previous PR), 'down' (if regression), or 'first' (first logged record)
+  let trend = 'first'
+  let prevWeight = null
+  let diff = 0
+
+  if (milestones.length > 1) {
+    const lastMilestone = milestones[milestones.length - 1]
+    prevWeight = lastMilestone.prev > 0 ? lastMilestone.prev : milestones[milestones.length - 2].weight
+    diff = bestW - prevWeight
+    trend = diff > 0 ? 'up' : diff < 0 ? 'down' : 'first'
+  } else if (milestones.length === 1 && milestones[0].prev > 0) {
+    prevWeight = milestones[0].prev
+    diff = bestW - prevWeight
+    trend = diff > 0 ? 'up' : diff < 0 ? 'down' : 'first'
+  }
+
+  return {
+    weight: bestW,
+    date: bestDate,
+    trend, // 'up' | 'down' | 'first'
+    diff: Math.round(diff * 10) / 10,
+    prevWeight
+  }
 }
 export function effectiveRoutineId(S, iso) {
   const ov = S.dayPlan[iso]

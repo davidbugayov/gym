@@ -248,6 +248,9 @@ export default function History() {
 
       if (val > 0) {
         const isPR = val > runningBest
+        const prevBest = runningBest
+        const prDiff = isPR && prevBest > 0 ? Math.round((val - prevBest) * 10) / 10 : 0
+        const isFirstPR = isPR && prevBest === 0
         if (isPR) runningBest = val
         pts.push({
           t: w.start || new Date(w.d).getTime(),
@@ -256,6 +259,9 @@ export default function History() {
           w: wVal,
           r: rVal,
           isPR,
+          prDiff,
+          isFirstPR,
+          prevBest,
           sets: doneSets,
           target: en.target,
           workout: w,
@@ -602,15 +608,25 @@ export default function History() {
                           {p.isPR && (
                             <span
                               style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 3,
                                 fontSize: 10,
-                                fontWeight: 700,
+                                fontWeight: 800,
                                 padding: '1px 5px',
                                 borderRadius: 4,
-                                background: 'var(--yellow)',
+                                background: p.isFirstPR ? 'var(--yellow)' : 'var(--green)',
                                 color: '#000'
                               }}
+                              title={
+                                p.isFirstPR
+                                  ? `${t('First recorded personal best')}: ${fmtNum(p.y)} ${S.unit || 'kg'}`
+                                  : `+${fmtNum(p.prDiff)} ${S.unit || 'kg'} (${t('prev')}: ${fmtNum(p.prevBest)} ${S.unit || 'kg'})`
+                              }
                             >
                               ★ PR
+                              {!p.isFirstPR && <Icon name="arrowUp" size={10} />}
+                              {p.isFirstPR && <span style={{ fontSize: 10 }}>•</span>}
                             </span>
                           )}
                           <ExerciseTrendBadge

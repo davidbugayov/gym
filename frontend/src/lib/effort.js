@@ -137,3 +137,76 @@ export function effortHistogram(S, days) {
 
 /** A set that counts as hard — the filter behind the muscle map's "hard sets" mode. */
 export const isHardSet = s => { const r = rirOf(s); return r != null && r <= HARD_RIR }
+
+/**
+ * Retrieves recent chronological RPE/RIR effort history for a specific exercise across workouts.
+ * Returns an array of session records with normalized RIR and value in the active display scale (RPE or RIR).
+ */
+export function getExerciseEffortHistory(S, exerciseId, maxSessions = 5) {
+  if (!S || !exerciseId || !Array.isArray(S.workouts) || !S.workouts.length) return []
+  const scale = displayScale(S)
+  const sessions = []
+
+  const sorted = [...S.workouts].sort((a, b) => (a.d || '').localeCompare(b.d || ''))
+  for (const w of sorted) {
+    if (!w || !Array.isArray(w.entries)) continue
+    const matchingEntries = w.entries.filter(e => e && e.id === exerciseId)
+    if (!matchingEntries.length) continue
+
+    const doneSets = matchingEntries.flatMap(e => (e.sets || []).filter(s => s && s.done))
+    if (!doneSets.length) continue
+
+    let ratedSets = doneSets.filter(s => s.tag !== 'W' && rirOf(s) != null)
+    if (!ratedSets.length) {
+      ratedSets = doneSets.filter(s => rirOf(s) != null)
+    }
+    if (!ratedSets.length) continue
+
+    const avg = avgRir(ratedSets)
+    if (avg == null) continue
+
+    const roundedRir = Math.round(avg * 10) / 10
+    const val = toScale(scale, avg)
+    sessions.push({
+      workoutId: w.id,
+      date: w.d,
+      ts: w.start || (w.d ? new Date(w.d).getTime() : 0),
+      rir: roundedRir,
+      val,
+      scale,
+      setsCount: ratedSets.length,
+      sets: ratedSets.map((s, idx) => ({
+        setNum: idx + 1,
+        w: s.w,
+        r: s.r,
+        sec: s.sec,
+        rpe: s.rpe != null ? s.rpe : (s.rir != null ? 10 - s.rir : null),
+        rir: s.rir != null ? s.rir : (s.rpe != null ? 10 - s.rpe : null),
+        tag: s.tag
+      }))
+    })
+  }
+
+  return maxSessions ? sessions.slice(-maxSessions) : sessions
+}
+
+export const EFFORT_ROWS = [
+  ['0', '10', 'Nothing left — went to failure'],
+  ['1', '9', 'One more rep in the tank'],
+  ['2', '8', 'Two more reps'],
+  ['3', '7', 'Three more reps'],
+  ['4+', '≤6', 'Easy — warm-up territory'],
+]
+
+/**
+ * Returns categorized effort level, feel description, and accent color based on RIR value.
+ */
+export function effortLevel(rir) {
+  if (rir == null) return { tag: 'unrated', label: 'Unrated', feel: '', color: 'var(--label-3)' }
+  if (rir <= 0.5) return { tag: 'max', label: 'Failure / Max', feel: '0 reps in reserve (all out)', color: 'var(--red, #ff453a)' }
+  if (rir <= 1.5) return { tag: 'heavy', label: 'Very Heavy', feel: '~1 rep in reserve', color: 'var(--orange, #ff9f0a)' }
+  if (rir <= 2.5) return { tag: 'hard', label: 'Solid Working', feel: '~2 reps in reserve', color: 'var(--purple, #bf5af2)' }
+  if (rir <= 3.5) return { tag: 'moderate', label: 'Moderate', feel: '~3 reps in reserve', color: 'var(--yellow, #ffd60a)' }
+  return { tag: 'light', label: 'Light / Warm-up', feel: '4+ reps in reserve', color: 'var(--teal, #40c8e0)' }
+}
+

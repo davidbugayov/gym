@@ -153,7 +153,9 @@ export default function PlanCalendar({ onSwitchToSchedule }) {
                   <span className="plan-cal-cell-dot" />
                 ) : plannedR ? (
                   <Icon name={glyphOf(plannedR.emoji)} style={{ fontSize: 10, color: 'var(--label-2)' }} />
-                ) : null}
+                ) : (
+                  <Icon name="moon" className="plan-cal-cell-moon" />
+                )}
               </div>
 
               {hasDone ? (
@@ -172,7 +174,7 @@ export default function PlanCalendar({ onSwitchToSchedule }) {
                   {plannedR.name}
                 </div>
               ) : (
-                <div style={{ height: 14 }} />
+                <div className="plan-cal-cell-rest-label">{t('Rest')}</div>
               )}
             </div>
           )
@@ -303,13 +305,13 @@ export default function PlanCalendar({ onSwitchToSchedule }) {
           </div>
         ) : (
           /* Rest day */
-          <div style={{ padding: '16px 0', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <span className="lrow-i" style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--surface-3)', fontSize: 20 }}>
+          <div className="plan-rest-card">
+            <span className="lrow-i rest-icon-avatar">
               <Icon name="moon" />
             </span>
             <div>
-              <div style={{ fontWeight: 600 }}>{t('Rest Day')}</div>
-              <div className="small muted">{t('No workout scheduled for this date.')}</div>
+              <div style={{ fontWeight: 700, fontSize: 16 }}>{t('Rest Day')}</div>
+              <div className="small muted" style={{ marginTop: 2 }}>{t('No workout scheduled for this date.')}</div>
             </div>
             <div className="row" style={{ gap: 8, marginTop: 4 }}>
               <Button size="sm" variant="tinted" icon="calendar" onClick={() => dayOverrideSheet(selectedDate)}>
