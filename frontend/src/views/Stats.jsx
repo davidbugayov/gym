@@ -146,18 +146,29 @@ export default function Stats() {
   const toast = useUI(s => s.toast)
   const [range, setRange] = useState(90)
   const now = Date.now()
-  const anyEffort = hasEffort(S)
-  const kind = displayScale(S)
+  // Old backups and interrupted syncs can leave partial rows in otherwise valid arrays.
+  // A single null workout previously reached streakWeeks() and crashed this whole route.
+  const workouts = (Array.isArray(S.workouts) ? S.workouts : [])
+    .filter(w => w && typeof w === 'object')
+    .map(w => ({
+      ...w,
+      entries: (Array.isArray(w.entries) ? w.entries : [])
+        .filter(e => e && typeof e === 'object')
+        .map(e => ({ ...e, sets: Array.isArray(e.sets) ? e.sets.filter(Boolean) : [] }))
+    }))
+  const weights = (Array.isArray(S.bodyweight) ? S.bodyweight : []).filter(b => b && typeof b === 'object')
+  const statsS = { ...S, workouts, bodyweight: weights, measurements: Array.isArray(S.measurements) ? S.measurements : [] }
+  const anyEffort = hasEffort(statsS)
+  const kind = displayScale(statsS)
   const hd = scaleName(kind)
 
-  const validWeights = (S.bodyweight || []).filter(b => b && typeof b.d === 'string' && Number.isFinite(Number(b.w)) && Number(b.w) > 0)
+  const validWeights = weights.filter(b => typeof b.d === 'string' && Number.isFinite(Number(b.w)) && Number(b.w) > 0)
   const bwPts = validWeights.filter(b => range === 0 || (Number(b.t) || new Date(b.d).getTime()) > now - range * 86400000)
     .map(b => ({ t: Number(b.t) || new Date(b.d).getTime(), y: Number(b.w), d: b.d }))
   const bw30 = validWeights.filter(b => (Number(b.t) || new Date(b.d).getTime()) > now - 30 * 86400000)
   const bwDelta30 = bw30.length > 1 ? bw30[bw30.length - 1].w - bw30[0].w : null
   const todayBW = validWeights.find(b => b.d === todayISO())
   const currentBW = lastBW(S)
-  const workouts = (S.workouts || []).filter(w => w && typeof w === 'object')
   const monthW = workouts.filter(w => typeof w.d === 'string' && w.d.slice(0, 7) === todayISO().slice(0, 7)).length
 
   return <>
@@ -174,7 +185,7 @@ export default function Stats() {
     <div className="tiles">
       <div className="tile"><div className="l"><Icon name="dumbbell" />{t('Workouts')}</div><div className="v">{workouts.length}</div></div>
       <div className="tile"><div className="l"><Icon name="calendar" />{t('This month')}</div><div className="v">{monthW}</div></div>
-      <div className="tile"><div className="l"><Icon name="flame" />{t('Week streak')}</div><div className="v">{streakWeeks(S)}</div></div>
+      <div className="tile"><div className="l"><Icon name="flame" />{t('Week streak')}</div><div className="v">{streakWeeks(statsS)}</div></div>
       <div
         className="tile tappable"
         onClick={() => bwSheet()}
@@ -200,12 +211,12 @@ export default function Stats() {
 
     <div className="card">
       <h2>{t('Activity — last 12 months')} <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}>· {t('by time trained')}</span></h2>
-      <Heatmap S={{ ...S, workouts }} onDay={iso => { const ws = workouts.filter(w => w.d === iso); if (ws.length === 1) workoutDetailSheet(ws[0]); else if (ws.length) calendarSheet(iso) }} />
+      <Heatmap S={statsS} onDay={iso => { const ws = workouts.filter(w => w.d === iso); if (ws.length === 1) workoutDetailSheet(ws[0]); else if (ws.length) calendarSheet(iso) }} />
     </div>
 
-    {workouts.length > 0 && <MuscleBalance S={{ ...S, workouts }} />}
-    {anyEffort && <EffortCard S={S} />}
-    {workouts.length > 0 && <TopExercisesVolumeCard S={{ ...S, workouts }} />}
+    {workouts.length > 0 && <MuscleBalance S={statsS} />}
+    {anyEffort && <EffortCard S={statsS} />}
+    {workouts.length > 0 && <TopExercisesVolumeCard S={statsS} />}
 
     <div className="cols">
       <div className="card">
@@ -247,11 +258,11 @@ export default function Stats() {
         <div className="chart"><LineChart points={bwPts} h={160} unit={S.unit} goal={S.targetW} /></div>
       </div>
 
-      <WeightTrendsCard S={S} />
+      <WeightTrendsCard S={statsS} />
 
-      <BodyMeasurementsCard S={S} />
+      <BodyMeasurementsCard S={statsS} />
 
-      <ExerciseWeightProgressionCard S={S} />
+      <ExerciseWeightProgressionCard S={statsS} />
     </div>
 
     {workouts.length > 0 && <>
