@@ -10,7 +10,7 @@ on:
       - 'scripts/build-coach-library.mjs'
       - '.github/workflows/test.yml'
   push:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - 'frontend/**'
       - 'api/**'
@@ -34,7 +34,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - run: npm install --ignore-scripts
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
       - run: npm test
         working-directory: frontend
       # A broken import or bad JSX fails the build long before any test covers it.
@@ -48,7 +50,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - run: npm install --ignore-scripts
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
       - run: npm test
         working-directory: api
       # The API's copy of the exercise catalogue is generated and committed. A dataset change

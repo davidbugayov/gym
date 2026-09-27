@@ -501,7 +501,8 @@ export const goalSheet = () => ui().openSheet(close => <GoalSheet close={close} 
 function OneRM({ ex }) {
   const st = useStore(s => s.S)
   const best = best1RM(st, ex.id)
-  const [w, setW] = useState(best ? best.w : (st.exWeights[ex.id] || {}).w || 20)
+  const saved = st.exWeights?.[ex.id]?.w
+  const [w, setW] = useState(best ? best.w : saved > 0 ? saved : null)
   const [r, setR] = useState(best ? best.r : 5)
   const est = estimate1RM(w, r)
   return <>
@@ -619,12 +620,12 @@ function AddToRoutine({ ex, close }) {
         if (r) r.ex.push({ id: ex.id, ...cfg })
       })
       const r = isNew ? S().routines[S().routines.length - 1] : st.routines.find(x => x.id === rid)
-      toast(t('“{0}” added to {1}', ex.n, r ? r.name : t('routine')))
+      toast(t('“{0}” added to {1}', t(ex.n), r ? r.name : t('routine')))
       if (isNew && r) nav('/plan/r/' + r.id)
     }, null, isNew ? null : st.routines.find(x => x.id === rid))
   }
   return <>
-    <h3 className="capitalize">{t('Add “{0}”', ex.n)}</h3>
+    <h3 className="capitalize">{t('Add “{0}”', t(ex.n))}</h3>
     <div className="muted small" style={{ marginBottom: 12 }}>{t('Pick a routine — sets, reps & weight come next.')}</div>
     <div className="list">
       {st.routines.map(r => <div key={r.id} className="item" onClick={() => pick(r.id)}>
@@ -683,7 +684,7 @@ export const customExSheet = (existing, onDone, prefill) => ui().openSheet(close
 export function deleteCustomEx(ex, afterDelete) {
   if (S().active?.entries.some(e => e.id === ex.id)) { toast(t('Finish your current workout first')); return }
   confirmSheet({
-    title: t('Delete “{0}”?', ex.n),
+    title: t('Delete “{0}”?', t(ex.n)),
     message: t('It will be removed from your routines. Already-logged workouts keep their sets.'),
     confirmText: t('Delete'), danger: true,
     onConfirm: () => {
@@ -1075,7 +1076,12 @@ function ProgressionFields({ ex, mode, c, setC, routine, unit }) {
 function ExConfig({ ex, existing, onSave, onDelete, onSwap, close, routine }) {
   const st = useStore(s => s.S)
   const cardio = isCardio(ex.id)
-  const [c, setC] = useState(existing || defaultConfig(ex.id))
+  const [c, setC] = useState(() => {
+    if (existing) return existing
+    const base = defaultConfig(ex.id)
+    const guide = weightGuideFor(st, ex)
+    return guide ? { ...base, weight: guide.weight } : base
+  })
   // Cardio keeps its own duration+speed form; the reps/time choice (issue #16) is offered for
   // everything else, which is where the gap was — planks, hangs, wall sits, loaded carries.
   const mode = cardio ? 'cardio' : modeOf({ ...c, id: ex.id })
@@ -1124,6 +1130,9 @@ function ExConfig({ ex, existing, onSave, onDelete, onSwap, close, routine }) {
         <Stepper label={t('Weight ({0})', st.unit)} value={c.weight} step={2.5} onChange={v => setC(x => ({ ...x, weight: v }))} />
       </>}
     </div>
+    {!existing && mode !== 'cardio' && c.weight > 0 && <div className="small dim" style={{ marginBottom: 12 }}>
+      {t('Start light and adjust for clean reps.')}
+    </div>}
     {mode === 'time' && <div className="small dim" style={{ marginBottom: 18 }}>
       {t('Start the timer when you are ready. The set is logged automatically when the countdown ends.')}
     </div>}
@@ -2060,7 +2069,7 @@ function TopWeight({ entryIdx, close }) {
     } else toast(t('Tracked — next time starts at {0}', fmtNum(S().exWeights[entry.id].w) + ' ' + st.unit))
   }
   return <>
-    <h3 className="capitalize row" style={{ gap: 8 }}><Icon name="checkCircle" style={{ color: 'var(--acc)' }} />{t('{0} done', ex.n)}</h3>
+    <h3 className="capitalize row" style={{ gap: 8 }}><Icon name="checkCircle" style={{ color: 'var(--acc)' }} />{t('{0} done', t(ex.n))}</h3>
     <div className="muted small">{t('Confirm the weight you worked with — your highest becomes the default next time.')}{!unitDone && unit.length > 1 ? ' ' + t('Then finish the superset partner.') : ''}</div>
     <WeightInput value={v} setValue={setV} unit={st.unit} />
     <div style={{ height: 10 }} />

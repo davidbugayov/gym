@@ -3049,13 +3049,6 @@ h4.sec{
   box-shadow: 0 0 12px rgba(96, 165, 250, 0.35);
 }
 
-.hero-rest-deco {
-  font-size: 32px;
-  color: rgba(147, 197, 253, 0.35);
-  filter: drop-shadow(0 0 12px rgba(96, 165, 250, 0.4));
-  line-height: 1;
-}
-
 .plan-rest-card {
   padding: 22px 16px;
   text-align: center;

@@ -242,7 +242,7 @@ export default function PlanCalendar({ onSwitchToSchedule }) {
                         const completedSets = (e.sets || []).filter(s => s.done)
                         return (
                           <div key={idx} className="row between" style={{ fontSize: 13, padding: '3px 6px', borderRadius: 6, background: 'var(--surface)' }}>
-                            <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{ex.n}</span>
+                            <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{t(ex.n)}</span>
                             <span className="small muted">
                               {completedSets.map(s => setLabel(e.id, s, e.target)).join(', ') || t('no sets')}
                             </span>
@@ -290,7 +290,7 @@ export default function PlanCalendar({ onSwitchToSchedule }) {
                   const ex = exOr(e.id)
                   return (
                     <span key={idx} className="tag" style={{ textTransform: 'capitalize', fontSize: 12 }}>
-                      {ex.n}
+                      {t(ex.n)}
                     </span>
                   )
                 })}
