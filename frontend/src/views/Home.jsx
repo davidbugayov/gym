@@ -189,16 +189,18 @@ export default function Home() {
             <span>·</span>
             <span>~45 {t('min')}</span>
           </div>
-          <div className="row" style={{ gap: 8 }}>
-            <Button variant="primary" icon="play" onClick={() => startFlow(routine.id)}>
+          <div className="hero-actions">
+            <Button variant="primary" icon="play" className="hero-btn-primary" onClick={() => startFlow(routine.id)}>
               {t('Start workout')}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => dayOverrideSheet(todayISO())}>
-              {t('Reschedule')}
-            </Button>
-            <Button size="sm" variant="ghost" icon="calendar" onClick={() => singleWorkoutCalendarSheet(routine, todayISO())} title={t('Add to Calendar')}>
-              {t('Calendar')}
-            </Button>
+            <div className="hero-actions-aux">
+              <Button size="sm" variant="ghost" onClick={() => dayOverrideSheet(todayISO())}>
+                {t('Reschedule')}
+              </Button>
+              <Button size="sm" variant="ghost" icon="calendar" onClick={() => singleWorkoutCalendarSheet(routine, todayISO())} title={t('Add to Calendar')}>
+                {t('Calendar')}
+              </Button>
+            </div>
           </div>
         </div>
       ) : (
@@ -211,8 +213,8 @@ export default function Home() {
           <div className="hero-meta">
             <span>{t('Rest and rebuild — sleep, hydrate and stretch')}</span>
           </div>
-          <div className="row" style={{ gap: 8 }}>
-            <Button variant="tinted" icon="shuffle" onClick={() => startFlow(null)}>
+          <div className="hero-actions">
+            <Button variant="tinted" icon="shuffle" className="hero-btn-primary" onClick={() => startFlow(null)}>
               {t('Start freestyle workout')}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => dayOverrideSheet(todayISO())}>

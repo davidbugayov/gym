@@ -3,6 +3,16 @@ import EXERCISES_RU from './exercises-ru.js'
 
 export default {
   ...EXERCISES_RU,
+  "Top exercises volume": "Объём топ-упражнений",
+  "last 3 months": "за 3 месяца",
+  "Volume progress of the top 3 most used exercises": "Динамика объёма топ-3 самых частых упражнений",
+  "Show all 3": "Показать все 3",
+  "Click to show all": "Нажмите, чтобы показать все",
+  "Click to focus line": "Нажмите, чтобы выделить график",
+  "Combined volume:": "Суммарный объём:",
+  "Tap an exercise to isolate its curve": "Нажмите на упражнение, чтобы выделить его линию",
+  "No volume data recorded in the last 3 months": "Нет данных об объёме за последние 3 месяца",
+  "Complete workouts with weight and reps to see your exercise volume progression here.": "Выполняйте упражнения с весом и повторениями, чтобы отслеживать прогресс объёма.",
   "Sync with System Calendar": "Синхронизация с календарём",
   "System Calendar Sync": "Синхронизация с календарём",
   "Sync Calendar": "Календарь",

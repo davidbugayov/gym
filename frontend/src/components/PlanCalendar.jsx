@@ -295,7 +295,7 @@ export default function PlanCalendar({ onSwitchToSchedule }) {
               </div>
             )}
 
-            <div className="row" style={{ gap: 8, marginTop: 8 }}>
+            <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
               <Button size="sm" variant="tinted" icon="calendar" onClick={() => singleWorkoutCalendarSheet(selPlanned, selectedDate)}>
                 {t('Add to Calendar')}
               </Button>

@@ -22,6 +22,7 @@ import { useUI } from '../store/useUI.js'
 
 import BodyMeasurementsCard from '../components/BodyMeasurementsCard.jsx'
 import WeightTrendsCard from '../components/WeightTrendsCard.jsx'
+import TopExercisesVolumeCard from '../components/TopExercisesVolumeCard.jsx'
 
 // Which muscles the training in a window actually hit — and, the point of the card,
 // which ones it keeps missing. Shading is relative within the window (lib/muscles.js).
@@ -248,6 +249,7 @@ export default function Stats() {
 
     {S.workouts.length > 0 && <MuscleBalance S={S} />}
     {anyEffort && <EffortCard S={S} />}
+    {S.workouts.length > 0 && <TopExercisesVolumeCard S={S} />}
 
     <div className="cols">
       <div className="card">

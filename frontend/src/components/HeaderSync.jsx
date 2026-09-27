@@ -26,6 +26,7 @@ export default function HeaderSync({ className = '', style }) {
       aria-hidden={isIdle}
       style={style}
     >
+      {isSuccess && <span className="sync-ping-halo" aria-hidden="true" />}
       <span className={`sync-icon ${isSpinning ? 'sync-spin' : ''} ${isSuccess ? 'sync-success' : ''}`}>
         <Icon name={displayIcon} size={12} />
       </span>
@@ -57,6 +58,7 @@ export function HeaderSyncInline({ className = '', style }) {
       aria-label={label ? t(label) : ''}
       style={style}
     >
+      {isSuccess && <span className="sync-ping-halo" aria-hidden="true" />}
       <span className={`sync-icon ${isSpinning ? 'sync-spin' : ''} ${isSuccess ? 'sync-success' : ''}`}>
         <Icon name={displayIcon} size={11} />
       </span>

@@ -2080,7 +2080,7 @@ function WorkoutComplete({ close }) {
     <Button onClick={() => { close(); useUI.getState().toast(t('Keep going — tap “+ Add exercise” below')) }}>{t('Continue workout')}</Button>
   </div>
 }
-export const workoutCompleteSheet = () => ui().openSheet(close => <WorkoutComplete close={close} />, { kind: 'center' })
+export const workoutCompleteSheet = () => ui().openSheet(close => <WorkoutComplete close={close} />, { kind: 'center', className: 'pws-modal workout-complete-modal' })
 
 // How the session felt, in one tap (F9). Optional forever — the Coach reads it when it is
 // there and never asks twice. Stored on the finished workout itself, so a rating stays tied
@@ -2248,7 +2248,7 @@ function doFinishWorkout() {
   import('./lib/notifications.js').then(module => module.scheduleInactivityReminder()).catch(console.error)
 
   beep(snd(), 880, 0.15); beep(snd(), 1100, 0.15, 0.18); beep(snd(), 1320, 0.3, 0.36)
-  ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: false, className: 'pws-modal' })
+  ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: false, className: 'pws-modal workout-summary-modal' })
 }
 
 /* ============================ Google Health Sheet ============================ */
