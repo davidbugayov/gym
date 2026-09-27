@@ -249,7 +249,7 @@ export default function RoutineEdit() {
             >
               {unitFirst.has(i) && <div className="ss-label"><Icon name="link" />{t('Superset')}</div>}
               <div
-                className={'item' + (inSS.has(i) ? ' in-ss' : '')}
+                className={'item routine-exercise-item' + (inSS.has(i) ? ' in-ss' : '')}
                 onClick={() => {
                   if (dragState) return
                   exConfigSheet(
@@ -267,29 +267,19 @@ export default function RoutineEdit() {
                   className={'iconbtn drag-handle' + (isItemDragged ? ' dragging' : '')}
                   aria-label={t('Drag to reorder')}
                   title={t('Drag to reorder')}
-                  style={{
-                    width: 28,
-                    height: 44,
-                    borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flex: 'none',
-                    marginRight: -4,
-                    color: isItemDragged ? 'var(--acc)' : 'var(--label-2)'
-                  }}
+                  style={{ color: isItemDragged ? 'var(--acc)' : 'var(--label-2)' }}
                   onPointerDown={ev => startDrag(i, ev)}
                 >
                   <Icon name="grip" style={{ fontSize: 18 }} />
                 </button>
 
                 <Thumb ex={ex} />
-                <div className="grow">
+                <div className="grow routine-exercise-info">
                   <div className="tt capitalize">{t(ex.n)}</div>
                   <div className="ss">{exLine(e, S.unit)}</div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <div className="routine-exercise-actions">
                   <button
                     type="button"
                     className="btn-swap-ex"
@@ -304,7 +294,7 @@ export default function RoutineEdit() {
                     <span>{t('Change')}</span>
                   </button>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 'none', alignItems: 'center' }}>
+                  <div className="routine-exercise-order">
                     {i > 0 && (
                       <button
                         className={'iconbtn' + (linkedPrev ? ' on-ss' : '')}
@@ -315,7 +305,7 @@ export default function RoutineEdit() {
                         <Icon name="link" />
                       </button>
                     )}
-                    <div style={{ display: 'flex', gap: 2 }}>
+                      <div className="routine-exercise-move">
                       <button
                         className="iconbtn"
                         aria-label="Move up"

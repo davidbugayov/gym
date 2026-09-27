@@ -205,16 +205,12 @@ export default function Home() {
         </div>
       ) : (
         <div className="hero-workout-card is-rest">
-          <div className="hero-rest-header">
-            <div className="hero-badge rest">
-              <span className="hero-rest-badge-icon">
-                <Icon name="moon" />
-              </span>
+          <div className="hero-rest-copy">
+            <span className="hero-rest-badge-icon"><Icon name="moon" /></span>
+            <div>
+              <div className="hero-title">{t('Recovery Day')}</div>
+              <div className="hero-meta">{t('Rest and rebuild — sleep, hydrate and stretch')}</div>
             </div>
-          </div>
-          <div className="hero-title">{t('Recovery Day')}</div>
-          <div className="hero-meta">
-            <span>{t('Rest and rebuild — sleep, hydrate and stretch')}</span>
           </div>
           <div className="hero-actions">
             <Button variant="tinted" icon="shuffle" className="hero-btn-primary" onClick={() => startFlow(null)}>
@@ -228,11 +224,7 @@ export default function Home() {
       )}
 
       {/* Quick Launch Action Bar */}
-      <div className={`quick-actions-grid${!routine || S.active ? ' is-compact' : ''}`}>
-        {routine && !S.active && <button type="button" className="quick-action-btn" onClick={() => startFlow(null)}>
-          <div className="qa-icon"><Icon name="dumbbell" /></div>
-          <span className="qa-label">{t('Freestyle')}</span>
-        </button>}
+      <div className="quick-actions-grid">
         <button type="button" className="quick-action-btn" onClick={() => bwSheet()}>
           <div className="qa-icon"><Icon name="scale" /></div>
           <span className="qa-label">{t('Log weight')}</span>
@@ -314,7 +306,12 @@ export default function Home() {
       )}
 
       {/* Body Weight Tracker Card */}
-      <div className="card">
+      {!bw && S.bodyweight.length === 0 && <div className="bodyweight-prompt">
+        <span className="qa-icon"><Icon name="scale" /></span>
+        <span>{t('No entries yet — log your weight to track progress. You can update it any time.')}</span>
+        <Button size="sm" variant="tinted" onClick={() => bwSheet()}>{t('Log weight')}</Button>
+      </div>}
+      {bw && <div className="card bodyweight-card">
         <div className="row between" style={{ marginBottom: 8, alignItems: 'center' }}>
           <div className="row" style={{ gap: 6, alignItems: 'center' }}>
             <Icon name="scale" style={{ color: 'var(--acc)' }} />
@@ -365,10 +362,10 @@ export default function Home() {
             {t('No entries yet — log your weight to track progress. You can update it any time.')}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Streak and Consistency Bento Tile */}
-      <div className="card tappable" style={{ cursor: 'pointer' }} onClick={() => calendarSheet()}>
+      {streak > 0 && <div className="card tappable" style={{ cursor: 'pointer' }} onClick={() => calendarSheet()}>
         <div className="row between" style={{ alignItems: 'center' }}>
           <div>
             <div className="row" style={{ gap: 8, fontSize: 20, fontWeight: 800, letterSpacing: '-.025em' }}>
@@ -385,7 +382,7 @@ export default function Home() {
             <Icon name="calendar" style={{ fontSize: 18 }} />
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   )
 }
