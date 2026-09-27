@@ -5,7 +5,7 @@ import { EXDB, EXIDX, BODYPARTS, isCardio, allExercises, equipmentOf, exOr, find
 import { fmtDate, fmtNum, fmtVol, fmtDur, durPart, todayISO, uid, exCount, DAYN, MONTHS_LONG, ACCENTS } from './lib/format.js'
 import { lastEntryFor, bestWeightFor, buildSets, effectiveRoutineId, workoutVolume, setsDone, setsDoneActive, lastBW, supersetUnits, unitOf, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, exLine } from './lib/history.js'
 import { beep, vibrate, hapticSetComplete } from './lib/sound.js'
-import { t, instrFor, instrIsTranslated, getLang } from './lib/i18n.js'
+import { t, instrFor, instrIsTranslated, getLang, useLang } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
 import { READY_PROGRAMS, readyProgram, starterRoutines, makeRoutines, HERO_WARMUP, HERO_COOLDOWN } from './lib/starter.js'
 import { getWarmup, getCooldown, WARMUP_POOL, COOLDOWN_POOL, WARMUP_PRESETS, COOLDOWN_PRESETS, warmupCategoryName, cooldownCategoryName } from './lib/warmup-cooldown.js'
@@ -523,6 +523,7 @@ function OneRM({ ex }) {
 }
 
 function ExerciseDetail({ ex, close }) {
+  useLang()
   const st = useStore(s => s.S)
   const last = lastEntryFor(st, ex.id)
   const best = bestWeightFor(st, ex.id)

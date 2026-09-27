@@ -4,6 +4,9 @@
 // app components and storage events.
 
 import { useSyncExternalStore } from 'react'
+import exerciseOverrides from '../locales/exercise-overrides.js'
+import techniqueOverrides from '../locales/exercise-technique-overrides.js'
+import nameOverrides from '../locales/exercise-name-overrides.js'
 
 export const LANG_STORAGE_KEY = 'gymly_lang'
 export const LEGACY_STORAGE_KEY = 'gym_lang'
@@ -24,7 +27,7 @@ export const LANGS = {
 }
 
 export const LANG_CODES = Object.keys(LANGS)
-export const INSTR_LANGS = ['en', 'es', 'fr', 'it', 'tr', 'ru', 'zh', 'hi', 'pl', 'ko']
+export const INSTR_LANGS = ['en', 'es', 'fr', 'it', 'pl', 'tr', 'ru', 'zh', 'ko', 'hi']
 
 const DATE_LOCALES = {
   en: 'en-GB',
@@ -42,7 +45,10 @@ const DATE_LOCALES = {
 }
 
 const localePacks = import.meta.glob('../locales/*.js')
+const exerciseNamePacks = import.meta.glob('../locales/exercise-names/*.js')
+const exerciseCuePacks = import.meta.glob('../locales/exercise-cues/*.js')
 const instrPacks = import.meta.glob('../instr/*.js')
+const customInstrPacks = import.meta.glob('../instr/custom/*.js')
 
 // Resolve persisted language code from localStorage or legacy fallbacks
 export function readPersistedLanguage() {
@@ -89,6 +95,7 @@ let dict = {}
 let instr = null
 let version = 0
 let loadingPromise = null
+let loadVersion = 0
 const subscribers = new Set()
 
 const notify = () => {
@@ -100,6 +107,7 @@ const notify = () => {
 
 // Synchronously / eagerly start loading dictionary if not English
 async function loadBundle(code) {
+  const request = ++loadVersion
   if (!LANGS[code]) code = 'en'
   if (code === 'en') {
     dict = {}
@@ -109,18 +117,37 @@ async function loadBundle(code) {
   }
 
   const loaderKey = '../locales/' + code + '.js'
+  const namesKey = '../locales/exercise-names/' + code + '.js'
+  const cuesKey = '../locales/exercise-cues/' + code + '.js'
   const instrKey = '../instr/' + code + '.js'
+  const customInstrKey = '../instr/custom/' + code + '.js'
 
   try {
     const packPromise = localePacks[loaderKey] ? localePacks[loaderKey]() : Promise.resolve({ default: {} })
+    const namesPromise = exerciseNamePacks[namesKey] ? exerciseNamePacks[namesKey]() : Promise.resolve({ default: {} })
+    const cuesPromise = exerciseCuePacks[cuesKey] ? exerciseCuePacks[cuesKey]() : Promise.resolve({ default: {} })
     const instrPromise = (INSTR_LANGS.includes(code) && instrPacks[instrKey])
       ? instrPacks[instrKey]()
       : Promise.resolve({ default: null })
+    const customInstrPromise = customInstrPacks[customInstrKey]
+      ? customInstrPacks[customInstrKey]()
+      : Promise.resolve({ default: {} })
 
-    const [packMod, instrMod] = await Promise.all([packPromise, instrPromise])
-    dict = packMod?.default || {}
-    instr = instrMod?.default || null
+    const [packMod, namesMod, cuesMod, instrMod, customInstrMod] = await Promise.all([
+      packPromise, namesPromise, cuesPromise, instrPromise, customInstrPromise
+    ])
+    if (request !== loadVersion) return
+    dict = {
+      ...(packMod?.default || {}),
+      ...(namesMod?.default || {}),
+      ...(cuesMod?.default || {}),
+      ...(exerciseOverrides[code] || {}),
+      ...(techniqueOverrides[code] || {}),
+      ...(nameOverrides[code] || {})
+    }
+    instr = { ...(instrMod?.default || {}), ...(customInstrMod?.default || {}) }
   } catch (err) {
+    if (request !== loadVersion) return
     console.error(`Failed to load translation bundle for "${code}":`, err)
     dict = {}
     instr = null
