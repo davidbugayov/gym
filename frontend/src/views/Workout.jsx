@@ -860,10 +860,12 @@ function ActiveWorkout() {
   // behave exactly as they do for a reps set.
   const startTimed = (idx, i) => {
     const e = A.entries[idx]
-    useUI.getState().startWork(e.sets[i].sec || 45, t(exOr(e.id).n), elapsed => {
-      mutEntry(idx, en => { en.sets[i].sec = elapsed })
-      if (!useStore.getState().S.active.entries[idx].sets[i].done) toggle(idx, i)
-    }, { entryIdx: idx, setIdx: i })
+    useUI.getState().startWork(5, t('Get Ready!'), () => {
+      useUI.getState().startWork(e.sets[i].sec || 45, t(exOr(e.id).n), elapsed => {
+        mutEntry(idx, en => { en.sets[i].sec = elapsed })
+        if (!useStore.getState().S.active.entries[idx].sets[i].done) toggle(idx, i)
+      }, { entryIdx: idx, setIdx: i })
+    }, { isPrepare: true })
   }
 
   const toggle = (idx, i) => {
@@ -881,9 +883,39 @@ function ActiveWorkout() {
 
         const isLastExInUnit = idx === unit[unit.length - 1]
         const unitDone = unit.every(ui => (ui === idx ? e : A.entries[ui]).sets.every(x => x.done))
-        if (isLastExInUnit && !unitDone) startRest(S.restSec)
-        else if (unitDone) stopRest()
-        if (unitDone && isLastUnit) workoutDone = true      // last exercise's last set → done
+
+        if (unitDone) {
+          stopRest()
+          if (isLastUnit) workoutDone = true
+          else {
+            setTimeout(() => {
+               update(s => { if (unitIdx + 1 < units.length) s.active.cur = units[unitIdx + 1][0] })
+            }, 800)
+          }
+        } else if (isLastExInUnit) {
+          startRest(S.restSec, () => {
+             const st = useStore.getState().S.active
+             if (!st) return
+             const nextE = st.entries[idx]
+             const nextI = nextE.activeSetIdx !== undefined ? nextE.activeSetIdx : nextE.sets.findIndex(s => !s.done)
+             if (nextI >= 0) {
+                 const md = modeOf({ ...(nextE.target || {}), id: nextE.id })
+                 if (md === 'time' || md === 'cardio') {
+                    useUI.getState().startWork(5, t('Get Ready!'), () => {
+                       useUI.getState().startWork(nextE.sets[nextI].sec || 45, t(exOr(nextE.id).n), elapsed => {
+                          mutEntry(idx, en => { en.sets[nextI].sec = elapsed })
+                          if (!useStore.getState().S.active.entries[idx].sets[nextI].done) toggle(idx, nextI)
+                       }, { entryIdx: idx, setIdx: nextI })
+                    }, { isPrepare: true })
+                 } else {
+                    useUI.getState().startWork(5, t('Get Ready!'), () => {
+                       useUI.getState().toast(t('Go!'))
+                    }, { isPrepare: true })
+                 }
+             }
+          })
+        }
+
         // Only reps training has a "working weight" worth confirming — a bodyweight plank
         // has nothing to put in that slider.
         if (e.sets.every(x => x.done)) { exJustDone = true; if (m === 'reps' && !e.asked) { e.asked = true; askTop = true } }
@@ -1102,90 +1134,6 @@ function ActiveWorkout() {
           {done} / {total} {t('sets')}
         </div>
       </div>
-    </div>
-
-    {/* Rest timer quick-select bar & prominent start button */}
-    <div className="card" style={{
-      padding: '10px 14px',
-      margin: '0 0 12px',
-      background: 'color-mix(in srgb, var(--surface) 92%, var(--acc) 6%)',
-      borderColor: 'color-mix(in srgb, var(--sep) 80%, var(--acc) 25%)',
-      borderRadius: 'var(--r-lg)'
-    }}>
-      <div className="row between" style={{ alignItems: 'center', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 26,
-            height: 26,
-            borderRadius: 7,
-            background: 'color-mix(in srgb, var(--acc) 20%, transparent)',
-            color: 'var(--acc)'
-          }}>
-            <Icon name="timer" size={15} />
-          </span>
-          <span style={{ fontSize: 13, fontWeight: 700 }}>{t('Rest timer')}:</span>
-          <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--acc)' }}>{S.restSec || 90}{t('s')}</span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          {[60, 90, 120].map(sec => {
-            const isMatch = S.restSec === sec
-            return (
-              <button
-                key={sec}
-                type="button"
-                className={'chip' + (isMatch ? ' acc' : '')}
-                style={{
-                  padding: '3px 9px',
-                  fontSize: 12,
-                  borderRadius: 14,
-                  cursor: 'pointer',
-                  background: isMatch ? 'var(--acc)' : 'var(--surface-3)',
-                  color: isMatch ? 'var(--on-acc)' : 'var(--fg)',
-                  borderColor: isMatch ? 'var(--acc)' : 'var(--sep)',
-                  fontWeight: isMatch ? 700 : 500,
-                  transition: 'all var(--fast)'
-                }}
-                onClick={() => {
-                  update(s => { s.restSec = sec })
-                  hapticClick()
-                }}
-                title={t('Set rest timer to {0}s', sec)}
-              >
-                {sec}{t('s')}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      <button
-        type="button"
-        className="btn primary"
-        style={{
-          width: '100%',
-          padding: '11px 16px',
-          fontSize: 14.5,
-          fontWeight: 700,
-          borderRadius: 'var(--r)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          boxShadow: '0 3px 12px color-mix(in srgb, var(--acc) 35%, transparent)',
-          cursor: 'pointer'
-        }}
-        onClick={() => {
-          hapticClick()
-          startRest(S.restSec || 90)
-        }}
-      >
-        <Icon name="play" style={{ fontSize: 16 }} />
-        <span>{t('Start rest ({0}s)', S.restSec || 90)}</span>
-      </button>
     </div>
 
     {A.entries.length ? <>

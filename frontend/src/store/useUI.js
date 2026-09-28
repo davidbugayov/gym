@@ -54,7 +54,7 @@ export const useUI = create((set, get) => ({
     toastTm = setTimeout(() => set({ toastMsg: '' }), 2200)
   },
 
-  startRest(sec) {
+  startRest(sec, onDone) {
     get().stopRest()
     getAudioContext()
     const endsAt = Date.now() + sec * 1000
@@ -71,6 +71,7 @@ export const useUI = create((set, get) => ({
         hapticTimerMilestone('complete')
         get().toast(t('Rest over — next set!'))
         get().stopRest()
+        if (onDone) onDone()
         return
       }
 
