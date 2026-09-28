@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
-import { lastBW, streakWeeks, effortOf } from '../lib/history.js'
-import { fmtNum, fmtDate, fmtVol, todayISO, weekKey } from '../lib/format.js'
+import { lastBW, streakWeeks, effortOf, workoutVolume } from '../lib/history.js'
+import { fmtNum, fmtDate, fmtVol, todayISO, weekKey, isoOf } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import { bwSheet, goalSheet, calendarSheet, workoutDetailSheet, WorkoutRow, bwDeltaColor } from '../sheets.jsx'
 import LineChart from '../components/LineChart.jsx'
@@ -22,6 +22,7 @@ import BodyMeasurementsCard from '../components/BodyMeasurementsCard.jsx'
 import WeightTrendsCard from '../components/WeightTrendsCard.jsx'
 import TopExercisesVolumeCard from '../components/TopExercisesVolumeCard.jsx'
 import ExerciseWeightProgressionCard from '../components/ExerciseWeightProgressionCard.jsx'
+import BodyWeightProgressionCard from '../components/BodyWeightProgressionCard.jsx'
 
 // Which muscles the training in a window actually hit — and, the point of the card,
 // which ones it keeps missing. Shading is relative within the window (lib/muscles.js).
@@ -144,7 +145,6 @@ export default function Stats() {
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
   const toast = useUI(s => s.toast)
-  const [range, setRange] = useState(90)
   const now = Date.now()
   // Old backups and interrupted syncs can leave partial rows in otherwise valid arrays.
   // A single null workout previously reached streakWeeks() and crashed this whole route.
@@ -168,8 +168,6 @@ export default function Stats() {
   const hd = scaleName(kind)
 
   const validWeights = weights.filter(b => typeof b.d === 'string' && Number.isFinite(Number(b.w)) && Number(b.w) > 0)
-  const bwPts = validWeights.filter(b => range === 0 || (Number(b.t) || new Date(b.d).getTime()) > now - range * 86400000)
-    .map(b => ({ t: Number(b.t) || new Date(b.d).getTime(), y: Number(b.w), d: b.d }))
   const bw30 = validWeights.filter(b => (Number(b.t) || new Date(b.d).getTime()) > now - 30 * 86400000)
   const bwDelta30 = bw30.length > 1 ? bw30[bw30.length - 1].w - bw30[0].w : null
   const todayBW = validWeights.find(b => b.d === todayISO())
@@ -256,44 +254,7 @@ export default function Stats() {
     {workouts.length > 0 && <TopExercisesVolumeCard S={statsS} />}
 
     <div className="cols">
-      <div className="card">
-        <div className="row between" style={{ marginBottom: 8, alignItems: 'center' }}>
-          <h2 style={{ margin: 0 }}>{t('Body weight')}</h2>
-          <div className="row" style={{ gap: 8 }}>
-            <Button size="sm" icon="target" style={S.targetW ? { color: 'var(--yellow)' } : undefined} onClick={goalSheet}>{S.targetW ? fmtNum(S.targetW) : t('Goal')}</Button>
-            <Button size="sm" variant="primary" icon="plus" onClick={() => bwSheet()}>{t('Log weight')}</Button>
-          </div>
-        </div>
-        <div
-          className="row between"
-          style={{
-            background: 'var(--surface-2, rgba(255,255,255,0.04))',
-            border: '1px solid var(--sep, rgba(255,255,255,0.08))',
-            borderRadius: 'var(--r-md, 10px)',
-            padding: '8px 12px',
-            marginBottom: 10,
-            alignItems: 'center',
-            gap: 8
-          }}
-        >
-          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-            <Icon name="scale" size={15} className="dim" />
-            <span className="small">
-              {todayBW ? (
-                <><b>{t('Today:')}</b> {fmtNum(todayBW.w)} {S.unit}</>
-              ) : (
-                <span className="muted">{t('No weigh-in logged today')}</span>
-              )}
-            </span>
-          </div>
-          <Button size="sm" variant={todayBW ? 'ghost' : 'primary'} icon={todayBW ? 'edit' : 'plus'} onClick={() => bwSheet()}>
-            {todayBW ? t('Edit') : t('Quick log')}
-          </Button>
-        </div>
-        <Segmented className="seg-range" value={range} onChange={setRange}
-          options={[{ value: 30, label: '1M' }, { value: 90, label: '3M' }, { value: 365, label: '1Y' }, { value: 0, label: t('All') }]} />
-        <div className="chart"><LineChart points={bwPts} h={160} unit={S.unit} goal={S.targetW} /></div>
-      </div>
+      <BodyWeightProgressionCard S={statsS} />
 
       <WeightTrendsCard S={statsS} />
 
