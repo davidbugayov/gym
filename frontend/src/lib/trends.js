@@ -61,7 +61,8 @@ export function getExerciseTrend(workout, entry, allWorkouts = [], unit = 'kg') 
     })
 
   for (const w of pastWorkouts) {
-    const found = (w.entries || []).find(e => e.id === exId)
+    if (!w || !Array.isArray(w.entries)) continue
+    const found = w.entries.find(e => e && e.id === exId)
     if (found && (found.sets || []).some(s => s && s.done)) {
       prevEntry = found
       prevWorkout = w

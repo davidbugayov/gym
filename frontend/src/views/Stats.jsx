@@ -148,16 +148,21 @@ export default function Stats() {
   const now = Date.now()
   // Old backups and interrupted syncs can leave partial rows in otherwise valid arrays.
   // A single null workout previously reached streakWeeks() and crashed this whole route.
-  const workouts = (Array.isArray(S.workouts) ? S.workouts : [])
+  const workouts = (Array.isArray(S?.workouts) ? S.workouts : [])
     .filter(w => w && typeof w === 'object')
-    .map(w => ({
-      ...w,
-      entries: (Array.isArray(w.entries) ? w.entries : [])
-        .filter(e => e && typeof e === 'object')
-        .map(e => ({ ...e, sets: Array.isArray(e.sets) ? e.sets.filter(Boolean) : [] }))
-    }))
-  const weights = (Array.isArray(S.bodyweight) ? S.bodyweight : []).filter(b => b && typeof b === 'object')
-  const statsS = { ...S, workouts, bodyweight: weights, measurements: Array.isArray(S.measurements) ? S.measurements : [] }
+    .map(w => {
+      const dStr = typeof w.d === 'string' && w.d ? w.d : (w.start ? isoOf(new Date(Number(w.start))) : todayISO())
+      return {
+        ...w,
+        d: dStr,
+        vol: Number(w.vol) || workoutVolume(w),
+        entries: (Array.isArray(w.entries) ? w.entries : [])
+          .filter(e => e && typeof e === 'object')
+          .map(e => ({ ...e, sets: Array.isArray(e.sets) ? e.sets.filter(Boolean) : [] }))
+      }
+    })
+  const weights = (Array.isArray(S?.bodyweight) ? S.bodyweight : []).filter(b => b && typeof b === 'object')
+  const statsS = { ...S, workouts, bodyweight: weights, measurements: Array.isArray(S?.measurements) ? S.measurements : [] }
   const anyEffort = hasEffort(statsS)
   const kind = displayScale(statsS)
   const hd = scaleName(kind)
@@ -181,6 +186,38 @@ export default function Stats() {
         <button className="iconbtn" onClick={() => nav('/history')} aria-label={t('History')}><Icon name="history" /></button>
       </div>
     </div>
+
+    {S?.active && (
+      <div
+        className="card tappable"
+        onClick={() => nav('/workout')}
+        role="button"
+        tabIndex={0}
+        style={{
+          background: 'color-mix(in srgb, var(--surface) 92%, var(--acc))',
+          border: '1.5px solid var(--acc)',
+          marginBottom: 16,
+          cursor: 'pointer'
+        }}
+      >
+        <div className="row between" style={{ alignItems: 'center' }}>
+          <div className="row" style={{ gap: 10, alignItems: 'center', minWidth: 0 }}>
+            <span className="lrow-i" style={{ background: 'var(--acc)', color: 'var(--bg, #000)', flexShrink: 0 }}>
+              <Icon name="play" />
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{t('Workout in progress')}</div>
+              <div className="small dim" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {S.active.name || t('Active workout')}
+              </div>
+            </div>
+          </div>
+          <Button size="sm" variant="primary" icon="play">
+            {t('Resume')}
+          </Button>
+        </div>
+      </div>
+    )}
 
     <div className="tiles">
       <div className="tile"><div className="l"><Icon name="dumbbell" />{t('Workouts')}</div><div className="v">{workouts.length}</div></div>

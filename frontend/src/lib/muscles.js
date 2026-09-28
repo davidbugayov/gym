@@ -107,16 +107,22 @@ export function loadOf(items) {
  * near failure.
  */
 export const loadOfWorkouts = (workouts, pick) =>
-  loadOf((workouts || []).flatMap(w =>
-    (w.entries || []).map(e => ({ id: e.id, sets: (e.sets || []).filter(s => s.done && (!pick || pick(s))).length }))))
+  loadOf((workouts || []).filter(Boolean).flatMap(w =>
+    (w.entries || []).filter(Boolean).map(e => ({
+      id: e.id,
+      sets: (e.sets || []).filter(s => s && s.done && (!pick || pick(s))).length
+    }))))
 
 /** Load a routine *would* produce, from its planned set counts. */
 export const loadOfRoutine = routine =>
-  loadOf((routine?.ex || []).map(c => ({ id: c.id, sets: c.sets || 1 })))
+  loadOf((routine?.ex || []).filter(Boolean).map(c => ({ id: c.id, sets: c.sets || 1 })))
 
 /** Load for a workout still in progress — the sets ticked so far. */
 export const loadOfActive = active =>
-  loadOf((active?.entries || []).map(e => ({ id: e.id, sets: (e.sets || []).filter(s => s.done).length })))
+  loadOf((active?.entries || []).filter(Boolean).map(e => ({
+    id: e.id,
+    sets: (e.sets || []).filter(s => s && s.done).length
+  })))
 
 /**
  * Shade buckets 0–4 per muscle, relative to the hardest-worked muscle in the same

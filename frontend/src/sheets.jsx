@@ -1599,18 +1599,21 @@ export const calendarSheet = start => ui().openSheet(close => <Calendar start={s
 
 /* shared small workout row (used in lists) */
 export function WorkoutRow({ w, onClick }) {
+  if (!w) return null
   const st = useStore(s => s.S)
-  const glyph = glyphOf((st.routines.find(r => r.id === w.routineId) || {}).emoji)
-  const completedEntries = (w.entries || []).filter(e => e.sets && e.sets.some(s => s.done))
+  const glyph = glyphOf(((st.routines || []).find(r => r && r.id === w.routineId) || {}).emoji)
+  const completedEntries = (w.entries || []).filter(e => e && Array.isArray(e.sets) && e.sets.some(s => s && s.done))
+  const dStr = typeof w.d === 'string' ? w.d : (w.start ? isoOf(new Date(Number(w.start))) : todayISO())
+  const durMs = Math.max(0, (Number(w.end) || Number(w.start) || 0) - (Number(w.start) || 0))
 
   return <div className="item" onClick={onClick} style={{ alignItems: 'flex-start', paddingTop: 10, paddingBottom: 10 }}>
     <span className="lrow-i" style={{ width: 34, height: 34, borderRadius: 8, fontSize: 19, marginTop: 2 }}><Icon name={glyph} /></span>
     <div className="grow" style={{ minWidth: 0 }}>
       <div className="row between" style={{ alignItems: 'center' }}>
-        <div className="tt" style={{ fontWeight: 600 }}>{w.name}</div>
+        <div className="tt" style={{ fontWeight: 600 }}>{w.name || t('Workout')}</div>
         {w.prs && w.prs.length > 0 && <span className="pr" style={{ marginLeft: 6 }}><Icon name="trophy" />{w.prs.length} PR</span>}
       </div>
-      <div className="ss">{[fmtDate(w.d, true), ...durPart(w.end - w.start), t('{0} sets', setsDone(w)), fmtVol(w.vol, st.unit)].join(' · ')}</div>
+      <div className="ss">{[fmtDate(dStr, true), ...durPart(durMs), t('{0} sets', setsDone(w)), fmtVol(w.vol || workoutVolume(w), st.unit)].join(' · ')}</div>
       {completedEntries.length > 0 && (
         <div className="wrow-exercises">
           {completedEntries.map(e => {

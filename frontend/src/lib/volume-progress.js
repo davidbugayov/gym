@@ -17,8 +17,9 @@ export function entryVolume(entry) {
  * Returns timestamp in ms for a workout object.
  */
 export function workoutTimestamp(w) {
+  if (!w || typeof w !== 'object') return 0
   if (w.start && !isNaN(Number(w.start))) return Number(w.start)
-  if (w.d) {
+  if (w.d && typeof w.d === 'string') {
     const ts = new Date(w.d + 'T12:00:00').getTime()
     if (!isNaN(ts)) return ts
   }
@@ -39,7 +40,9 @@ export function getTopExercisesVolumeProgress(workouts = [], options = {}) {
   const cutoff = now - days * 86400000
 
   // Filter workouts within the window
-  const inWindowWorkouts = (workouts || [])
+  const safeWorkouts = (Array.isArray(workouts) ? workouts : []).filter(w => w && typeof w === 'object')
+
+  const inWindowWorkouts = safeWorkouts
     .filter(w => {
       const ts = workoutTimestamp(w)
       return ts >= cutoff && ts <= now + 86400000
@@ -49,7 +52,7 @@ export function getTopExercisesVolumeProgress(workouts = [], options = {}) {
   // If inWindowWorkouts has data, we prioritize it.
   // If inWindowWorkouts is completely empty, optionally use all workouts if allTimeFallback is enabled
   const hasWindowData = inWindowWorkouts.length > 0
-  const activeWorkouts = hasWindowData || !options.allTimeFallback ? inWindowWorkouts : [...workouts].sort((a, b) => workoutTimestamp(a) - workoutTimestamp(b))
+  const activeWorkouts = hasWindowData || !options.allTimeFallback ? inWindowWorkouts : safeWorkouts.slice().sort((a, b) => workoutTimestamp(a) - workoutTimestamp(b))
 
   // Map to store per-exercise metrics across workouts in the window
   const exStats = new Map()

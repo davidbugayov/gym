@@ -8,10 +8,15 @@ export default function Heatmap({ S, onDay }) {
   useEffect(() => { if (wrapRef.current) wrapRef.current.scrollLeft = wrapRef.current.scrollWidth }, [])
 
   const agg = {}
-  S.workouts.forEach(w => {
-    const a = agg[w.d] = agg[w.d] || { n: 0, vol: 0, min: 0 }
-    a.n++; a.vol += w.vol || 0
-    a.min += Math.max(0, Math.round(((w.end || w.start) - w.start) / 60000))
+  ;(S?.workouts || []).forEach(w => {
+    if (!w) return
+    const dStr = typeof w.d === 'string' ? w.d : (w.start ? isoOf(new Date(Number(w.start))) : null)
+    if (!dStr) return
+    const a = agg[dStr] = agg[dStr] || { n: 0, vol: 0, min: 0 }
+    a.n++
+    a.vol += (Number(w.vol) || 0)
+    const durMs = Math.max(0, (Number(w.end) || Number(w.start) || 0) - (Number(w.start) || 0))
+    a.min += Math.round(durMs / 60000) || 0
   })
   const mins = Object.values(agg).map(a => a.min).filter(v => v > 0).sort((a, b) => a - b)
   const q = p => (mins.length ? mins[Math.min(mins.length - 1, Math.floor(p * mins.length))] : 0)

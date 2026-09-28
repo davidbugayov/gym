@@ -291,37 +291,66 @@ export function normalizeActiveSession(active, state = {}) {
 
 export function workoutVolume(w) {
   let v = 0
-  w.entries.forEach(e => e.sets.forEach(s => { if (s.done) v += (s.w || 0) * (s.r || 0) }))
+  if (!w || !Array.isArray(w.entries)) return 0
+  w.entries.forEach(e => {
+    if (e && Array.isArray(e.sets)) {
+      e.sets.forEach(s => {
+        if (s && s.done) v += Math.max(0, Number(s.w) || 0) * Math.max(0, Number(s.r) || 0)
+      })
+    }
+  })
   return v
 }
 export function setsDone(w) {
   let n = 0
-  w.entries.forEach(e => e.sets.forEach(s => { if (s.done) n++ }))
+  if (!w || !Array.isArray(w.entries)) return 0
+  w.entries.forEach(e => {
+    if (e && Array.isArray(e.sets)) {
+      e.sets.forEach(s => { if (s && s.done) n++ })
+    }
+  })
   return n
 }
 export function setsDoneActive(A) {
   let n = 0
-  if (A) A.entries.forEach(e => e.sets.forEach(s => { if (s.done) n++ }))
+  const target = A?.active ? A.active : A
+  if (target && Array.isArray(target.entries)) {
+    target.entries.forEach(e => {
+      if (e && Array.isArray(e.sets)) {
+        e.sets.forEach(s => { if (s && s.done) n++ })
+      }
+    })
+  }
   return n
 }
-export const lastBW = S => (S.bodyweight.length ? S.bodyweight[S.bodyweight.length - 1] : null)
+export const lastBW = S => (Array.isArray(S?.bodyweight) && S.bodyweight.length ? S.bodyweight[S.bodyweight.length - 1] : null)
 
 // Group consecutive items sharing a superset id (sg) into "units" of indices.
 // items may be routine exercises ({sg}) or active-workout entries ({sg}).
 export function supersetUnits(items) {
   const units = []
-  items.forEach((e, i) => {
+  ;(items || []).forEach((e, i) => {
+    if (!e) return
     const prev = items[i - 1]
     if (i > 0 && e.sg && prev && prev.sg && e.sg === prev.sg) units[units.length - 1].push(i)
     else units.push([i])
   })
   return units
 }
-export function unitOf(units, idx) { return units.find(u => u.includes(idx)) || [idx] }
+export function unitOf(units, idx) { return (units || []).find(u => u && u.includes(idx)) || [idx] }
 
 export function streakWeeks(S) {
-  if (!S.workouts.length) return 0
-  const weeks = new Set(S.workouts.map(w => weekKey(w.d)))
+  if (!S || !Array.isArray(S.workouts) || !S.workouts.length) return 0
+  const weeks = new Set(
+    S.workouts
+      .filter(w => w && (typeof w.d === 'string' || w.start))
+      .map(w => {
+        const d = typeof w.d === 'string' ? w.d : isoOf(new Date(Number(w.start)))
+        return weekKey(d)
+      })
+      .filter(k => k && k !== 'NaN-NaN')
+  )
+  if (!weeks.size) return 0
   let streak = 0
   const cur = new Date()
   for (let i = 0; i < 520; i++) {

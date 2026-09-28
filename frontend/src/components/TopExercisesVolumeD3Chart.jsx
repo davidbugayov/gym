@@ -72,14 +72,15 @@ export default function TopExercisesVolumeD3Chart({
     maxVol
   } = useMemo(() => {
     if (!exercises || exercises.length === 0) {
-      return { allPoints: [], seriesData: [] }
+      return { allPoints: [], seriesData: [], xTicks: [], yTicks: [] }
     }
 
     // Collect all points across the exercises
     const allPts = []
     exercises.forEach((ex, idx) => {
       const color = SERIES_COLORS[idx % SERIES_COLORS.length]
-      (ex.points || []).forEach(pt => {
+      const pts = ex.points || []
+      pts.forEach(pt => {
         allPts.push({
           ...pt,
           exerciseId: ex.id,
@@ -91,7 +92,7 @@ export default function TopExercisesVolumeD3Chart({
     })
 
     if (allPts.length === 0) {
-      return { allPoints: [], seriesData: [] }
+      return { allPoints: [], seriesData: [], xTicks: [], yTicks: [] }
     }
 
     // Determine time domain: 3 months ago to now (or range of points)
@@ -271,7 +272,7 @@ export default function TopExercisesVolumeD3Chart({
         </defs>
 
         {/* Horizontal grid lines and Y-axis values via D3 ticks */}
-        {yTicks.map(val => {
+        {(yTicks || []).map(val => {
           const y = yScale(val)
           const formatted = val >= 1000 ? `${fmtNum(val / 1000)}k` : fmtNum(val)
           return (
@@ -300,7 +301,7 @@ export default function TopExercisesVolumeD3Chart({
         })}
 
         {/* X-axis date grid lines and labels via D3 */}
-        {xTicks.map((dt, i) => {
+        {(xTicks || []).map((dt, i) => {
           const x = xScale(dt)
           if (x < MARGIN.left || x > W - MARGIN.right) return null
           const label = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })

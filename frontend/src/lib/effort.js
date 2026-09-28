@@ -42,15 +42,23 @@ export const scaleName = kind => EFFORT[kind].hd
 // Every finished set in the profile, oldest first. `fn` gets the set plus the workout it
 // belongs to, which is what the windowed and per-week views need.
 function eachDoneSet(S, fn) {
-  ;(S.workouts || []).forEach(w =>
-    (w.entries || []).forEach(e =>
-      (e.sets || []).forEach(s => { if (s.done) fn(s, w, e) })))
+  ;(S?.workouts || []).forEach(w => {
+    if (!w) return
+    ;(w.entries || []).forEach(e => {
+      if (!e) return
+      ;(e.sets || []).forEach(s => { if (s && s.done) fn(s, w, e) })
+    })
+  })
 }
 
 // A window in days, counted back from now. 0 = everything, which is also what an empty
 // history means for every caller here.
-const inWindow = (w, days) =>
-  !days || (w.start || new Date(w.d).getTime()) > Date.now() - days * 86400000
+const inWindow = (w, days) => {
+  if (!w) return false
+  if (!days) return true
+  const ts = Number(w.start) || (typeof w.d === 'string' ? new Date(w.d).getTime() : NaN)
+  return Number.isFinite(ts) && ts > Date.now() - days * 86400000
+}
 
 export const avgRir = sets => {
   const vs = (sets || []).map(rirOf).filter(v => v != null)
@@ -97,9 +105,12 @@ export function effortWeeks(S, days) {
   const wk = new Map()
   eachDoneSet(S, (s, w) => {
     if (!inWindow(w, days)) return
-    const k = weekKey(w.d)
+    const dStr = typeof w.d === 'string' ? w.d : (w.start ? isoOf(new Date(Number(w.start))) : null)
+    if (!dStr) return
+    const k = weekKey(dStr)
+    if (!k || k === 'NaN-NaN') return
     let e = wk.get(k)
-    if (!e) wk.set(k, e = { k, t: mondayOf(w.d), sum: 0, n: 0, sets: 0 })
+    if (!e) wk.set(k, e = { k, t: mondayOf(dStr), sum: 0, n: 0, sets: 0 })
     e.sets++
     const r = rirOf(s)
     if (r != null) { e.sum += r; e.n++ }

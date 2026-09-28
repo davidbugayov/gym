@@ -9,6 +9,7 @@ import { glyphOf, DEFAULT_GLYPH } from '../lib/glyphs.js'
 import { coachAvailable } from '../lib/coach.js'
 import { DEMO } from '../lib/demo.js'
 import { MOBILE } from '../lib/mobile.js'
+import RoutineMuscleEngagementCard from '../components/RoutineMuscleEngagementCard.jsx'
 
 export default function Plan() {
   const nav = useNavigate()
@@ -65,5 +66,15 @@ export default function Plan() {
         <div className="empty"><div className="ico"><Icon name="clipboard" /></div>{t('No routines yet.')}<br />{t('Create one or load the starter plan.')}</div>
       </>}
     </div></div>
+
+    {S.routines.length > 0 && (
+      <div style={{ marginTop: 24, marginBottom: 20 }}>
+        <RoutineMuscleEngagementCard
+          editable={false}
+          showRoutineSelector={true}
+          title={t('Muscle Engagement & Gaps')}
+        />
+      </div>
+    )}
   </>
 }

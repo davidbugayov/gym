@@ -21,24 +21,31 @@ export default function ExerciseWeightProgressionCard({ S }) {
   const [metric, setMetric] = useState('top')
 
   const workouts = useMemo(() => {
-    return (S.workouts || []).slice().sort((a, b) => {
-      const ta = a.start || new Date(a.d).getTime()
-      const tb = b.start || new Date(b.d).getTime()
-      return ta - tb
-    })
-  }, [S.workouts])
+    return (Array.isArray(S?.workouts) ? S.workouts : [])
+      .filter(w => w && typeof w === 'object')
+      .slice()
+      .sort((a, b) => {
+        const ta = Number(a.start) || (typeof a.d === 'string' ? new Date(a.d).getTime() : 0) || 0
+        const tb = Number(b.start) || (typeof b.d === 'string' ? new Date(b.d).getTime() : 0) || 0
+        return ta - tb
+      })
+  }, [S?.workouts])
 
   // All exercises with history in user workouts
   const exHist = useMemo(() => {
     const counts = {}
     workouts.forEach(w => {
       (w.entries || []).forEach(e => {
-        if (EXIDX[e.id]) {
+        if (e && e.id) {
           counts[e.id] = (counts[e.id] || 0) + 1
         }
       })
     })
-    return Object.keys(counts).sort((a, b) => counts[b] - counts[a] || (EXIDX[a].n.localeCompare(EXIDX[b].n)))
+    return Object.keys(counts).sort((a, b) => {
+      const na = EXIDX[a]?.n || exOr(a)?.n || a
+      const nb = EXIDX[b]?.n || exOr(b)?.n || b
+      return (counts[b] || 0) - (counts[a] || 0) || String(na).localeCompare(String(nb))
+    })
   }, [workouts])
 
   // Default to the most trained exercise in the last 6 months or first in history
@@ -50,10 +57,10 @@ export default function ExerciseWeightProgressionCard({ S }) {
     const cutoff6M = Date.now() - 180 * 86400000
     const recentCounts = {}
     workouts.forEach(w => {
-      const t = w.start || new Date(w.d).getTime()
+      const t = Number(w.start) || (typeof w.d === 'string' ? new Date(w.d).getTime() : 0) || 0
       if (t >= cutoff6M) {
         (w.entries || []).forEach(e => {
-          if (EXIDX[e.id]) {
+          if (e && e.id) {
             recentCounts[e.id] = (recentCounts[e.id] || 0) + 1
           }
         })
@@ -69,7 +76,9 @@ export default function ExerciseWeightProgressionCard({ S }) {
   const curMode = useMemo(() => {
     if (!curEx) return 'reps'
     for (let i = workouts.length - 1; i >= 0; i--) {
-      const en = workouts[i].entries.find(e => e.id === curEx)
+      const w = workouts[i]
+      if (!w || !Array.isArray(w.entries)) continue
+      const en = w.entries.find(e => e && e.id === curEx)
       if (en) return modeOf({ ...(en.target || {}), id: curEx })
     }
     return modeOf({ id: curEx })
@@ -95,9 +104,10 @@ export default function ExerciseWeightProgressionCard({ S }) {
     let runningBest = 0
 
     workouts.forEach(w => {
-      const en = (w.entries || []).find(e => e.id === curEx)
+      if (!w || !Array.isArray(w.entries)) return
+      const en = (w.entries || []).find(e => e && e.id === curEx)
       if (!en) return
-      const doneSets = (en.sets || []).filter(s => s.done)
+      const doneSets = (en.sets || []).filter(s => s && s.done)
       if (!doneSets.length) return
 
       let val = 0
@@ -133,10 +143,11 @@ export default function ExerciseWeightProgressionCard({ S }) {
         const isFirstPR = isPR && prevBest === 0
         if (isPR) runningBest = val
 
+        const ts = Number(w.start) || (typeof w.d === 'string' ? new Date(w.d).getTime() : 0) || Date.now()
         pts.push({
-          t: w.start || new Date(w.d).getTime(),
+          t: ts,
           y: val,
-          d: w.d,
+          d: w.d || new Date(ts).toISOString().slice(0, 10),
           w: wVal,
           r: rVal,
           isPR,
