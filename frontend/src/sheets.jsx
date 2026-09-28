@@ -2057,10 +2057,14 @@ function TopWeight({ entryIdx, close }) {
       s.exWeights[entry.id] = { w: Math.max(n, cur ? cur.w : 0), d: todayISO() }
     })
     close()
-    if (advance && unitDone) {
-      if (isLastUnit) workoutCompleteSheet()               // whole workout done → finish/continue prompt
-      else update(s => { s.active.cur = units[unitIdx + 1][0] })
-    } else toast(t('Tracked — next time starts at {0}', fmtNum(S().exWeights[entry.id].w) + ' ' + st.unit))
+    if (unitDone) {
+      if (isLastUnit) {
+        if (advance) workoutCompleteSheet()               // whole workout done → finish/continue prompt
+      } else {
+        update(s => { s.active.cur = units[unitIdx + 1][0] })
+      }
+    }
+    if (!advance) toast(t('Tracked — next time starts at {0}', fmtNum(S().exWeights[entry.id].w) + ' ' + st.unit))
   }
   return <>
     <h3 className="capitalize row" style={{ gap: 8 }}><Icon name="checkCircle" style={{ color: 'var(--acc)' }} />{t('{0} done', ex.n)}</h3>
