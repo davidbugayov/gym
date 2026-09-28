@@ -196,21 +196,59 @@ export function Slider({ value, min = 0, max = 100, step = 1, onChange, classNam
 
 /* ============================ checkbox ============================ */
 
-export function Check({ checked, onChange, className = '', size }) {
-  const [anim, setAnim] = useState(false)
+export function Check({ checked, onChange, className = '', size, ...rest }) {
+  const [spring, setSpring] = useState(false)
+  const prevChecked = useRef(checked)
+  const timerRef = useRef(null)
+
+  const triggerSpring = useCallback(() => {
+    setSpring(false)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    // Defer with requestAnimationFrame to ensure clean keyframe restart even on rapid taps
+    requestAnimationFrame(() => {
+      setSpring(true)
+      timerRef.current = setTimeout(() => {
+        setSpring(false)
+      }, 550)
+    })
+  }, [])
+
+  useEffect(() => {
+    // Trigger spring animation whenever set transitions to complete (from false to true)
+    if (checked && !prevChecked.current) {
+      triggerSpring()
+    }
+    prevChecked.current = checked
+  }, [checked, triggerSpring])
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [])
+
   const handleClick = e => {
-    setAnim(true)
-    onChange(!checked)
+    // Immediate tactile feedback on tap when completing a set
+    if (!checked) {
+      triggerSpring()
+    }
+    onChange?.(!checked)
   }
+
   return (
     <button
       type="button"
       role="checkbox"
       aria-checked={!!checked}
-      className={'chk' + (checked ? ' on' : '') + (anim ? ' pop' : '') + ' ' + className}
+      className={'chk' + (checked ? ' on' : '') + (spring ? ' spring pop' : '') + ' ' + className}
       style={size ? { width: size, height: size } : null}
       onClick={handleClick}
-      onAnimationEnd={() => setAnim(false)}
+      onAnimationEnd={e => {
+        if (e.target === e.currentTarget) {
+          setSpring(false)
+        }
+      }}
+      {...rest}
     >
       <Icon name="check" />
     </button>

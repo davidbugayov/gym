@@ -13,6 +13,7 @@ import { coachAvailable, hasConsent } from '../lib/coach.js'
 import { useCoachStatus } from '../lib/coach-api.js'
 import { DEMO } from '../lib/demo.js'
 import { MOBILE } from '../lib/mobile.js'
+import RoutineMuscleEngagementCard from '../components/RoutineMuscleEngagementCard.jsx'
 
 function ActiveElapsed({ start }) {
   const [timeStr, setTimeStr] = useState('00:00')
@@ -69,6 +70,7 @@ export default function Home() {
   const user = useStore(s => s.user)
   const config = useStore(s => s.config)
   const [weekOffset, setWeekOffset] = useState(0)
+  const [showEngagement, setShowEngagement] = useState(false)
   const coachOn = coachAvailable(config, user, { demo: DEMO, mobile: MOBILE })
 
   const today = new Date()
@@ -178,6 +180,7 @@ export default function Home() {
           </Button>
         </div>
       ) : routine ? (
+        <>
         <div className="hero-workout-card">
           <div className="hero-badge">
             <Icon name={glyphOf(routine.emoji)} />
@@ -197,12 +200,32 @@ export default function Home() {
               <Button size="sm" variant="ghost" onClick={() => dayOverrideSheet(todayISO())}>
                 {t('Reschedule')}
               </Button>
+              <Button
+                size="sm"
+                variant={showEngagement ? 'primary' : 'ghost'}
+                icon="sparkles"
+                onClick={() => setShowEngagement(v => !v)}
+                title={t('Muscle Engagement & Gaps')}
+              >
+                {t('Muscles')}
+              </Button>
               <Button size="sm" variant="ghost" icon="calendar" onClick={() => singleWorkoutCalendarSheet(routine, todayISO())} title={t('Add to Calendar')}>
                 {t('Calendar')}
               </Button>
             </div>
           </div>
         </div>
+        {showEngagement && (
+          <div style={{ marginTop: 12, marginBottom: 12 }}>
+            <RoutineMuscleEngagementCard
+              routine={routine}
+              editable={false}
+              showRoutineSelector={false}
+              title={t("Today's Muscle Engagement & Gaps")}
+            />
+          </div>
+        )}
+        </>
       ) : (
         <div className="hero-workout-card is-rest">
           <div className="hero-rest-copy">

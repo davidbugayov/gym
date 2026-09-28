@@ -586,7 +586,18 @@ h4.sec{
   background:var(--surface-2);border:1.5px solid var(--sep);color:transparent;
   transition:transform 0.15s cubic-bezier(0.2, 0.8, 0.4, 1), background var(--fast), border-color var(--fast), color var(--fast), box-shadow var(--fast);
   cursor:pointer;
+  position:relative;
   -webkit-tap-highlight-color: transparent;
+}
+.chk::after{
+  content:'';
+  position:absolute;
+  inset:-2px;
+  border-radius:inherit;
+  border:2px solid var(--acc);
+  opacity:0;
+  pointer-events:none;
+  transform:scale(0.85);
 }
 .chk .icn{font-size:18px;--icon-stroke:2.8;transition:transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)}
 .chk.on,.ck.on{
@@ -596,12 +607,61 @@ h4.sec{
 .chk.on .icn{
   animation: chk-icon-pop 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-.chk:active,.ck:active{
+.chk:active:not(.spring),.ck:active{
   transform:scale(.88);
   transition-duration:0.06s;
 }
-.chk.pop{
-  animation: chk-tap 0.28s cubic-bezier(0.25, 0.9, 0.3, 1.2);
+
+/* Tactile spring feedback when completing a set */
+.chk.spring{
+  animation: chk-spring 0.44s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  will-change: transform;
+}
+.chk.spring .icn{
+  animation: chk-icon-spring 0.44s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  will-change: transform;
+}
+.chk.spring::after{
+  animation: chk-ring-pulse 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes chk-spring{
+  0%{transform:scale(0.84)}
+  28%{transform:scale(1.16)}
+  48%{transform:scale(0.94)}
+  68%{transform:scale(1.04)}
+  84%{transform:scale(0.985)}
+  100%{transform:scale(1)}
+}
+
+@keyframes chk-icon-spring{
+  0%{transform:scale(0.25) rotate(-16deg);opacity:0}
+  32%{transform:scale(1.22) rotate(3deg);opacity:1}
+  52%{transform:scale(0.93) rotate(-1deg)}
+  72%{transform:scale(1.05) rotate(0deg)}
+  88%{transform:scale(0.99) rotate(0deg)}
+  100%{transform:scale(1) rotate(0deg);opacity:1}
+}
+
+@keyframes chk-ring-pulse{
+  0%{
+    transform:scale(0.85);
+    opacity:0.85;
+    box-shadow:0 0 10px color-mix(in srgb,var(--acc) 65%,transparent);
+  }
+  40%{
+    opacity:0.5;
+  }
+  100%{
+    transform:scale(1.42);
+    opacity:0;
+    box-shadow:0 0 18px transparent;
+    border-color:transparent;
+  }
+}
+
+.chk.pop:not(.spring){
+  animation: chk-spring 0.44s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
 }
 @keyframes chk-tap{
   0%{transform:scale(1)}
@@ -618,6 +678,13 @@ h4.sec{
   stroke-linecap:round;stroke-linejoin:round;transition:stroke var(--fast);
 }
 .ck.on svg{stroke:var(--on-acc)}
+
+@media (prefers-reduced-motion: reduce) {
+  .chk.spring, .chk.pop, .chk.spring .icn, .chk.spring::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 
 /* ------------------------------------------------------------- workout --- */
 .wprog{height:6px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:16px}
@@ -695,6 +762,7 @@ h4.sec{
 .setrow{
   display:flex;align-items:center;gap:4px;padding:5px 4px;position:relative;
   box-sizing:border-box;width:100%;border-radius:var(--r-sm, 8px);
+  transition:opacity 0.32s ease, background 0.25s ease;
 }
 .setrow+.setrow::before{
   content:'';position:absolute;left:34px;right:4px;top:0;height:var(--hair);background:var(--sep);
@@ -731,7 +799,8 @@ h4.sec{
 }
 
 .setrow.done .n{background:var(--acc);color:var(--on-acc);border-color:var(--acc)}
-.setrow.done{opacity:.4}
+.setrow.done{opacity:.58}
+.setrow.done .chk{opacity:1}
 @keyframes pulse-working-border {
   0%, 100% {
     box-shadow: inset 3px 0 0 var(--acc), 0 0 0 1px color-mix(in srgb, var(--acc) 20%, transparent);
