@@ -1220,5 +1220,15 @@ function ActiveWorkout() {
 
 export default function Workout() {
   const active = useStore(s => s.S.active)
+
+  useEffect(() => {
+    if (active) {
+      document.body.classList.add('workout-active')
+    } else {
+      document.body.classList.remove('workout-active')
+    }
+    return () => document.body.classList.remove('workout-active')
+  }, [!!active])
+
   return active ? <ActiveWorkout /> : <StartChooser />
 }

@@ -3484,3 +3484,38 @@ h4.sec{
   height: 100%;
   box-sizing: border-box;
 }
+
+/* --- Immersive Workout Mode Overrides --- */
+body.workout-active #tabbar {
+  transform: translateY(150%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.workout-active .setrow .stp button {
+  width: 34px;
+  height: 50px;
+  font-size: 16px;
+}
+body.workout-active .setrow .stp .num {
+  font-size: 18px;
+  font-weight: 600;
+}
+body.workout-active .setrow .stp {
+  height: 50px;
+}
+
+body.workout-active .setrow.no-weight:not(.eff3) .stp.c1 button {
+  width: 44px;
+  height: 54px;
+}
+body.workout-active .setrow.no-weight:not(.eff3) .stp.c1 .num {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+body.workout-active #timer .t {
+  font-size: 64px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
