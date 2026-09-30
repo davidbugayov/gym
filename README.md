@@ -24,9 +24,9 @@ on your phone and across your devices, with passkey sign-in and data stored on y
 
 <br>
 
-> ### 🤖 A customized openGym fork
+> ### 🤖 A customized Gymly fork
 >
-> Based on [DuarteSantos8/openGym](https://github.com/DuarteSantos8/openGym), this repository is
+> Based on [DuarteSantos8/Gymly](https://github.com/DuarteSantos8/Gymly), this repository is
 > maintained separately. It includes an optional AI Coach, workout-specific warm-ups and
 > cooldowns, and additional workout and tracking improvements.
 >

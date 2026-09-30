@@ -173,7 +173,7 @@ async function main() {
   const overallStart = Date.now()
 
   console.log(`\n${colors.bold}${colors.magenta}====================================================${colors.reset}`)
-  console.log(`${colors.bold}${colors.magenta}🚀 OpenGym Unified Build System${colors.reset}`)
+  console.log(`${colors.bold}${colors.magenta}🚀 Gymly Unified Build System${colors.reset}`)
   console.log(`${colors.gray}Target platforms:${colors.reset} ${shouldBuildWeb ? 'Web ' : ''}${shouldBuildAndroid ? 'Android' : ''}`)
   console.log(`${colors.bold}${colors.magenta}====================================================${colors.reset}\n`)
 

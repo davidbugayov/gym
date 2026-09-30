@@ -1,6 +1,6 @@
 # Set up the AI Coach with ChatGPT / Codex CLI
 
-This guide is for the person who owns an openGym server and wants to run its AI Coach using a
+This guide is for the person who owns an Gymly server and wants to run its AI Coach using a
 ChatGPT account through the bundled **OpenAI Codex CLI**. It does not use an OpenAI Platform API
 key.
 
@@ -13,8 +13,8 @@ execution environment.
 
 You need:
 
-- a current openGym deployment built from this source revision;
-- an openGym administrator profile;
+- a current Gymly deployment built from this source revision;
+- an Gymly administrator profile;
 - a ChatGPT account with access to Codex; and
 - a trusted browser, such as the iPad you use to administer the server.
 
@@ -31,7 +31,7 @@ docker compose up -d --build
 
 ## Connect ChatGPT to the Coach
 
-1. Sign in to openGym and open **Settings → Admin dashboard → AI Coach**.
+1. Sign in to Gymly and open **Settings → Admin dashboard → AI Coach**.
 2. Turn on **AI Coach**.
 3. Under **Provider**, select **OpenAI Codex CLI**.
 4. Confirm that **Runtime** says `ready`. If it does not, rebuild with the command above.
@@ -40,16 +40,16 @@ docker compose up -d --build
 7. The sheet shows a link and a one-time verification code. On your iPad or another trusted
    browser, open that link, sign in to the ChatGPT account that will run Coach jobs, and enter
    the code.
-8. Return to openGym. The sheet closes after Codex saves its local login, and the credential card
+8. Return to Gymly. The sheet closes after Codex saves its local login, and the credential card
    shows **connected**.
 9. Select **Test the Coach**. A green result confirms an actual Codex response rather than only
    a successful sign-in.
 
-The browser authorization happens between you and OpenAI. openGym only starts the local Codex
+The browser authorization happens between you and OpenAI. Gymly only starts the local Codex
 CLI and shows its short-lived device instructions; it never asks for, stores, or displays a
 ChatGPT password, API key, or OAuth access token.
 
-## What openGym stores
+## What Gymly stores
 
 The Codex CLI stores its own file-based login cache at `data/codex/auth.json` on the Docker host.
 The file is mounted only into the API container at `/codex`, owned by the unprivileged `coach`
@@ -61,7 +61,7 @@ This lets Codex refresh its own ChatGPT session during normal use. It also means
 - back up `data/codex` only in encrypted, access-controlled backups;
 - never commit, email, paste, or screenshot `auth.json`;
 - never mount `data/codex` into the web container or any unrelated container; and
-- restrict access to the openGym admin dashboard to people you trust with the ChatGPT account.
+- restrict access to the Gymly admin dashboard to people you trust with the ChatGPT account.
 
 ## Use the Coach safely
 
@@ -104,4 +104,4 @@ security settings or workspace policy.
 
 - [OpenAI: Codex authentication and device-code login](https://learn.chatgpt.com/docs/auth)
 - [OpenAI: Codex non-interactive mode and trusted automation guidance](https://learn.chatgpt.com/docs/non-interactive-mode)
-- [openGym self-hosting guide](docs/SELF_HOSTING.md#8-the-ai-coach-optional)
+- [Gymly self-hosting guide](docs/SELF_HOSTING.md#8-the-ai-coach-optional)

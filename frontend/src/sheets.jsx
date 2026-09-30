@@ -2191,7 +2191,7 @@ function GoogleHealthDisclosure({ compact = false }) {
       <Icon name="heart" />
       <strong>{t('Google Health data use notice')}</strong>
     </div>
-    <div className="small">{t('When connected, openGym sends completed workout summaries, exercise names, duration, estimated calories and cardio distance, plus body-weight measurements, to Google Health. During sync, it can also read recent Google Health workout summaries, including device-reported calories and distance, and add them to your training history for Coach recommendations. Workout sync is on by default; disconnect at any time.')}</div>
+    <div className="small">{t('When connected, Gymly sends completed workout summaries, exercise names, duration, estimated calories and cardio distance, plus body-weight measurements, to Google Health. During sync, it can also read recent Google Health workout summaries, including device-reported calories and distance, and add them to your training history for Coach recommendations. Workout sync is on by default; disconnect at any time.')}</div>
   </section>
 }
 
@@ -2436,7 +2436,7 @@ function GoogleHealthSheet({ close }) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `openGym-google-health-${todayISO()}.json`
+    a.download = `Gymly-google-health-${todayISO()}.json`
     a.click()
     URL.revokeObjectURL(url)
     toast(t('Google Health JSON exported'))
@@ -2448,7 +2448,7 @@ function GoogleHealthSheet({ close }) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `openGym-google-health-${todayISO()}.csv`
+    a.download = `Gymly-google-health-${todayISO()}.csv`
     a.click()
     URL.revokeObjectURL(url)
     toast(t('Google Health CSV exported'))

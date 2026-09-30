@@ -67,7 +67,7 @@ export function exportAppleHealthXML(workouts = [], bodyweight = [], unit = 'kg'
   bodyweight.forEach(b => {
     const val = unit === 'lb' ? (b.w * 0.453592).toFixed(2) : b.w
     const d = b.d + ' 08:00:00 +0000'
-    xml += ` <Record type="HKQuantityTypeIdentifierBodyMass" sourceName="openGym" unit="kg" creationDate="${d}" startDate="${d}" endDate="${d}" value="${val}"/>\n`
+    xml += ` <Record type="HKQuantityTypeIdentifierBodyMass" sourceName="Gymly" unit="kg" creationDate="${d}" startDate="${d}" endDate="${d}" value="${val}"/>\n`
   })
 
   // Workout records
@@ -76,7 +76,7 @@ export function exportAppleHealthXML(workouts = [], bodyweight = [], unit = 'kg'
     const end = new Date(w.end).toISOString()
     const durationMin = Math.max(1, Math.round((w.end - w.start) / 1000 / 60))
     const cal = Math.round(durationMin * 7.5) // ~450 kcal/hr
-    xml += ` <Workout workoutActivityType="HKWorkoutActivityTypeTraditionalStrengthTraining" duration="${durationMin}" durationUnit="min" totalDistance="0" totalDistanceUnit="km" totalEnergyBurned="${cal}" totalEnergyBurnedUnit="kcal" sourceName="openGym" creationDate="${start}" startDate="${start}" endDate="${end}">\n`
+    xml += ` <Workout workoutActivityType="HKWorkoutActivityTypeTraditionalStrengthTraining" duration="${durationMin}" durationUnit="min" totalDistance="0" totalDistanceUnit="km" totalEnergyBurned="${cal}" totalEnergyBurnedUnit="kcal" sourceName="Gymly" creationDate="${start}" startDate="${start}" endDate="${end}">\n`
     xml += `  <WorkoutEvent type="HKWorkoutEventTypePause" date="${start}"/>\n`
     xml += ` </Workout>\n`
   })

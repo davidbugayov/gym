@@ -1,4 +1,4 @@
-// Google Health data helpers for openGym.
+// Google Health data helpers for Gymly.
 // Provides legacy-compatible exports/imports and MET-based calorie calculations.
 
 import { EXIDX } from './exercises.js'
@@ -54,15 +54,15 @@ export function formatGoogleFitSession(workout, options = {}) {
   }).join('; ')
 
   return {
-    id: `opengym_${workout.id || Date.now()}`,
+    id: `gymly_${workout.id || Date.now()}`,
     name: workout.name || 'Strength Workout',
-    description: `Logged via openGym. Volume: ${fmtVol(workout.vol || 0, 'kg')}. ${exercisesSummary}`,
+    description: `Logged via Gymly. Volume: ${fmtVol(workout.vol || 0, 'kg')}. ${exercisesSummary}`,
     startTimeMillis,
     endTimeMillis,
     modifiedTimeMillis: Date.now(),
     application: {
-      detailsUrl: 'https://github.com/DuarteSantos8/openGym',
-      name: 'openGym Fitness Tracker',
+      detailsUrl: 'https://github.com/DuarteSantos8/Gymly',
+      name: 'Gymly Fitness Tracker',
       version: '1.2.3'
     },
     activityType: act.id,
@@ -83,7 +83,7 @@ export function exportGoogleHealthJSON(workouts, bodyweight = [], unit = 'kg') {
   }))
 
   return {
-    source: 'openGym',
+    source: 'Gymly',
     version: '1.2.3',
     exportDate: new Date().toISOString(),
     sessionsCount: sessions.length,

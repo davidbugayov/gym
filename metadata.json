@@ -1,10 +1,10 @@
 {
-  "name": "openGym",
+  "name": "Gymly",
   "description": "Free, open-source gym & body-weight tracker with exercise library, workout planning, and stats",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"],
   "deployment": {
-    "server": "144.31.68.9",
+    "server": "144.31.254.153",
     "sshUser": "root",
     "sshSecret": "DEV_SSH_KEY",
     "environments": {

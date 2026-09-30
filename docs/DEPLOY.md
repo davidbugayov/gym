@@ -10,7 +10,7 @@ This document describes the VPS infrastructure and CI/CD configuration for this 
 | Key | Value |
 |-----|-------|
 | Provider | VPS |
-| IP | `144.31.68.9` |
+| IP | `144.31.254.153` |
 | OS user | `root` |
 | SSH key secret | `DEV_SSH_KEY` (GitHub Actions secret, shared across all envs) |
 
@@ -56,7 +56,7 @@ The DNS record and TLS certificate remain in place because they are required to 
 ## Manual deploy (without CI)
 
 ```sh
-ssh root@144.31.68.9
+ssh root@144.31.254.153
 
 # gym-online
 cd /opt/gym/gym-online
@@ -96,4 +96,4 @@ gym-online.service             → gym.emdrbilateral.online   (this repo, gym)
 
 | Secret | Used by |
 |--------|---------|
-| `DEV_SSH_KEY` | All deploy workflows (private key for `root@144.31.68.9`) |
+| `DEV_SSH_KEY` | All deploy workflows (private key for `root@144.31.254.153`) |

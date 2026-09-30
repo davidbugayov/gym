@@ -60,7 +60,7 @@ export async function logWorkoutToHealth(workout) {
       value: calories,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
-      metadata: { source: 'openGym', workoutId: String(workout.id || '') },
+      metadata: { source: 'Gymly', workoutId: String(workout.id || '') },
     });
     if (Number(workout.distanceKm) > 0) {
       await Health.saveSample({
@@ -68,7 +68,7 @@ export async function logWorkoutToHealth(workout) {
         value: Number(workout.distanceKm) * 1000,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
-        metadata: { source: 'openGym', workoutId: String(workout.id || '') },
+        metadata: { source: 'Gymly', workoutId: String(workout.id || '') },
       });
     }
     console.log('Workout logged to Health Connect / HealthKit');
@@ -91,7 +91,7 @@ export async function logBodyWeightToHealth(entry) {
       dataType: 'weight',
       value: Number(entry.w),
       startDate: new Date(recordedAt).toISOString(),
-      metadata: { source: 'openGym' },
+      metadata: { source: 'Gymly' },
     });
     return true;
   } catch (err) {

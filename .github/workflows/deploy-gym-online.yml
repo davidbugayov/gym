@@ -27,7 +27,7 @@ jobs:
           set -e
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          ssh-keyscan -t ed25519 144.31.68.9 >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -t ed25519 144.31.254.153 >> ~/.ssh/known_hosts 2>/dev/null
 
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
@@ -44,10 +44,10 @@ jobs:
             --exclude media \
             --exclude .github \
             -e "$SSH_CMD" \
-            $GITHUB_WORKSPACE/ root@144.31.68.9:/opt/gym/gym-online/
+            $GITHUB_WORKSPACE/ root@144.31.254.153:/opt/gym/gym-online/
 
           echo "=== Installing and building ==="
-          $SSH_CMD root@144.31.68.9 << 'SCRIPT'
+          $SSH_CMD root@144.31.254.153 << 'SCRIPT'
           set -e
           cd /opt/gym/gym-online
           npm install --ignore-scripts
@@ -58,9 +58,9 @@ jobs:
 
           echo "=== Health check ==="
           for i in $(seq 1 30); do
-            STATUS=$($SSH_CMD root@144.31.68.9 "systemctl is-active gym-online" 2>/dev/null)
+            STATUS=$($SSH_CMD root@144.31.254.153 "systemctl is-active gym-online" 2>/dev/null)
             if [ "$STATUS" = "active" ]; then
-              HTTP_STATUS=$($SSH_CMD root@144.31.68.9 "curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:8091/" 2>/dev/null || true)
+              HTTP_STATUS=$($SSH_CMD root@144.31.254.153 "curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:8091/" 2>/dev/null || true)
               if [ "$HTTP_STATUS" = "200" ]; then
                 echo "Service is running and returned HTTP 200"
                 exit 0
@@ -70,5 +70,5 @@ jobs:
             sleep 2
           done
           echo "Service failed to become HTTP-ready"
-          $SSH_CMD root@144.31.68.9 "systemctl status gym-online --no-pager -l" || true
+          $SSH_CMD root@144.31.254.153 "systemctl status gym-online --no-pager -l" || true
           exit 1

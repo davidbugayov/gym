@@ -2,7 +2,7 @@
 # Скрипт для легковесного деплоя на VPS без Docker
 
 # Настройки сервера
-SERVER="root@144.31.68.9"
+SERVER="root@144.31.254.153"
 REMOTE_PATH="/var/www/gym"
 
 echo "🚀 Начинаем сборку Frontend..."
