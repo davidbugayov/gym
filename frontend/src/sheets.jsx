@@ -2150,8 +2150,6 @@ function FinishSummary({ w, prs, e1prs = [], close }) {
       {e1prs.map(p => <div key={p.id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="chartLine" style={{ fontSize: 13 }} />{t('Best estimated 1RM:')} {(EXIDX[p.id] || {}).n || p.id} · {fmtNum(p.est)} {st.unit}</div>)}
     </div>}
 
-    {!Capacitor.isNativePlatform() && <GoogleHealthDisclosure compact />}
-
     <div className="pws-details-wrap">
       <h4 className="sec" style={{ textAlign: 'left' }}>{t('What you just trained')}</h4>
       <BodyMap load={loadOfWorkouts([w])} body={st.body} />
