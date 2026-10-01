@@ -1553,7 +1553,6 @@ h4.sec{
 
 /* --- Post-workout summary modal subtle entrance animation --- */
 .center.pws-modal,
-.center.workout-summary-modal,
 .center.workout-complete-modal,
 .center:has(.pws-summary-body) {
   width: min(92vw, 380px);
@@ -1566,6 +1565,9 @@ h4.sec{
   animation: workoutSummarySlideUp 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
   box-shadow: 0 24px 64px -10px rgba(0, 0, 0, 0.75), 0 0 0 1px var(--sep);
   will-change: transform, opacity;
+}
+.center.workout-summary-modal {
+  width: min(92vw, 420px);
 }
 
 /* If opened as a bottom sheet */
@@ -1706,6 +1708,10 @@ h4.sec{
   animation: pwsFadeSlideUp 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.24s both;
 }
 
+.pws-progression-wrap {
+  animation: pwsFadeSlideUp 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+}
+
 .pws-details-wrap {
   animation: pwsFadeSlideUp 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
 }
@@ -1731,6 +1737,7 @@ h4.sec{
   .pws-summary-title,
   .pws-tiles-wrap,
   .pws-prs-wrap,
+  .pws-progression-wrap,
   .pws-details-wrap,
   .pws-action-wrap,
   #header-sync-indicator.synced,

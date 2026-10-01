@@ -36,6 +36,7 @@ import { getExerciseTrend } from './lib/trends.js'
 import { ExerciseTrendBadge, ExerciseTrendMini } from './components/ExerciseTrend.jsx'
 import SwipeToDelete from './components/SwipeToDelete.jsx'
 import CalendarSyncModal, { SingleWorkoutCalendarModal } from './components/CalendarSyncModal.jsx'
+import WorkoutProgressionComparison from './components/WorkoutProgressionComparison.jsx'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -2149,6 +2150,8 @@ function FinishSummary({ w, prs, e1prs = [], close }) {
       {prs.map(id => <div key={id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="trophy" style={{ fontSize: 13 }} />{t('New PR:')} {(EXIDX[id] || {}).n || id}</div>)}
       {e1prs.map(p => <div key={p.id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="chartLine" style={{ fontSize: 13 }} />{t('Best estimated 1RM:')} {(EXIDX[p.id] || {}).n || p.id} · {fmtNum(p.est)} {st.unit}</div>)}
     </div>}
+
+    <WorkoutProgressionComparison workout={w} allWorkouts={st.workouts} unit={st.unit} />
 
     <div className="pws-details-wrap">
       <h4 className="sec" style={{ textAlign: 'left' }}>{t('What you just trained')}</h4>
