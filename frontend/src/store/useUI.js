@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { uid } from '../lib/format.js'
-import { beep, vibrate, hapticClick, hapticSetComplete, hapticTimerTick, hapticTimerMilestone, playRestTimerAlert, playRestTimerTick, getAudioContext } from '../lib/sound.js'
+import { hapticSetComplete, hapticTimerTick, hapticTimerMilestone, playRestTimerAlert, playRestTimerTick, getAudioContext } from '../lib/sound.js'
 import { api } from '../lib/api.js'
 import { t } from '../lib/i18n.js'
 import { useStore } from './useStore.js'

@@ -9,7 +9,6 @@ import {
 } from 'firebase/auth'
 import firebaseConfig from '../../../firebase-applet-config.json'
 import { useStore } from '../store/useStore.js'
-import { t } from './i18n.js'
 
 // Standard scopes for basic Google Account sign-in (never blocked by 403 access_denied)
 export const BASIC_SCOPES = [

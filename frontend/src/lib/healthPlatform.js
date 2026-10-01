@@ -2,7 +2,6 @@ import { Capacitor } from '@capacitor/core'
 import { logWorkoutToHealth } from './health.js'
 import { getCachedToken } from './google-auth.js'
 import { syncAllWithGoogleHealth } from './google-fit-api.js'
-import { t } from './i18n.js'
 
 /**
  * Detects whether the user is on an Apple device (iOS, iPad, Mac) or Android/other.
