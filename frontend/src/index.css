@@ -757,13 +757,18 @@ h4.sec{
 }
 .sethead .eff-sp{flex:0.85 1 0;text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sethead .go-sp{width:84px;flex-shrink:0;text-align:center}
+.sethead .note-sp{width:24px;flex-shrink:0}
 .sethead .ck-sp{width:32px;flex-shrink:0}
 
 .setrow{
-  display:flex;align-items:center;gap:4px;padding:5px 4px;position:relative;
+  display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:5px 4px;position:relative;
   box-sizing:border-box;width:100%;border-radius:var(--r-sm, 8px);
   transition:opacity 0.32s ease, background 0.25s ease;
 }
+.setrow-main{
+  display:flex;align-items:center;gap:4px;width:100%;min-width:0;position:relative;
+}
+.setrow.eff3 .setrow-main{gap:3.5px}
 .setrow+.setrow::before{
   content:'';position:absolute;left:34px;right:4px;top:0;height:var(--hair);background:var(--sep);
 }
@@ -846,6 +851,121 @@ h4.sec{
 .setrow .n.tag-w{background:color-mix(in srgb,var(--yellow) 22%,transparent);color:var(--yellow);font-weight:700}
 .setrow .n.tag-d{background:color-mix(in srgb,#a855f7 22%,transparent);color:#a855f7;font-weight:700}
 .setrow .n.tag-f{background:color-mix(in srgb,var(--red) 22%,transparent);color:var(--red);font-weight:700}
+
+/* Set cues / adjustment notes */
+.set-note-icon-btn{
+  width:24px;height:32px;border-radius:7px;background:transparent;
+  border:1px solid transparent;color:var(--label-3);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  flex-shrink:0;position:relative;padding:0;
+  transition:all var(--fast);
+}
+.set-note-icon-btn:hover{
+  background:var(--surface-2);color:var(--label-1);border-color:var(--sep);
+}
+.set-note-icon-btn.has-note{
+  color:var(--acc);background:color-mix(in srgb, var(--acc) 14%, transparent);
+  border-color:color-mix(in srgb, var(--acc) 28%, transparent);
+}
+.set-note-icon-btn.is-editing{
+  background:var(--acc);color:var(--on-acc);border-color:var(--acc);
+}
+.set-note-dot{
+  position:absolute;top:3px;right:3px;width:5px;height:5px;
+  border-radius:50%;background:var(--acc);
+}
+.set-note-display{
+  display:flex;align-items:center;gap:6px;padding:4px 8px;
+  margin-left:30px;margin-right:36px;
+  background:color-mix(in srgb, var(--acc) 9%, var(--surface-2));
+  border:1px solid color-mix(in srgb, var(--acc) 22%, var(--sep));
+  border-radius:6px;font-size:12px;color:var(--label-1);
+  cursor:pointer;transition:all var(--fast);line-height:1.3;
+}
+.set-note-display:hover{
+  background:color-mix(in srgb, var(--acc) 16%, var(--surface-2));
+  border-color:var(--acc);
+}
+.set-note-display:focus-visible{
+  outline:2px solid var(--acc);outline-offset:1px;
+}
+.set-note-tag{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;
+  color:var(--acc);background:color-mix(in srgb, var(--acc) 16%, transparent);
+  padding:1px 5px;border-radius:4px;flex-shrink:0;
+}
+.set-note-text{
+  flex:1;min-width:0;word-break:break-word;color:var(--label-1);font-size:12px;
+}
+.set-note-edit-hint{
+  color:var(--label-3);display:flex;align-items:center;flex-shrink:0;opacity:0.7;
+}
+.set-note-display:hover .set-note-edit-hint{
+  color:var(--acc);opacity:1;
+}
+.set-note-cue-prompt{
+  display:inline-flex;align-items:center;gap:4px;
+  margin-left:30px;background:none;border:none;color:var(--label-3);
+  font-size:11px;padding:2px 4px;cursor:pointer;border-radius:4px;
+  align-self:flex-start;transition:color var(--fast);
+}
+.set-note-cue-prompt:hover{
+  color:var(--acc);
+}
+.set-note-editor{
+  display:flex;align-items:center;gap:6px;
+  margin-left:30px;margin-right:4px;padding:2px 0 4px;
+  width:calc(100% - 34px);box-sizing:border-box;
+}
+.set-note-input-wrap{
+  flex:1;min-width:0;display:flex;align-items:center;gap:5px;
+  background:var(--surface);border:1px solid var(--acc);border-radius:7px;
+  padding:4px 8px;box-shadow:0 0 0 2px color-mix(in srgb, var(--acc) 20%, transparent);
+}
+.set-note-input-icon{
+  color:var(--acc);flex-shrink:0;
+}
+.set-note-input{
+  flex:1;min-width:0;border:none;background:transparent;
+  color:var(--label-1);font-size:12px;outline:none;padding:0;font-family:inherit;
+}
+.set-note-input::placeholder{
+  color:var(--label-3);font-size:11px;
+}
+.set-note-clear-btn{
+  background:none;border:none;color:var(--label-3);cursor:pointer;
+  padding:2px;display:flex;align-items:center;justify-content:center;border-radius:4px;
+}
+.set-note-clear-btn:hover{
+  color:var(--label-1);
+}
+.set-note-actions{
+  display:flex;align-items:center;gap:4px;flex-shrink:0;
+}
+.set-note-action-btn{
+  height:28px;border-radius:6px;border:none;font-size:11px;font-weight:600;
+  display:inline-flex;align-items:center;gap:4px;padding:0 8px;cursor:pointer;
+  transition:all var(--fast);
+}
+.set-note-action-btn.save{
+  background:var(--acc);color:var(--on-acc);
+}
+.set-note-action-btn.save:hover{
+  filter:brightness(1.08);
+}
+.set-note-action-btn.delete{
+  background:color-mix(in srgb, var(--red) 14%, transparent);color:var(--red);padding:0 6px;
+}
+.set-note-action-btn.delete:hover{
+  background:color-mix(in srgb, var(--red) 24%, transparent);
+}
+.set-note-action-btn.cancel{
+  background:var(--surface-2);color:var(--label-2);padding:0 6px;
+}
+.set-note-action-btn.cancel:hover{
+  background:var(--surface-3);color:var(--label-1);
+}
 
 /* working set bar */
 .ws-bar{
@@ -1747,9 +1867,18 @@ h4.sec{
   .sync-ping-halo,
   #header-sync-indicator .sync-icon,
   .sync-inline-badge .sync-icon,
-  .sync-spin {
+  .sync-spin,
+  .pr.pr-tada,
+  .pr.pr-pop,
+  .pr-badge.pr-tada,
+  .pr-badge.pr-pop,
+  .set-pr-badge.pr-tada,
+  .set-pr-badge.pr-pop,
+  .pr-tada,
+  .pr-pop {
     animation: none !important;
     transform: none !important;
+    box-shadow: none !important;
     filter: none !important;
     opacity: 1 !important;
   }
@@ -1992,12 +2121,89 @@ h4.sec{
 .finish-sync-button{flex:none;max-width:42%;height:auto;min-height:32px;padding:6px 10px;white-space:normal;line-height:1.2}
 
 /* --- PR badge --- */
-.pr{
-  display:inline-flex;align-items:center;gap:4px;
-  background:color-mix(in srgb,var(--yellow) 18%,transparent);color:var(--yellow);
-  border-radius:6px;padding:3px 8px;font-size:12px;font-weight:500;
+.pr {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: color-mix(in srgb, var(--yellow) 18%, transparent);
+  color: var(--yellow);
+  border: 1px solid color-mix(in srgb, var(--yellow) 32%, transparent);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
 }
-.pr .icn{font-size:13px}
+.pr .icn { font-size: 13px; }
+
+/* Subtle 'tada' / pop animation for personal records achieved during workout */
+@keyframes pr-tada {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.2;
+  }
+  16% {
+    transform: scale(1.15) rotate(-3.5deg);
+    opacity: 1;
+  }
+  32% {
+    transform: scale(1.15) rotate(3.5deg);
+  }
+  48% {
+    transform: scale(1.08) rotate(-2deg);
+  }
+  64% {
+    transform: scale(1.04) rotate(1.5deg);
+  }
+  80% {
+    transform: scale(1.01) rotate(-0.5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes pr-glow {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--yellow) 70%, transparent);
+  }
+  35% {
+    box-shadow: 0 0 16px 4px color-mix(in srgb, var(--yellow) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.pr.pr-tada,
+.pr.pr-pop,
+.pr-badge.pr-tada,
+.pr-badge.pr-pop,
+.set-pr-badge.pr-tada,
+.set-pr-badge.pr-pop,
+.pr-tada,
+.pr-pop {
+  animation: pr-tada 0.72s cubic-bezier(0.175, 0.885, 0.32, 1.275) both,
+             pr-glow 1s ease-out both;
+  transform-origin: center center;
+  will-change: transform, box-shadow;
+}
+
+.set-pr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: color-mix(in srgb, var(--yellow) 22%, transparent);
+  color: var(--yellow);
+  border: 1px solid color-mix(in srgb, var(--yellow) 40%, transparent);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
 
 /* --- Library item PR badge --- */
 .pr-badge {
@@ -3510,6 +3716,15 @@ body.workout-active .setrow .stp .num {
 }
 body.workout-active .setrow .stp {
   height: 50px;
+}
+
+body.workout-active .setrow .set-note-icon-btn {
+  height: 48px;
+  width: 26px;
+}
+
+body.workout-active .sethead .note-sp {
+  width: 26px;
 }
 
 body.workout-active .setrow.no-weight:not(.eff3) .stp.c1 button {

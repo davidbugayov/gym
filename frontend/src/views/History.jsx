@@ -720,7 +720,7 @@ export default function History() {
                             <div className="wh-card-top">
                               <span className="lrow-i"><Icon name={glyph} /></span>
                               {w.prs && w.prs.length > 0 ? (
-                                <span className="pr" style={{ fontSize: 10, padding: '2px 5px' }}>
+                                <span className="pr pr-tada" style={{ fontSize: 10, padding: '2px 5px' }}>
                                   <Icon name="trophy" /> {w.prs.length}
                                 </span>
                               ) : (

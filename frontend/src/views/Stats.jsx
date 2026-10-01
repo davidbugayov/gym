@@ -21,6 +21,7 @@ import { useUI } from '../store/useUI.js'
 import BodyMeasurementsCard from '../components/BodyMeasurementsCard.jsx'
 import WeightTrendsCard from '../components/WeightTrendsCard.jsx'
 import TopExercisesVolumeCard from '../components/TopExercisesVolumeCard.jsx'
+import TotalVolume30dCard from '../components/TotalVolume30dCard.jsx'
 import ExerciseWeightProgressionCard from '../components/ExerciseWeightProgressionCard.jsx'
 import BodyWeightProgressionCard from '../components/BodyWeightProgressionCard.jsx'
 
@@ -251,6 +252,7 @@ export default function Stats() {
 
     {workouts.length > 0 && <MuscleBalance S={statsS} />}
     {anyEffort && <EffortCard S={statsS} />}
+    {workouts.length > 0 && <TotalVolume30dCard S={statsS} />}
     {workouts.length > 0 && <TopExercisesVolumeCard S={statsS} />}
 
     <div className="cols">

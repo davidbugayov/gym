@@ -1532,10 +1532,21 @@ function WorkoutDetail({ w, close }) {
         <div className="grow">
           <div className="row" style={{ alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span className="tt capitalize" style={{ fontWeight: 600 }}>{exName}</span>
-            {w.prs && w.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}
+            {w.prs && w.prs.includes(e.id) && <span className="pr pr-tada"><Icon name="trophy" />PR</span>}
             <ExerciseTrendBadge trend={trend} exName={exName} />
           </div>
           <div className="ss">{e.sets.filter(s => s.done).map(s => setLabel(e.id, s, e.target)).join('  ·  ') || t('no sets')}</div>
+          {e.sets.some(s => s.note) && (
+            <div className="small muted" style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {e.sets.map((s, si) => s.note ? (
+                <div key={si} className="row" style={{ gap: 5, fontSize: 11, alignItems: 'center', color: 'var(--label-2)' }}>
+                  <span className="tag small" style={{ fontSize: 10, padding: '1px 5px' }}>{t('Set {0}', si + 1)}</span>
+                  <Icon name="pencil" size={10} style={{ color: 'var(--acc)', flexShrink: 0 }} />
+                  <span style={{ fontStyle: 'italic' }}>{s.note}</span>
+                </div>
+              ) : null)}
+            </div>
+          )}
         </div>
       </div>
     })}
@@ -2072,7 +2083,17 @@ function TopWeight({ entryIdx, close }) {
     <div className="muted small">{t('Confirm the weight you worked with — your highest becomes the default next time.')}{!unitDone && unit.length > 1 ? ' ' + t('Then finish the superset partner.') : ''}</div>
     <WeightInput value={v} setValue={setV} unit={st.unit} />
     <div style={{ height: 10 }} />
-    {prevBest > 0 ? <div className="small dim" style={{ textAlign: 'center', marginBottom: 12 }}>{t('Previous best:')} {fmtNum(prevBest)} {st.unit}{maxSet > prevBest && <span style={{ color: 'var(--yellow)' }}> — {t('new record!')}</span>}</div> : <div style={{ height: 4 }} />}
+    {prevBest > 0 ? (
+      <div className="small dim row center" style={{ justifyContent: 'center', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+        <span>{t('Previous best:')} {fmtNum(prevBest)} {st.unit}</span>
+        {maxSet > prevBest && (
+          <span className="pr pr-tada" style={{ gap: 4 }}>
+            <Icon name="trophy" style={{ fontSize: 13 }} />
+            <span>{t('New record!')}</span>
+          </span>
+        )}
+      </div>
+    ) : <div style={{ height: 4 }} />}
     {unitDone ? <>
       <Button variant="primary" trailingIcon={isLastUnit ? null : 'chevronRight'} onClick={() => commit(true)}>{isLastUnit ? t('Save') : t('Save & next exercise')}</Button>
       <div style={{ height: 8 }} /><Button variant="ghost" className="dim" onClick={() => commit(false)}>{t('Just close')}</Button>
@@ -2147,8 +2168,8 @@ function FinishSummary({ w, prs, e1prs = [], close }) {
       <div className="tile"><div className="l">{t('Est. Burn')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{cal} kcal</div></div>
     </div>
     {(prs.length > 0 || e1prs.length > 0) && <div className="pws-prs-wrap" style={{ textAlign: 'left', marginBottom: 12 }}>
-      {prs.map(id => <div key={id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="trophy" style={{ fontSize: 13 }} />{t('New PR:')} {(EXIDX[id] || {}).n || id}</div>)}
-      {e1prs.map(p => <div key={p.id} className="small accent capitalize row" style={{ gap: 5 }}><Icon name="chartLine" style={{ fontSize: 13 }} />{t('Best estimated 1RM:')} {(EXIDX[p.id] || {}).n || p.id} · {fmtNum(p.est)} {st.unit}</div>)}
+      {prs.map(id => <div key={id} className="small accent capitalize row pr pr-tada" style={{ gap: 5, marginBottom: 4 }}><Icon name="trophy" style={{ fontSize: 13 }} />{t('New PR:')} {(EXIDX[id] || {}).n || id}</div>)}
+      {e1prs.map(p => <div key={p.id} className="small accent capitalize row pr pr-tada" style={{ gap: 5, marginBottom: 4 }}><Icon name="chartLine" style={{ fontSize: 13 }} />{t('Best estimated 1RM:')} {(EXIDX[p.id] || {}).n || p.id} · {fmtNum(p.est)} {st.unit}</div>)}
     </div>}
 
     <WorkoutProgressionComparison workout={w} allWorkouts={st.workouts} unit={st.unit} />

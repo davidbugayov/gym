@@ -11,7 +11,7 @@ import { api } from '../lib/api.js'
 import Media from '../components/Media.jsx'
 import { startFlow, startFreeleticsFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, changeExerciseSheet, quickSwapSheet, showProgramSheet, switchTrainingSheet, exerciseNoteSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
-import { Button, Check, NumberField, Segmented } from '../components/ui.jsx'
+import { Button, Check, NumberField, Segmented, TextField } from '../components/ui.jsx'
 import { nextPrescription, applyPrescription } from '../lib/progression.js'
 import { glyphOf } from '../lib/glyphs.js'
 import { FREELETICS_SPEC } from '../lib/starter.js'
@@ -294,6 +294,33 @@ function ChangeSetSheet({ entryIdx, setIdx, close }) {
       )}
     </div>
 
+    {/* Set Cue / Note */}
+    <div className="card" style={{ padding: 12, marginBottom: 16 }}>
+      <div className="row between" style={{ alignItems: 'center', marginBottom: 8 }}>
+        <div className="small muted" style={{ fontWeight: 600, textTransform: 'uppercase' }}>{t('Set Cue / Note')}</div>
+        {s.note && (
+          <button
+            type="button"
+            className="tag small"
+            style={{ cursor: 'pointer', color: 'var(--red)', border: 'none', background: 'none', padding: 0 }}
+            onClick={() => mut(x => { delete x.note })}
+          >
+            {t('Clear')}
+          </button>
+        )}
+      </div>
+      <TextField
+        value={s.note || ''}
+        onChange={e => mut(x => {
+          const v = e.target.value
+          if (v && v.trim()) x.note = v; else delete x.note
+        })}
+        placeholder={t('e.g. Pause 1s at bottom, smooth lockout, elbows tucked...')}
+        maxLength={120}
+      />
+      <div className="small dim" style={{ marginTop: 6, lineHeight: 1.4 }}>{t('Track specific cues, adjustments or sensations directly on this set.')}</div>
+    </div>
+
     {/* Quick actions */}
     <div className="row" style={{ gap: 8, marginBottom: 12 }}>
       <Button icon="play" onClick={() => mut(x => {
@@ -459,6 +486,7 @@ function WorkingSetsSheet({ close }) {
                     {s.done ? <Icon name="check" style={{ fontSize: 11 }} /> : tag}
                   </span>
                   <span>{desc}</span>
+                  {s.note && <span className="small accent" style={{ fontSize: 11, fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 3, maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.note}><Icon name="pencil" size={9} />{s.note}</span>}
                   <button type="button" className="iconbtn" style={{ width: 18, height: 18, fontSize: 10, padding: 0 }}
                     onClick={ev => { ev.stopPropagation(); openChange(eIdx, sIdx) }}
                     title={t('Change set')}>
@@ -511,6 +539,9 @@ function WorkingSetsSheet({ close }) {
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 13, textTransform: 'capitalize' }}>{t(ex.n)}</div>
                       <div className="small dim">{desc} {set.tag ? `(${set.tag})` : ''}</div>
+                      {set.note && <div className="small accent" style={{ fontSize: 11, fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 3, marginTop: 1 }}>
+                        <Icon name="pencil" size={9} /><span>{set.note}</span>
+                      </div>}
                     </div>
                   </div>
                   <div className="row" style={{ gap: 4 }}>
@@ -580,6 +611,37 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
   const timed = mode === 'time'
   const last = lastEntryFor(S, entry.id)
 
+  const [editingNoteIdx, setEditingNoteIdx] = useState(null)
+  const [noteText, setNoteText] = useState('')
+
+  useEffect(() => {
+    setEditingNoteIdx(null)
+    setNoteText('')
+  }, [entryIdx])
+
+  const handleStartEditNote = (idx, currentNote) => {
+    setEditingNoteIdx(idx)
+    setNoteText(currentNote || '')
+  }
+
+  const handleSaveNote = idx => {
+    const trimmed = (noteText || '').trim()
+    onField(idx, 'note', trimmed || null)
+    setEditingNoteIdx(null)
+    setNoteText('')
+  }
+
+  const handleDeleteNote = idx => {
+    onField(idx, 'note', null)
+    setEditingNoteIdx(null)
+    setNoteText('')
+  }
+
+  const handleCancelNote = () => {
+    setEditingNoteIdx(null)
+    setNoteText('')
+  }
+
   // Weight visibility:
   // If an exercise has no weight (bodyweight equipment without positive weight, or entry.noWeight is true,
   // or all sets have no weight / 0 weight and user removed weight), remove the weight column entirely!
@@ -590,6 +652,8 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
   // The same number the "confirm your working weight" sheet calls your best, so the two
   // never disagree inside one session: heaviest logged set, or the working weight you kept.
   const best = cardio || !hasWeight ? 0 : Math.max(bestWeightFor(S, entry.id), (S.exWeights[entry.id] || {}).w || 0)
+  const maxDone = Math.max(0, ...entry.sets.filter(s => s.done).map(s => Number(s.w) || 0))
+  const isNewPR = hasWeight && best > 0 && maxDone > best
   // What the progression policy decided for this session, and why (issue #17). Computed when
   // the session was built so the reason matches the numbers already in the rows.
   const plan = entry.plan
@@ -688,7 +752,19 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
           <span>{hasWeight ? t('No weight') : t('Add weight')}</span>
         </button>
       )}
-      {best > 0 && hasWeight && <span className="tag nocap">{t('Best:')} {fmtNum(best)} {S.unit}</span>}
+      {isNewPR ? (
+        <span
+          className="pr pr-tada"
+          key={`pr-badge-${entry.id}-${maxDone}`}
+          style={{ gap: 4, fontWeight: 700 }}
+          title={t('New Personal Record!')}
+        >
+          <Icon name="trophy" style={{ fontSize: 13 }} />
+          <span>{t('New PR!')} {fmtNum(maxDone)} {S.unit}</span>
+        </span>
+      ) : (
+        best > 0 && hasWeight && <span className="tag nocap">{t('Best:')} {fmtNum(best)} {S.unit}</span>
+      )}
     </div>
     {last && <div className="small dim" style={{ marginBottom: 4 }}>{t('Last time')} ({fmtDate(last.d)}): {last.sets.map(s => setLabel(entry.id, s, last.target)).join(', ')}</div>}
 
@@ -748,29 +824,160 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
         {col2 && <span className="col-sp c2-sp">{col2.hd}</span>}
         {col3 && <span className="col-sp eff-sp">{col3.hd}</span>}
         {timed && <span className="go-sp">{t('Start')}</span>}
+        <span className="note-sp" />
         <span className="ck-sp" />
       </div>
       {entry.sets.map((s, i) => {
         const isWorking = i === workingSetIdx && !s.done
         const isTimedWork = timed && working?.entryIdx === entryIdx && working?.setIdx === i
+        const isSetPR = s.done && hasWeight && best > 0 && Number(s.w) > best && Number(s.w) === maxDone
         const tagClass = s.tag === 'W' ? ' tag-w' : s.tag === 'D' ? ' tag-d' : s.tag === 'F' ? ' tag-f' : (isWorking ? ' working' : '')
         const tagLabel = s.tag === 'W' ? 'W' : s.tag === 'D' ? 'D' : s.tag === 'F' ? 'F' : (i + 1)
-        return <div key={i} className={'setrow' + (s.done ? ' done' : '') + (isWorking ? ' is-working' : '') + (isEff3 ? ' eff3' : '') + (!hasWeight ? ' no-weight' : '') + (timed ? ' timed' : '')}>
-          <button type="button" className={'n' + tagClass} onClick={() => onChangeSet?.(i)} title={t('Set {0} · Tap to change set', i + 1)} aria-label={t('Set {0}', i + 1)}>
-            {tagLabel}
-          </button>
-          {cell(s, i, col1, 'c1' + (col1.f === 'w' ? ' w' : col1.f === 'r' ? ' r' : ''))}
-          {col2 && cell(s, i, col2, 'c2' + (col2.f === 'r' ? ' r' : col2.f === 'speed' ? ' speed' : col2.f === 'w' ? ' w' : ''))}
-          {col3 && cell(s, i, col3, 'eff')}
-          {/* Timed holds use an explicit start control; completion is recorded by the timer. */}
-          {timed && <button type="button" className={'setgo' + (isTimedWork ? ' is-timing' : '')}
-            aria-label={isTimedWork ? fmtSec(working.left) : t('Start set')}
-            disabled={s.done || (!!working && !isTimedWork)}
-            onClick={() => onStartTimed(i)}>
-            <Icon name={isTimedWork ? 'timer' : 'play'} />
-            <span>{isTimedWork ? fmtSec(working.left) : t('Start')}</span>
-          </button>}
-          <Check checked={s.done} onChange={() => onToggle(i)} />
+        const isEditingThisNote = editingNoteIdx === i
+        return <div key={i} className={'setrow' + (s.done ? ' done' : '') + (isWorking ? ' is-working' : '') + (isEff3 ? ' eff3' : '') + (!hasWeight ? ' no-weight' : '') + (timed ? ' timed' : '') + (isSetPR ? ' is-pr' : '') + (s.note ? ' has-note' : '') + (isEditingThisNote ? ' is-editing-note' : '')}>
+          <div className="setrow-main">
+            <button type="button" className={'n' + tagClass + (isSetPR ? ' is-pr' : '')} onClick={() => onChangeSet?.(i)} title={isSetPR ? t('Set {0} · New PR!', i + 1) : t('Set {0} · Tap to change set', i + 1)} aria-label={t('Set {0}', i + 1)}>
+              {isSetPR ? <Icon name="trophy" style={{ fontSize: 11 }} /> : tagLabel}
+            </button>
+            {cell(s, i, col1, 'c1' + (col1.f === 'w' ? ' w' : col1.f === 'r' ? ' r' : ''))}
+            {col2 && cell(s, i, col2, 'c2' + (col2.f === 'r' ? ' r' : col2.f === 'speed' ? ' speed' : col2.f === 'w' ? ' w' : ''))}
+            {col3 && cell(s, i, col3, 'eff')}
+            {isSetPR && (
+              <span
+                className="set-pr-badge pr-tada"
+                title={t('New personal record: {0} {1}!', fmtNum(s.w), S.unit)}
+              >
+                <Icon name="trophy" size={10} />
+                <span>PR</span>
+              </span>
+            )}
+            {/* Timed holds use an explicit start control; completion is recorded by the timer. */}
+            {timed && <button type="button" className={'setgo' + (isTimedWork ? ' is-timing' : '')}
+              aria-label={isTimedWork ? fmtSec(working.left) : t('Start set')}
+              disabled={s.done || (!!working && !isTimedWork)}
+              onClick={() => onStartTimed(i)}>
+              <Icon name={isTimedWork ? 'timer' : 'play'} />
+              <span>{isTimedWork ? fmtSec(working.left) : t('Start')}</span>
+            </button>}
+            <button
+              type="button"
+              className={'set-note-icon-btn' + (s.note ? ' has-note' : '') + (isEditingThisNote ? ' is-editing' : '')}
+              onClick={() => {
+                if (isEditingThisNote) handleCancelNote()
+                else handleStartEditNote(i, s.note)
+              }}
+              title={s.note ? t('Set cue: "{0}" (tap to edit)', s.note) : t('Add cue or note to set {0}', i + 1)}
+              aria-label={s.note ? t('Edit cue for set {0}', i + 1) : t('Add cue for set {0}', i + 1)}
+            >
+              <Icon name="pencil" size={11} />
+              {s.note && <span className="set-note-dot" />}
+            </button>
+            <Check checked={s.done} onChange={() => onToggle(i)} />
+          </div>
+
+          {/* Short text note / cue directly in the set row */}
+          {isEditingThisNote ? (
+            <div className="set-note-editor" onClick={e => e.stopPropagation()}>
+              <div className="set-note-input-wrap">
+                <Icon name="pencil" size={11} className="set-note-input-icon" />
+                <input
+                  type="text"
+                  className="set-note-input"
+                  value={noteText}
+                  placeholder={t('Set cue or adjustment (e.g. pause 1s, keep tight)...')}
+                  maxLength={120}
+                  autoFocus
+                  onChange={e => setNoteText(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleSaveNote(i)
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault()
+                      handleCancelNote()
+                    }
+                  }}
+                />
+                {noteText && (
+                  <button
+                    type="button"
+                    className="set-note-clear-btn"
+                    onClick={() => setNoteText('')}
+                    title={t('Clear text')}
+                    aria-label={t('Clear text')}
+                  >
+                    <Icon name="xmark" size={10} />
+                  </button>
+                )}
+              </div>
+              <div className="set-note-actions">
+                <button
+                  type="button"
+                  className="set-note-action-btn save"
+                  onClick={() => handleSaveNote(i)}
+                  title={t('Save cue')}
+                  aria-label={t('Save cue')}
+                >
+                  <Icon name="check" size={12} />
+                  <span>{t('Save')}</span>
+                </button>
+                {s.note && (
+                  <button
+                    type="button"
+                    className="set-note-action-btn delete"
+                    onClick={() => handleDeleteNote(i)}
+                    title={t('Remove cue')}
+                    aria-label={t('Remove cue')}
+                  >
+                    <Icon name="trash" size={11} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="set-note-action-btn cancel"
+                  onClick={handleCancelNote}
+                  title={t('Cancel')}
+                  aria-label={t('Cancel')}
+                >
+                  <Icon name="xmark" size={11} />
+                </button>
+              </div>
+            </div>
+          ) : s.note ? (
+            <div
+              className="set-note-display"
+              onClick={() => handleStartEditNote(i, s.note)}
+              role="button"
+              tabIndex={0}
+              title={t('Set cue: "{0}" (tap to edit)', s.note)}
+              aria-label={t('Set cue: {0}. Tap to edit.', s.note)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  handleStartEditNote(i, s.note)
+                }
+              }}
+            >
+              <span className="set-note-tag">
+                <Icon name="pencil" size={10} />
+                <span>{t('Cue')}</span>
+              </span>
+              <span className="set-note-text">{s.note}</span>
+              <span className="set-note-edit-hint" aria-hidden="true">
+                <Icon name="pencil" size={9} />
+              </span>
+            </div>
+          ) : isWorking ? (
+            <button
+              type="button"
+              className="set-note-cue-prompt"
+              onClick={() => handleStartEditNote(i, '')}
+              title={t('Add cue or adjustment note for set {0}', i + 1)}
+            >
+              <Icon name="plus" size={10} />
+              <span>{t('Add set cue / adjustment')}</span>
+            </button>
+          ) : null}
         </div>
       })}
       <div style={{ height: 8 }} />
@@ -842,7 +1049,7 @@ function ActiveWorkout() {
   // Clearing an optional field drops the key rather than storing null, so a set only carries
   // what was actually logged — in the session, in history and in a backup.
   const setField = (idx, i, field, v) => mutEntry(idx, e => {
-    if (v == null) delete e.sets[i][field]; else e.sets[i][field] = v
+    if (v == null || (typeof v === 'string' && !v.trim())) delete e.sets[i][field]; else e.sets[i][field] = v
   })
   const modeAt = idx => modeOf({ ...(A.entries[idx].target || {}), id: A.entries[idx].id })
   const addSet = idx => mutEntry(idx, e => {
@@ -877,6 +1084,11 @@ function ActiveWorkout() {
       e.sets[i].done = !e.sets[i].done
       if (e.sets[i].done) {
         beep(S.sound, 1040, 0.12)
+        const prevBest = cardioEntry ? 0 : Math.max(bestWeightFor(S, e.id), (S.exWeights[e.id] || {}).w || 0)
+        const setWeight = Number(e.sets[i].w) || 0
+        if (prevBest > 0 && setWeight > prevBest) {
+          useUI.getState().toast(t('New personal record: {0} {1}!', fmtNum(setWeight), S.unit))
+        }
         const nextIncomplete = e.sets.findIndex((x, sIdx) => sIdx > i && !x.done)
         if (nextIncomplete !== -1) e.activeSetIdx = nextIncomplete
         else delete e.activeSetIdx
