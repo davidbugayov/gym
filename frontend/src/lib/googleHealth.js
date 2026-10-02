@@ -25,7 +25,8 @@ export function resolveActivityType(workout) {
 // Formula: Calories = MET * Weight(kg) * Duration(hours)
 // Average strength training MET is 5.0 - 6.0; HIIT/circuit is 8.0
 export function estimateCalories(workout, userWeightKg = 75) {
-  const durMs = Math.max(60000, (workout.end || Date.now()) - (workout.start || (Date.now() - 3600000)))
+  const durMs = Number(workout.end) - Number(workout.start)
+  if (!Number.isFinite(durMs) || durMs <= 0 || !Number.isFinite(Number(userWeightKg)) || Number(userWeightKg) <= 0) return 0
   const durHours = durMs / 3600000
   const act = resolveActivityType(workout)
   let met = 5.5
@@ -34,7 +35,7 @@ export function estimateCalories(workout, userWeightKg = 75) {
   else if (act.id === 88 || act.id === 55) met = 7.5
 
   const cal = Math.round(met * userWeightKg * durHours)
-  return Math.max(40, cal)
+  return Math.max(0, cal)
 }
 
 // Build the legacy Google Fit Takeout session representation for export only.

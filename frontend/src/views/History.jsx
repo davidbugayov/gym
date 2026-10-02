@@ -51,7 +51,7 @@ export default function History() {
 
   // Workout log filter
   const [search, setSearch] = useState('')
-  const [viewMode, setViewMode] = useState(() => (typeof window !== 'undefined' && window.innerWidth <= 640 ? 'grid' : 'list'))
+  const [viewMode, setViewMode] = useState('list')
 
   // 1. Overall Performance Totals
   const totalWorkouts = workouts.length
@@ -388,6 +388,8 @@ export default function History() {
         </div>
       ) : (
         <>
+          <details className="analytics-details">
+          <summary>{t('Training trends')}</summary>
           {/* Card 1: Workout Frequency & Volume Over Time */}
           <div className="card">
             <div className="row between" style={{ marginBottom: 6 }}>
@@ -631,7 +633,7 @@ export default function History() {
                           )}
                           <ExerciseTrendBadge
                             trend={getExerciseTrend(p.workout, p.entry, workouts, S.unit)}
-                            exName={curExercise?.n || curEx}
+                            exName={exOr(curEx).n}
                           />
                         </div>
                         <div style={{ textAlign: 'right' }}>
@@ -658,6 +660,7 @@ export default function History() {
             )}
           </div>
 
+          </details>
           {/* Card 3: Workout Log & Session Details */}
           <div className="row between" style={{ marginTop: 24, marginBottom: 10, alignItems: 'center' }}>
             <h3 style={{ margin: 0 }}>

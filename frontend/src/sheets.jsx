@@ -25,12 +25,12 @@ import WeightGuide from './components/WeightGuide.jsx'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC } from './lib/progression.js'
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { estimateCalories, exportGoogleHealthJSON, exportGoogleHealthCSV } from './lib/googleHealth.js'
-import { readWorkoutsFromGoogleHealth, syncAllWithGoogleHealth } from './lib/google-fit-api.js'
+import { readWorkoutsFromGoogleHealth } from './lib/google-fit-api.js'
 import { ATHLETE_RU_URL, ATHLETE_PROGRAMS, parseProgramUrl, applyImportedProgram, isAthleteRuUrl } from './lib/import-url.js'
 import { GoogleAuth } from '@southdevs/capacitor-google-auth'
 import { Capacitor } from '@capacitor/core'
-import { getHealthStatus, initHealth, logBodyWeightToHealth, logWorkoutToHealth } from './lib/health.js'
-import { getCachedToken, googleSignIn, setCachedToken } from './lib/google-auth.js'
+import { getHealthStatus, initHealth, getRecentWeightFromHealth, getRecentActivityFromHealth } from './lib/health.js'
+import { GOOGLE_HEALTH_SCOPES, getCachedToken, googleSignIn, setCachedToken } from './lib/google-auth.js'
 import { clearActiveSessionBackup } from './lib/autosave.js'
 import { getExerciseTrend } from './lib/trends.js'
 import { ExerciseTrendBadge, ExerciseTrendMini } from './components/ExerciseTrend.jsx'
@@ -1945,17 +1945,18 @@ export function warmupCooldownSheet(mode) {
 
 /* ============================ workout lifecycle ============================ */
 import { getActiveHealthProvider } from './lib/healthPlatform.js'
+import { syncHealthRecords } from './lib/health-sync.js'
 
 async function fetchAutoHealthParams() {
   const st = S()
+  if (!st.googleHealth?.connected || !Capacitor.isNativePlatform()) return null
   const provider = getActiveHealthProvider(st)
   let hw = null
   try {
     if (provider === 'apple' || Capacitor.getPlatform() === 'android') {
-      const h = await import('./lib/health.js')
-      hw = await h.getRecentWeightFromHealth()
+      hw = await getRecentWeightFromHealth()
       // also fetch activity if needed
-      const act = await h.getRecentActivityFromHealth()
+      const act = await getRecentActivityFromHealth()
       if (act) update(s => { s.todayActivity = act })
     }
   } catch (e) {
@@ -1973,6 +1974,7 @@ export async function startFlow(routineId) {
 function saveAutoWeight(weight) {
   update(s => {
     const iso = todayISO()
+    weight = s.unit === 'lb' ? Math.round(weight / 0.45359237 * 10) / 10 : weight
     const entry = s.bodyweight.find(b => b.d === iso)
     if (entry) { entry.w = weight; entry.t = Date.now() }
     else s.bodyweight.push({ d: iso, w: weight, t: Date.now() })
@@ -2253,25 +2255,10 @@ function doFinishWorkout() {
     s.active = null
   })
 
-  // Auto-sync with Google Health if connected
-  if (st.googleHealth?.connected && st.googleHealth?.provider === 'google-health-api' && st.googleHealth?.autoSync !== false) {
-    const token = getCachedToken()
-    const since = st.googleHealth.lastSync || 0
-    const weights = st.googleHealth.syncBodyWeight === false ? [] : st.bodyweight.filter(entry => !since || (entry.t || new Date(entry.d).getTime()) > since)
-    const sync = token
-      ? syncAllWithGoogleHealth(token, st.googleHealth.syncWorkouts === false ? [] : [w], weights)
-      : Promise.reject(new Error('google_fit_reauthentication_required'))
-    sync.then(res => {
-      update(s => {
-        if (s.googleHealth && res.ok) s.googleHealth.lastSync = res.lastSync || Date.now()
-      })
-    }).catch(() => {})
-  }
-
+  syncHealthRecords(S, update, { automatic: true }).catch(() => {
+    update(s => { if (s.googleHealth?.connected) s.googleHealth.syncError = 'not_authenticated' })
+  })
   useUI.getState().stopRest()
-
-  // Log to Google Fit / HealthKit
-  import('./lib/health.js').then(module => module.logWorkoutToHealth(w)).catch(console.error)
 
   // Schedule inactivity reminder
   import('./lib/notifications.js').then(module => module.scheduleInactivityReminder()).catch(console.error)
@@ -2316,6 +2303,7 @@ function GoogleHealthSheet({ close }) {
         update(s => {
           s.googleHealth = s.googleHealth || {}
           s.googleHealth.connected = true
+          if (s.googleHealth.provider !== 'health-connect') { s.googleHealth.sentRecords = {}; s.googleHealth.syncBaseline = 0; s.googleHealth.ledgerVersion = 1; s.googleHealth.lastSync = null }
           s.googleHealth.provider = 'health-connect'
           s.googleHealth.email = ''
         })
@@ -2325,7 +2313,7 @@ function GoogleHealthSheet({ close }) {
 
       let user
       if (Capacitor.isNativePlatform()) {
-        await GoogleAuth.initialize()
+        await GoogleAuth.initialize({ scopes: ['profile', 'email', ...GOOGLE_HEALTH_SCOPES] })
         user = await GoogleAuth.signIn()
         setCachedToken(user.authentication?.accessToken || null)
       } else {
@@ -2335,7 +2323,8 @@ function GoogleHealthSheet({ close }) {
       update(s => {
         s.googleHealth = s.googleHealth || {}
         s.googleHealth.connected = true
-        s.googleHealth.email = user.email || 'user@gmail.com'
+        s.googleHealth.email = user.email || ''
+        if (s.googleHealth.email !== gh.email || s.googleHealth.provider !== 'google-health-api') { s.googleHealth.sentRecords = {}; s.googleHealth.syncBaseline = 0; s.googleHealth.ledgerVersion = 1 }
         if (s.googleHealth.provider !== 'google-health-api') s.googleHealth.lastSync = null
         s.googleHealth.provider = 'google-health-api'
       })
@@ -2348,10 +2337,18 @@ function GoogleHealthSheet({ close }) {
 
   const refreshGoogleHealthAccess = async () => {
     try {
-      const result = await googleSignIn(true)
+      let result
+      if (Capacitor.isNativePlatform()) {
+        await GoogleAuth.initialize({ scopes: ['profile', 'email', ...GOOGLE_HEALTH_SCOPES] })
+        const user = await GoogleAuth.signIn()
+        result = { user, accessToken: user.authentication?.accessToken }
+        if (!result.accessToken) throw new Error('google_health_access_token_missing')
+      } else result = await googleSignIn(true)
       setCachedToken(result.accessToken)
       update(s => {
         if (s.googleHealth) {
+          if (s.googleHealth.email !== result.user.email) { s.googleHealth.sentRecords = {}; s.googleHealth.syncBaseline = 0; s.googleHealth.lastSync = null; s.googleHealth.ledgerVersion = 1 }
+          s.googleHealth.email = result.user.email || ''
           s.googleHealth.authorizationRequired = false
           s.googleHealth.readAuthRequired = false
         }
@@ -2366,38 +2363,10 @@ function GoogleHealthSheet({ close }) {
   const handleSyncNow = async () => {
     setSyncing(true)
     try {
-      if (isHealthConnect) {
-        const since = gh.lastSync || 0
-        const workouts = S.workouts.filter(workout => !since || workout.end > since)
-        const weights = gh.syncBodyWeight === false ? [] : S.bodyweight.filter(entry => !since || (entry.t || new Date(entry.d).getTime()) > since)
-        const workoutResults = await Promise.all(workouts.map(logWorkoutToHealth))
-        const weightResults = await Promise.all(weights.map(logBodyWeightToHealth))
-        const syncedCount = workoutResults.filter(Boolean).length + weightResults.filter(Boolean).length
-        if ((workouts.length || weights.length) && !syncedCount) {
-          toast(t('Connect Health Connect before syncing'))
-          return
-        }
-        update(s => {
-          s.googleHealth = s.googleHealth || {}
-          s.googleHealth.lastSync = Date.now()
-        })
-        toast(t('Synced with Health Connect ({0} records)', syncedCount))
-        return
-      }
-
+      const res = await syncHealthRecords(() => useStore.getState().S, update)
       const token = getCachedToken()
-      if (!token) {
-        toast(t('Reconnect Google Health to authorise health data access'))
-        return
-      }
-      const since = gh.lastSync || 0
-      const workouts = gh.syncWorkouts === false ? [] : S.workouts.filter(workout => !since || workout.end > since)
-      const weights = gh.syncBodyWeight === false ? [] : S.bodyweight.filter(entry => !since || (entry.t || new Date(entry.d).getTime()) > since)
-      const [res, healthRead] = await Promise.all([
-        syncAllWithGoogleHealth(token, workouts, weights),
-        gh.importWorkouts === false ? Promise.resolve({ workouts: [] })
-          : readWorkoutsFromGoogleHealth(token).then(items => ({ workouts: items }), error => ({ error, workouts: [] }))
-      ])
+      const healthRead = isHealthConnect || gh.importWorkouts === false ? { workouts: [] }
+        : await readWorkoutsFromGoogleHealth(token).then(workouts => ({ workouts }), error => ({ error, workouts: [] }))
       if (!res.ok) {
         const firstError = res.errors[0]
         const reason = String(firstError?.reason || '').toUpperCase()
@@ -2422,9 +2391,10 @@ function GoogleHealthSheet({ close }) {
       }
       update(s => {
         s.googleHealth = s.googleHealth || {}
-        s.googleHealth.lastSync = res.lastSync || Date.now()
+        if (!s.googleHealth.connected || s.googleHealth.provider !== gh.provider || s.googleHealth.email !== gh.email) return
         const existing = new Set((s.workouts || []).map(workout => workout.id))
-        const fresh = healthRead.workouts.filter(workout => !existing.has(workout.id))
+        const sent = new Set(Object.values(s.googleHealth.sentRecords || {}).filter(value => typeof value === 'string'))
+        const fresh = healthRead.workouts.filter(workout => !existing.has(workout.id) && !sent.has(workout.googleHealthDataPoint))
         s.workouts = [...(s.workouts || []), ...fresh].sort((a, b) => (a.d || '').localeCompare(b.d || ''))
       })
       if (healthRead.error?.status === 401 || healthRead.error?.status === 403) {
@@ -2434,6 +2404,7 @@ function GoogleHealthSheet({ close }) {
           update(s => { s.googleHealth.authorizationRequired = true })
         }
       }
+      if (isHealthConnect) { toast(t('Synced with Health Connect ({0} records)', res.syncedWorkouts + res.syncedWeights)); return }
       toast(healthRead.error
         ? String(healthRead.error.reason || '').toUpperCase() === 'API_PRIVATE_PREVIEW_ACCESS_DENIED'
           ? t('Google Health has not allowed this account into its API preview. A project owner must add the account to the Google Cloud test-user list.')
@@ -2489,8 +2460,8 @@ function GoogleHealthSheet({ close }) {
           <span style={{ width: 10, height: 10, borderRadius: '50%', background: gh.connected ? 'var(--acc)' : 'var(--fg-muted)' }} />
           <b style={{ fontSize: '0.95rem' }}>{gh.connected ? t('Connected') : t('Not connected')}</b>
         </div>
-        <Button size="sm" variant={gh.connected ? 'tinted' : 'primary'} onClick={gh.connected && gh.authorizationRequired && !isHealthConnect ? refreshGoogleHealthAccess : toggleConnected}>
-          {gh.connected ? (gh.authorizationRequired && !isHealthConnect ? t('Grant access') : t('Disconnect')) : t('Connect')}
+        <Button size="sm" variant={gh.connected ? 'tinted' : 'primary'} onClick={gh.connected && (gh.authorizationRequired || !getCachedToken()) && !isHealthConnect ? refreshGoogleHealthAccess : toggleConnected}>
+          {gh.connected ? ((gh.authorizationRequired || !getCachedToken()) && !isHealthConnect ? t('Grant access') : t('Disconnect')) : t('Connect')}
         </Button>
       </div>
 
@@ -2508,12 +2479,21 @@ function GoogleHealthSheet({ close }) {
         <Switch checked={gh.autoSync !== false} onChange={v => update(s => { s.googleHealth = s.googleHealth || {}; s.googleHealth.autoSync = v })} />
       </div>
       <div className="row between" style={{ alignItems: 'center' }}>
+        <span style={{ fontSize: '0.95rem' }}>{t('Sync completed workouts')}</span>
+        <Switch checked={gh.syncWorkouts !== false} onChange={v => update(s => { s.googleHealth = s.googleHealth || {}; s.googleHealth.syncWorkouts = v })} />
+      </div>
+      <div className="row between" style={{ alignItems: 'center' }}>
         <span style={{ fontSize: '0.95rem' }}>{t('Sync body weight entries')}</span>
         <Switch checked={gh.syncBodyWeight !== false} onChange={v => update(s => { s.googleHealth = s.googleHealth || {}; s.googleHealth.syncBodyWeight = v })} />
       </div>
     </div>
 
-    <Button variant="primary" icon="refresh" loading={syncing} onClick={handleSyncNow} style={{ marginBottom: 10 }}>
+    {gh.syncError && <p className="small" role="status" style={{ color: 'var(--red)', marginBottom: 12 }}>{t(gh.syncError === 'google_health_operation_pending' ? 'Google Health has not confirmed the pending operation yet.' : 'Some health records were not sent. Retry sync.')}</p>}
+    {!isHealthConnect && <div className="row between" style={{ marginBottom: 16 }}>
+      <span>{t('Import workouts from Google Health')}</span>
+      <Switch checked={gh.importWorkouts !== false} onChange={v => update(s => { s.googleHealth = s.googleHealth || {}; s.googleHealth.importWorkouts = v })} />
+    </div>}
+    <Button variant="primary" icon="refresh" disabled={!gh.connected} loading={syncing} onClick={handleSyncNow} style={{ marginBottom: 10 }}>
       {syncing ? t(isHealthConnect ? 'Syncing with Health Connect…' : 'Syncing with Google Health…') : t(isHealthConnect ? 'Sync with Health Connect' : 'Sync now ({0} workouts)', S.workouts.length)}
     </Button>
 

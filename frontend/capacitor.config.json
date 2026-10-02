@@ -2,7 +2,7 @@
   "appId": "ch.duartesantos.gymly",
   "appName": "Gymly",
   "webDir": "dist",
-  "backgroundColor": "#0c0e12",
+  "backgroundColor": "#101210",
   "android": {
     "allowMixedContent": false
   },
@@ -12,9 +12,7 @@
       "iosClientId": "831370287146-70aei80geqj07a37sh3i84nu6gsq455i.apps.googleusercontent.com",
       "scopes": [
         "profile",
-        "email",
-        "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.writeonly",
-        "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.writeonly"
+        "email"
       ],
       "serverClientId": "831370287146-kpbja4q6s91qtt8sm611jsl768domq00.apps.googleusercontent.com",
       "forceCodeForRefreshToken": true

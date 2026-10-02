@@ -24,13 +24,13 @@ export default function TabBar({ onStart }) {
     nav('/workout')
   }
   const Tab = ({ k, icon, to, label }) => (
-    <button className={on(k) ? 'on' : ''} onClick={() => nav(to)} aria-label={label} title={label}>
+    <button className={on(k) ? 'on' : ''} onClick={() => nav(to)} aria-label={label} aria-current={on(k) ? 'page' : undefined} title={label}>
       <Icon name={icon} /><span>{label}</span>
     </button>
   )
 
   return (
-    <nav id="tabbar">
+    <nav id="tabbar" aria-label={t('Navigation')}>
       <Tab k="home" icon="house" to="/home" label={t('Home')} />
       <Tab k="plan" icon="calendar" to="/plan" label={t('Plan')} />
       <button className={'start' + (S.active ? ' rec' : '')} onClick={startWorkout}>

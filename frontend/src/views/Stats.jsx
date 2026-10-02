@@ -171,7 +171,6 @@ export default function Stats() {
   const validWeights = weights.filter(b => typeof b.d === 'string' && Number.isFinite(Number(b.w)) && Number(b.w) > 0)
   const bw30 = validWeights.filter(b => (Number(b.t) || new Date(b.d).getTime()) > now - 30 * 86400000)
   const bwDelta30 = bw30.length > 1 ? bw30[bw30.length - 1].w - bw30[0].w : null
-  const todayBW = validWeights.find(b => b.d === todayISO())
   const currentBW = lastBW(S)
   const monthW = workouts.filter(w => typeof w.d === 'string' && w.d.slice(0, 7) === todayISO().slice(0, 7)).length
 
@@ -179,7 +178,7 @@ export default function Stats() {
     <div className="hdr">
       <div><h1>{t('Stats')}</h1><div className="sub">{t('Progress & history')}</div></div>
       <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-        <Button size="sm" variant="primary" icon="scale" onClick={() => bwSheet()} title={t('Log body weight')}>
+        <Button size="sm" variant="tinted" icon="scale" onClick={() => bwSheet()} title={t('Log body weight')}>
           {t('Log weight')}
         </Button>
         <button className="iconbtn" onClick={() => nav('/history')} aria-label={t('History')}><Icon name="history" /></button>
@@ -191,6 +190,7 @@ export default function Stats() {
         className="card tappable"
         onClick={() => nav('/workout')}
         role="button"
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav('/workout') } }}
         tabIndex={0}
         style={{
           background: 'color-mix(in srgb, var(--surface) 92%, var(--acc))',
@@ -211,9 +211,7 @@ export default function Stats() {
               </div>
             </div>
           </div>
-          <Button size="sm" variant="primary" icon="play">
-            {t('Resume')}
-          </Button>
+          <span className="accent">{t('Resume')}</span>
         </div>
       </div>
     )}
@@ -226,6 +224,7 @@ export default function Stats() {
         className="tile tappable"
         onClick={() => bwSheet()}
         role="button"
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); bwSheet() } }}
         tabIndex={0}
         title={t('Log body weight')}
         style={{ cursor: 'pointer' }}
@@ -255,6 +254,9 @@ export default function Stats() {
     {workouts.length > 0 && <TotalVolume30dCard S={statsS} />}
     {workouts.length > 0 && <TopExercisesVolumeCard S={statsS} />}
 
+    <ExerciseWeightProgressionCard S={statsS} />
+    <details className="analytics-details">
+      <summary>{t('Body measurements')}</summary>
     <div className="cols">
       <BodyWeightProgressionCard S={statsS} />
 
@@ -262,8 +264,8 @@ export default function Stats() {
 
       <BodyMeasurementsCard S={statsS} />
 
-      <ExerciseWeightProgressionCard S={statsS} />
     </div>
+    </details>
 
     {workouts.length > 0 && <>
       <div className="row between" style={{ marginBottom: 10 }}>

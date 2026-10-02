@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { DAYN, uid, exCount } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
-import { dayAssignSheet, planToolsSheet, programWizardSheet, readyProgramsSheet, importUrlSheet, calendarSyncSheet } from '../sheets.jsx'
+import { dayAssignSheet, planToolsSheet, readyProgramsSheet, importUrlSheet, calendarSyncSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import { glyphOf, DEFAULT_GLYPH } from '../lib/glyphs.js'
@@ -38,10 +38,10 @@ export default function Plan() {
       <div className="list" style={{ display: 'flex', flexDirection: 'column' }}>
         {[1, 2, 3, 4, 5, 6, 0].map(d => {
           const r = S.routines.find(x => x.id === S.week[d])
-          return <div key={d} className="item" onClick={() => dayAssignSheet(d)}>
+          return <button type="button" key={d} className="item" style={{ width: '100%', textAlign: 'left' }} onClick={() => dayAssignSheet(d)}>
             <div className="grow"><div className="tt">{t(DAYN[d])}</div></div>
             {r ? <span className="tag acc"><Icon name={glyphOf(r.emoji)} />{r.name}</span> : <span className="tag">{t('Rest')}</span>}
-            <Icon name="chevronRight" className="chev" /></div>
+            <Icon name="chevronRight" className="chev" /></button>
         })}
       </div>
     </div><div>
@@ -50,7 +50,7 @@ export default function Plan() {
         <div className="plan-routines-actions">
           <Button size="sm" variant="tinted" icon="globe" onClick={() => importUrlSheet()}>{t('URL')}</Button>
           <Button size="sm" variant="tinted" icon="sparkles" onClick={readyProgramsSheet}>{t('Ready-made programs')}</Button>
-          <Button size="sm" variant="tinted" icon="plus" onClick={addRoutine}>{t('New')}</Button>
+          <Button size="sm" variant="primary" icon="plus" onClick={addRoutine}>{t('New')}</Button>
         </div>
       </div>
       {S.routines.length ? <div className="workout-grid">{S.routines.map(r => <button key={r.id} type="button" className="workout-grid-card" onClick={() => nav('/plan/r/' + r.id)}>

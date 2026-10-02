@@ -1814,5 +1814,12 @@ export default {
   "Lateral / Rear Deltoid Neglect": "Недостаток средней / задней дельты",
   "Core Stability Gap": "Пробел в тренировке кора",
   "Gluteal / Hip Extension Deficit": "Дефицит нагрузки на ягодицы",
-  "All major movement patterns receive balanced stimulus.": "Все основные паттерны движений получают сбалансированную нагрузку."
+  "All major movement patterns receive balanced stimulus.": "Все основные паттерны движений получают сбалансированную нагрузку.",
+  "Training trends": "Динамика тренировок",
+  "Navigation": "Навигация",
+  "Search exercises": "Поиск упражнений",
+  "Sync completed workouts": "Синхронизировать завершённые тренировки",
+  "Some health records were not sent. Retry sync.": "Некоторые записи не отправлены. Повторите синхронизацию.",
+  "Import workouts from Google Health": "Импортировать тренировки из Google Health",
+  "Google Health has not confirmed the pending operation yet.": "Google Health ещё не подтвердил завершение отправки."
 }

@@ -88,3 +88,41 @@ describe('Google Health API writes', () => {
     expect(result.errors[0]).toMatchObject({ status: 403, reason: 'API_PRIVATE_PREVIEW_ACCESS_DENIED' })
   })
 })
+
+describe('Google Health recovery', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  it('converts pounds and keeps the returned resource receipt', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ done: true, response: { name: 'weight-resource' } }) })
+    vi.stubGlobal('fetch', fetchMock)
+    const onRecord = vi.fn()
+    await syncAllWithGoogleHealth('token', [], [{ d: '2026-10-02', w: 165, t: 2000 }], { unit: 'lb', onRecord })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).weight.weightGrams).toBeCloseTo(74842.74105)
+    expect(onRecord).toHaveBeenCalledWith('weight:2026-10-02:2000:165:lb', 'weight-resource')
+  })
+  it('stops all writes after expired authorization and skips imported sessions', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 401, text: async () => '' })
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await syncAllWithGoogleHealth('token', [{ id: 'imported', importedFrom: 'Google Health' }, { id: 'own', start: 1000, end: 2000 }], [{ w: 70 }])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(result.lastSync).toBeNull()
+  })
+  it('rejects missing workout times without inventing a session', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await syncAllWithGoogleHealth('token', [{ id: 'invalid' }], [])
+    expect(result.errors[0].error).toBe('invalid_workout_time')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+  it('reads subsequent pages of workout history', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ dataPoints: [], nextPageToken: 'next' }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ dataPoints: [] }) })
+    vi.stubGlobal('fetch', fetchMock)
+    await readWorkoutsFromGoogleHealth('token')
+    expect(fetchMock.mock.calls[1][0]).toContain('pageToken=next')
+  })
+  it('does not claim a failed operation succeeded', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ done: true, error: { code: 16, message: 'unauthorized' } }) }))
+    const result = await syncAllWithGoogleHealth('token', [{ id: 'one', start: 1000, end: 2000 }], [])
+    expect(result.ok).toBe(false)
+    expect(result.errors[0].status).toBe(401)
+  })
+})

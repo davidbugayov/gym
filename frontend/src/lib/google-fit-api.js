@@ -1,5 +1,6 @@
 import { estimateCalories } from './googleHealth.js'
 import { getCachedToken } from './google-auth.js'
+import { isoOf } from './format.js'
 import { EXIDX } from './exercises.js'
 
 const API = 'https://health.googleapis.com/v4/users/me/dataTypes'
@@ -46,18 +47,24 @@ async function createDataPoint(token, type, payload) {
     const detail = await response.text()
     throw readApiError(response.status, detail)
   }
-  return response.json()
+  const operation = await response.json()
+  if (operation.error) throw readApiError(operation.error.code === 16 ? 401 : 400, JSON.stringify({ error: operation.error }))
+  if (operation.done === false) {
+    const error = new Error('google_health_operation_pending')
+    error.receipt = { pendingOperation: operation.name }
+    throw error
+  }
+  return operation.response || operation
 }
 
 export async function uploadSessionToGoogleHealth(accessToken, workout) {
   const token = accessToken || getCachedToken()
   if (!token) throw new Error('not_authenticated')
-  const startMs = Number(workout.start) || Date.now() - 3600000
-  const endMs = Number(workout.end) || Date.now()
-  if (endMs <= startMs) throw new Error('invalid_workout_time')
+  const startMs = Number(workout.start)
+  const endMs = Number(workout.end)
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || startMs <= 0 || endMs <= startMs) throw new Error('invalid_workout_time')
   const start = new Date(startMs).toISOString()
   const end = new Date(endMs).toISOString()
-  const durationSeconds = Math.max(1, Math.round((endMs - startMs) / 1000))
   const exerciseNames = (workout.entries || []).map(entry => entry.name || EXIDX[entry.id]?.n || entry.id).filter(Boolean)
   const displayName = [workout.name || 'Strength workout', ...exerciseNames].join(' · ').slice(0, 120)
   const metricsSummary = {
@@ -76,7 +83,7 @@ export async function uploadSessionToGoogleHealth(accessToken, workout) {
       },
       exerciseType: exerciseType(workout),
       displayName,
-      activeDuration: `${durationSeconds}s`,
+      ...(Number(workout.activeDuration) > 0 && Number(workout.activeDuration) <= endMs - startMs ? { activeDuration: `${Math.round(workout.activeDuration / 1000)}s` } : {}),
       metricsSummary
     }
   })
@@ -96,7 +103,8 @@ function importedExercise(point) {
   const activeDuration = durationMillis(exercise.activeDuration)
   return {
     id: `google_health_${point.name || start}`,
-    d: new Date(start).toISOString().slice(0, 10),
+    d: isoOf(new Date(start)),
+    googleHealthDataPoint: point.name || null,
     start,
     end,
     name: exercise.displayName || exercise.exerciseType?.replaceAll('_', ' ') || 'Google Health workout',
@@ -113,15 +121,21 @@ function importedExercise(point) {
 export async function readWorkoutsFromGoogleHealth(accessToken, { pageSize = 25 } = {}) {
   const token = accessToken || getCachedToken()
   if (!token) throw new Error('not_authenticated')
-  const params = new URLSearchParams({ pageSize: String(Math.min(25, Math.max(1, pageSize))) })
-  const response = await fetch(`${API}/exercise/dataPoints?${params}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  })
-  if (!response.ok) {
-    throw readApiError(response.status, await response.text())
-  }
-  const data = await response.json()
-  return (data.dataPoints || []).map(importedExercise).filter(Boolean)
+  const workouts = []
+  const seen = new Set()
+  let pageToken = ''
+  do {
+    const params = new URLSearchParams({ pageSize: String(Math.min(25, Math.max(1, pageSize))) })
+    if (pageToken) params.set('pageToken', pageToken)
+    const response = await fetch(`${API}/exercise/dataPoints?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+    if (!response.ok) throw readApiError(response.status, await response.text())
+    const data = await response.json()
+    workouts.push(...(data.dataPoints || []).map(importedExercise).filter(Boolean))
+    pageToken = data.nextPageToken || ''
+    if (pageToken && seen.has(pageToken)) throw new Error('google_health_repeated_page')
+    seen.add(pageToken)
+  } while (pageToken)
+  return workouts
 }
 
 export async function uploadWeightToGoogleHealth(accessToken, weightKg, timestampMillis = Date.now()) {
@@ -140,36 +154,41 @@ export async function uploadWeightToGoogleHealth(accessToken, weightKg, timestam
 }
 
 // Upload only; Google Health API is not used here to read or import a user's health history.
-export async function syncAllWithGoogleHealth(accessToken, workouts = [], bodyweight = []) {
+export async function syncAllWithGoogleHealth(accessToken, workouts = [], bodyweight = [], { unit = 'kg', onRecord = () => {} } = {}) {
   const token = accessToken || getCachedToken()
   if (!token) throw new Error('not_authenticated')
   let syncedWorkouts = 0
   let syncedWeights = 0
   const errors = []
-  for (const workout of workouts) {
+  let authorizationFailed = false
+  for (const workout of workouts.filter(w => !w.importedFrom)) {
     try {
-      await uploadSessionToGoogleHealth(token, workout)
+      const receipt = await uploadSessionToGoogleHealth(token, workout)
+      onRecord(`workout:${workout.id}`, receipt.name || true)
       syncedWorkouts++
     } catch (error) {
       errors.push({ id: workout.id, error: error.message, status: error.status, reason: error.reason })
-      if (error.status === 401) break
+      if (error.receipt) onRecord(`workout:${workout.id}`, error.receipt)
+      if (error.status === 401 || error.reason === 'MISSING_OAUTH_SCOPE') { authorizationFailed = true; break }
     }
   }
-  for (const entry of bodyweight) {
+  for (const entry of authorizationFailed ? [] : bodyweight.filter(w => !w.importedFrom)) {
     try {
-      const timestamp = entry.t || (entry.d ? new Date(entry.d).getTime() : Date.now())
-      await uploadWeightToGoogleHealth(token, entry.w, timestamp)
+      const timestamp = entry.t || (entry.d ? new Date(`${entry.d}T12:00:00`).getTime() : Date.now())
+      const receipt = await uploadWeightToGoogleHealth(token, unit === 'lb' ? entry.w * 0.45359237 : entry.w, timestamp)
+      onRecord(`weight:${entry.id || entry.d}:${entry.t || ''}:${Number(entry.w)}:${unit}`, receipt.name || true)
       syncedWeights++
     } catch (error) {
       errors.push({ id: entry.id || entry.d, error: error.message, status: error.status, reason: error.reason })
-      if (error.status === 401) break
+      if (error.receipt) onRecord(`weight:${entry.id || entry.d}:${entry.t || ''}:${Number(entry.w)}:${unit}`, error.receipt)
+      if (error.status === 401 || error.reason === 'MISSING_OAUTH_SCOPE') break
     }
   }
   return {
     ok: errors.length === 0,
     syncedWorkouts,
     syncedWeights,
-    lastSync: Date.now(),
+    lastSync: errors.length ? null : Date.now(),
     errors
   }
 }

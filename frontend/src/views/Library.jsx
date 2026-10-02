@@ -25,10 +25,10 @@ export default function Library() {
   const eqOn = showEquipment && eqOpts.includes(eq) ? eq : ''
   const f = eqOn ? base.filter(e => e.eq === eqOn) : base
 
-  const createExercise = <div className="item" onClick={() => customExSheet(null, ex => exerciseDetailSheet(ex), q.trim())}>
+  const createExercise = <button type="button" className="item" style={{ width: '100%', textAlign: 'left' }} onClick={() => customExSheet(null, ex => exerciseDetailSheet(ex), q.trim())}>
     <div className="thumb thumb-x"><Icon name="sparkles" /></div>
     <div className="grow"><div className="tt">{t('Create your own exercise')}</div><div className="ss">{t('name + body part, no animation')}</div></div><Icon name="plus" className="chev" />
-  </div>
+  </button>
 
   return <div className="exercise-library">
     <div className="hdr">
@@ -38,7 +38,7 @@ export default function Library() {
       </div>
     </div>
     <div className="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-      <input className="input" placeholder={t('Search…')} value={q} onChange={e => { setQ(e.target.value); setShown(40) }} /></div>
+      <input className="input" aria-label={t('Search exercises')} placeholder={t('Search…')} value={q} onChange={e => { setQ(e.target.value); setShown(40) }} /></div>
     <div className="chips">
       <button className={'chip nocap' + (!bp ? ' on' : '')} onClick={() => { setBp(''); setEq(''); setShown(40) }}>{t('All')}</button>
       {BODYPARTS.map(b => <button key={b} className={'chip' + (bp === b ? ' on' : '')} onClick={() => { setBp(b); setEq(''); setShown(40) }}>{t(b)}</button>)}
@@ -53,9 +53,11 @@ export default function Library() {
         const pr = personalRecordFor(S, e.id)
         const guide = weightGuideFor(S, e)
         const name = t(e.n)
-        return <div key={e.id} className="item" onClick={() => exerciseDetailSheet(e)}>
+        return <div key={e.id} className="item">
+          <button type="button" className="library-open" onClick={() => exerciseDetailSheet(e)}>
           <Thumb ex={e} />
           <div className="grow"><div className="tt">{name.charAt(0).toLocaleUpperCase() + name.slice(1)}</div><div className="ss capitalize">{t(e.tg || e.bp)} · {t(e.eq)}</div><WeightGuide guide={guide} ex={e} compact /></div>
+          </button>
           <div className="item-badges">
             <ExerciseEffortSparkline exercise={e} />
             {pr && (

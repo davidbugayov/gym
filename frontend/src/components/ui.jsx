@@ -64,7 +64,7 @@ export function SearchField({ value, onChange, onClear, ...rest }) {
   return (
     <div className="searchf">
       <Icon name="magnifier" className="lead" />
-      <input className="field" value={value} onChange={onChange} {...rest} />
+      <input className="field" aria-label={rest['aria-label'] || rest.placeholder || t('Search…')} value={value} onChange={onChange} {...rest} />
       {!!value && (
         <button className="clear" onClick={onClear} aria-label="Clear">
           <Icon name="xmark" />

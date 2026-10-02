@@ -1,6 +1,6 @@
 # Health integrations and Google OAuth status
 
-Last updated: 24 September 2026
+Last updated: 2 October 2026
 
 ## Canonical deployment
 
@@ -9,15 +9,17 @@ Last updated: 24 September 2026
 - OAuth privacy policy and terms use `.online` URLs only. Google OAuth Branding still lists `.ru`; Google blocks its removal because it claims the web client references that domain, though the visible client origins and callback contain no `.ru` URI.
 - Firebase Auth settings currently show that this Google account needs project-owner permission to manage domains, so `.ru` remains there pending an owner-level change.
 
-## Implemented
+## Implemented and verified in source/tests (2 October)
 
-- Web Google Health API writes completed exercise sessions and user-entered body-weight records. It requests write-only scopes and does not read Google Health history.
-- The current source shows an in-app health-data disclosure in the normal workout-completion flow and again before the Google Health connection prompt. The copy lists the workout/weight fields, purpose, write-only behavior, and default automatic sync.
-- Google Health access is intentionally write-only; reading weight/activity from the Google Health API was removed so runtime behavior matches the requested scopes.
-- Google Health API is enabled in Cloud project `gymly-9bfda`.
-- OAuth Data Access now lists `googlehealth.activity_and_fitness.writeonly` and `googlehealth.health_metrics_and_measurements.writeonly`; the legacy Google Fit scopes were removed.
-- Google Sign-In remains available. Android Health Connect and Apple Health are separate device integrations.
-- Public app information, privacy, and terms pages are published at `https://gym.emdrbilateral.online/about.html`, `/privacy`, and `/terms`.
+- Web writes completed exercise sessions and body weight to the Google Health v4 API; optional import reads exercise summaries. OAuth includes activity read/write and health-metrics write scopes. A basic Google login does not mark Health connected or replace an existing app profile during Health consent.
+- Automatic and manual sync share a serialized queue. Connection, automatic sync and per-data-type switches are respected. Successful records retain receipts; partial failures retain their retry candidates. Previously imported sessions are not exported again, and returned resource names exclude our own exports from imports.
+- Native Health Connect writes active calories, distance and body weight through the installed Capgo plugin. It does **not** write native exercise-session records. Permissions are checked for each operation, weight in pounds is converted to kilograms, and successful calorie/distance parts are retained separately for retries.
+- A disconnected integration cannot start manual sync. Errors remain visible. Expired OAuth stops subsequent writes. An unfinished remote operation is retained and reported as unfinished rather than resubmitted or presented as success; automatic resolution is not implemented.
+- Workout intervals require real start/end times. Unmeasured active duration is omitted. Calorie estimates are not given a fabricated one-hour duration or minimum 40 kcal.
+- Automated tests cover consent, partial failures, concurrent sync, checkpoint migration, pounds, pagination and failed operations. These tests use mocked services; they are not evidence of a live Google write.
+- No live Google Health account or Android device was connected in the local browser validation. Live delivery and Google project approval remain unverified for this change.
+
+The Google Cloud/Firebase status below was recorded on 24 September and was not rechecked in this implementation task.
 
 ## Remaining Google approval
 
@@ -33,3 +35,9 @@ Last updated: 24 September 2026
 - `3e02d2f` — privacy and terms pages.
 - `1b166ae` — public OAuth homepage.
 - `c19b314` — Google Health API migration.
+
+## Contract references inspected on 2 October
+
+- [Google Health workout payloads](https://developers.google.com/health/data-types/workouts): exercise intervals, optional active duration and summary fields.
+- [Create data point](https://developers.google.com/health/reference/rest/v4/users.dataTypes.dataPoints/create) and [operation status](https://developers.google.com/health/reference/rest/Shared.Types/Operation): creates return operations; HTTP success alone does not prove the operation succeeded.
+- [Capgo Health plugin](https://capgo.app/docs/plugins/health/) and the installed `definitions.d.ts`: native availability, per-type authorization, samples and kilogram weight units.

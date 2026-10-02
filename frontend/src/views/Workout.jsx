@@ -12,6 +12,7 @@ import Media from '../components/Media.jsx'
 import { startFlow, startFreeleticsFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, topWeightSheet, finishWorkout, workoutCompleteSheet, confirmSheet, changeExerciseSheet, quickSwapSheet, showProgramSheet, switchTrainingSheet, exerciseNoteSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField, Segmented, TextField } from '../components/ui.jsx'
+import { skipWorkoutPhase } from '../lib/workout-phases.js'
 import { nextPrescription, applyPrescription } from '../lib/progression.js'
 import { glyphOf } from '../lib/glyphs.js'
 import { FREELETICS_SPEC } from '../lib/starter.js'
@@ -1020,17 +1021,8 @@ function ActiveWorkout() {
   const currentPhase = A.entries[unit[0]]?.phase || 'workout'
 
   const skipPhase = phase => {
-    const phaseIndices = A.entries.map((entry, index) => entry.phase === phase ? index : -1).filter(index => index >= 0)
-    if (!phaseIndices.length) return
-    const nextIndex = phase === 'warmup'
-      ? A.entries.findIndex(entry => entry.phase !== 'warmup')
-      : A.entries.length
-    update(s => {
-      for (const index of phaseIndices) {
-        s.active.entries[index].sets.forEach(set => { set.done = true })
-      }
-      if (nextIndex >= 0 && nextIndex < s.active.entries.length) s.active.cur = nextIndex
-    })
+    let nextIndex = -1
+    update(s => { nextIndex = skipWorkoutPhase(s.active, phase) })
     stopRest()
     if (phase === 'cooldown' || nextIndex < 0) workoutCompleteSheet()
   }
@@ -1086,7 +1078,7 @@ function ActiveWorkout() {
     useUI.getState().startWork(5, t('Get Ready!'), () => {
       useUI.getState().startWork(e.sets[i].sec || 45, t(exOr(e.id).n), elapsed => {
         mutEntry(idx, en => { en.sets[i].sec = elapsed })
-        if (!useStore.getState().S.active.entries[idx].sets[i].done) toggle(idx, i)
+        if (useStore.getState().S.active?.entries[idx]?.sets[i] && !useStore.getState().S.active.entries[idx].sets[i].done) toggle(idx, i)
       }, { entryIdx: idx, setIdx: i })
     }, { isPrepare: true })
   }
@@ -1098,6 +1090,7 @@ function ActiveWorkout() {
     let askTop = false, exJustDone = false, workoutDone = false
     mutEntry(idx, e => {
       e.sets[i].done = !e.sets[i].done
+      if (e.sets[i].done) delete e.sets[i].skipped
       if (e.sets[i].done) {
         beep(S.sound, 1040, 0.12)
         const prevBest = cardioEntry ? 0 : Math.max(bestWeightFor(S, e.id), (S.exWeights[e.id] || {}).w || 0)
@@ -1128,11 +1121,11 @@ function ActiveWorkout() {
              const nextI = nextE.activeSetIdx !== undefined ? nextE.activeSetIdx : nextE.sets.findIndex(s => !s.done)
              if (nextI >= 0) {
                  const md = modeOf({ ...(nextE.target || {}), id: nextE.id })
-                 if (md === 'time' || md === 'cardio') {
+                 if (md === 'time') {
                     useUI.getState().startWork(5, t('Get Ready!'), () => {
                        useUI.getState().startWork(nextE.sets[nextI].sec || 45, t(exOr(nextE.id).n), elapsed => {
                           mutEntry(idx, en => { en.sets[nextI].sec = elapsed })
-                          if (!useStore.getState().S.active.entries[idx].sets[nextI].done) toggle(idx, nextI)
+                          if (useStore.getState().S.active?.entries[idx]?.sets[nextI] && !useStore.getState().S.active.entries[idx].sets[nextI].done) toggle(idx, nextI)
                        }, { entryIdx: idx, setIdx: nextI })
                     }, { isPrepare: true })
                  } else {

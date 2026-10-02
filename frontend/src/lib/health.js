@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { Health } from '@capgo/capacitor-health';
+import { estimateCalories } from './googleHealth.js';
 
 const HEALTH_PERMISSIONS = {
   read: ['weight', 'calories', 'steps', 'distance'],
@@ -7,8 +8,7 @@ const HEALTH_PERMISSIONS = {
 };
 
 function isFullyAuthorized(status) {
-  return HEALTH_PERMISSIONS.read.every(type => status.readAuthorized?.includes(type))
-    && HEALTH_PERMISSIONS.write.every(type => status.writeAuthorized?.includes(type));
+  return HEALTH_PERMISSIONS.write.some(type => status.writeAuthorized?.includes(type));
 }
 
 export async function getHealthStatus() {
@@ -35,7 +35,6 @@ export async function initHealth() {
 
     const authorization = await Health.requestAuthorization(HEALTH_PERMISSIONS);
     const authorized = isFullyAuthorized(authorization);
-    console.log('Health authorization:', authorization);
     return authorized;
   } catch (err) {
     console.error('Failed to init Health:', err);
@@ -43,26 +42,29 @@ export async function initHealth() {
   }
 }
 
-export async function logWorkoutToHealth(workout) {
-  if (!workout?.end || !workout?.start) return false;
+export async function logWorkoutToHealth(workout, { savedParts = {}, onPart = () => {} } = {}) {
+  if (!Number.isFinite(workout?.start) || !Number.isFinite(workout?.end) || workout.end <= workout.start) return false;
 
   try {
     const status = await getHealthStatus();
-    if (!status.available || !status.authorized) return false;
+    if (!status.available || !status.writeAuthorized?.includes('calories') || (Number(workout.distanceKm) > 0 && !status.writeAuthorized?.includes('distance'))) return false;
 
     const startDate = new Date(workout.start);
     const endDate = new Date(workout.end);
-    const hours = (workout.end - workout.start) / 1000 / 60 / 60;
-    const calories = workout.calories || Math.max(1, Math.round(hours * 500));
+    const calories = workout.calories ?? estimateCalories(workout);
 
-    await Health.saveSample({
-      dataType: 'calories',
-      value: calories,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      metadata: { source: 'Gymly', workoutId: String(workout.id || '') },
-    });
-    if (Number(workout.distanceKm) > 0) {
+    const key = `workout:${workout.id}`;
+    if (!savedParts[`${key}:calories`]) {
+      await Health.saveSample({
+        dataType: 'calories',
+        value: calories,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        metadata: { source: 'Gymly', workoutId: String(workout.id || '') },
+      });
+      onPart(`${key}:calories`, true);
+    }
+    if (Number(workout.distanceKm) > 0 && !savedParts[`${key}:distance`]) {
       await Health.saveSample({
         dataType: 'distance',
         value: Number(workout.distanceKm) * 1000,
@@ -70,8 +72,8 @@ export async function logWorkoutToHealth(workout) {
         endDate: endDate.toISOString(),
         metadata: { source: 'Gymly', workoutId: String(workout.id || '') },
       });
+      onPart(`${key}:distance`, true);
     }
-    console.log('Workout logged to Health Connect / HealthKit');
     return true;
   } catch (err) {
     console.error('Failed to log workout to Health:', err);
@@ -79,17 +81,17 @@ export async function logWorkoutToHealth(workout) {
   }
 }
 
-export async function logBodyWeightToHealth(entry) {
-  if (!entry || !Number.isFinite(Number(entry.w))) return false;
+export async function logBodyWeightToHealth(entry, unit = 'kg') {
+  if (!entry || !Number.isFinite(Number(entry.w)) || Number(entry.w) <= 0) return false;
 
   try {
     const status = await getHealthStatus();
-    if (!status.available || !status.authorized) return false;
+    if (!status.available || !status.writeAuthorized?.includes('weight')) return false;
 
     const recordedAt = entry.t || new Date(`${entry.d}T12:00:00`).getTime();
     await Health.saveSample({
       dataType: 'weight',
-      value: Number(entry.w),
+      value: Number(entry.w) * (unit === 'lb' ? 0.45359237 : 1),
       startDate: new Date(recordedAt).toISOString(),
       metadata: { source: 'Gymly' },
     });
@@ -103,7 +105,7 @@ export async function logBodyWeightToHealth(entry) {
 export async function getRecentWeightFromHealth() {
   try {
     const status = await getHealthStatus();
-    if (!status.available || !status.authorized) return null;
+    if (!status.available || !status.readAuthorized?.includes('weight')) return null;
 
     const endDate = new Date();
     const startDate = new Date();
@@ -130,7 +132,7 @@ export async function getRecentWeightFromHealth() {
 export async function getRecentActivityFromHealth() {
   try {
     const status = await getHealthStatus();
-    if (!status.available || !status.authorized) return null;
+    if (!status.available || !['steps', 'calories', 'distance'].every(type => status.readAuthorized?.includes(type))) return null;
 
     const endDate = new Date();
     const startDate = new Date();

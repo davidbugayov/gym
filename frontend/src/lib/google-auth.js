@@ -1,20 +1,12 @@
 import { initializeApp, getApps, getApp } from 'firebase/app'
-import { getAnalytics } from 'firebase/analytics'
 import {
   getAuth,
   signInWithPopup,
   signOut as firebaseSignOut,
-  GoogleAuthProvider,
-  onAuthStateChanged
+  GoogleAuthProvider
 } from 'firebase/auth'
 import firebaseConfig from '../../../firebase-applet-config.json'
 import { useStore } from '../store/useStore.js'
-
-// Standard scopes for basic Google Account sign-in (never blocked by 403 access_denied)
-export const BASIC_SCOPES = [
-  'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/userinfo.profile'
-]
 
 // Google Health API scopes: sync workouts and body weight in both directions.
 export const GOOGLE_HEALTH_SCOPES = [
@@ -26,7 +18,6 @@ export const GOOGLE_HEALTH_SCOPES = [
 // The .online deployment is canonical; .ru redirects before the app is served.
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
 export const auth = getAuth(app)
-export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null
 
 // Basic provider for smooth sign-in without 403 access_denied
 const basicProvider = new GoogleAuthProvider()
@@ -44,7 +35,6 @@ healthProvider.setCustomParameters({ prompt: 'consent select_account', include_g
 
 // In-memory access token cache (CRITICAL: never in localStorage)
 let cachedAccessToken = null
-let isSigningIn = false
 
 export function getCachedToken() {
   return cachedAccessToken
@@ -55,30 +45,17 @@ export function setCachedToken(token) {
 }
 
 /**
- * Initialize auth listener.
- */
-export function initGoogleAuth(callback) {
-  return onAuthStateChanged(auth, user => {
-    if (!user) {
-      cachedAccessToken = null
-    }
-    if (callback) callback(user, cachedAccessToken)
-  })
-}
-
-/**
  * Sign in using Google OAuth Popup.
  * @param {boolean} withHealthScopes - whether to request Google Health write scopes
  */
 export async function googleSignIn(withHealthScopes = false) {
   try {
-    isSigningIn = true
     const targetProvider = withHealthScopes ? healthProvider : basicProvider
     const result = await signInWithPopup(auth, targetProvider)
     const credential = GoogleAuthProvider.credentialFromResult(result)
     const token = credential?.accessToken || null
     if (withHealthScopes && !token) throw new Error('google_health_access_token_missing')
-    cachedAccessToken = token
+    if (withHealthScopes) cachedAccessToken = token
 
     const user = result.user
     const profile = {
@@ -89,24 +66,20 @@ export async function googleSignIn(withHealthScopes = false) {
       provider: 'google'
     }
 
-    // Update global store
-    useStore.getState().setUser(profile)
-    useStore.getState().update(s => {
-      s.googleHealth = s.googleHealth || {}
-      s.googleHealth.connected = true
-      s.googleHealth.email = user.email
-      s.googleHealth.name = user.displayName
-      if (withHealthScopes) {
-        s.googleHealth.healthGranted = true
-      }
-    })
+    if (!withHealthScopes) {
+      useStore.getState().setUser(profile)
+      useStore.getState().update(s => {
+        if (s.googleHealth?.email && s.googleHealth.email !== user.email) {
+          s.googleHealth.connected = false
+          cachedAccessToken = null
+        }
+      })
+    }
 
     return { user, profile, accessToken: token }
   } catch (error) {
     console.error('Google Sign In Error:', error)
     throw error
-  } finally {
-    isSigningIn = false
   }
 }
 

@@ -145,14 +145,6 @@ export default function Settings() {
           title={user.name}
           subtitle={user.email ? `${user.email} · ${t('Google Account')}` : t('Signed in with passkey — data syncs to this profile.')}
         />
-        <Row
-          icon="heart"
-          iconTint="#4285F4"
-          title={t('Google Health')}
-          subtitle={S.googleHealth?.connected ? t('Connected to Google Health') : t('Not connected')}
-          accessory="chevron"
-          onClick={googleHealthSheet}
-        />
         {user.admin && <Row icon="wrench" iconTint="var(--indigo)" title={t('Admin dashboard')} accessory="chevron" onClick={() => nav('/admin')} />}
         <Row
           icon="signOut"
@@ -182,14 +174,6 @@ export default function Settings() {
             text={t('Sign in with Google (Gmail)')}
           />
         </div>
-        <Row
-          icon="heart"
-          iconTint="#4285F4"
-          title={t('Google Health')}
-          subtitle={t('Sync workouts and body weight with Google Health')}
-          accessory="chevron"
-          onClick={googleHealthSheet}
-        />
         {webauthnOK() ? <>
           <Row icon="sparkles" iconTint="var(--acc)" title={t('Create passkey profile')} subtitle={t('Keeps your data safe and separate per person.')} accessory="chevron" onClick={registerHere} />
           <Row icon="person" iconTint="var(--blue)" title={t('Sign in with passkey')} accessory="chevron" onClick={signInHere} />
