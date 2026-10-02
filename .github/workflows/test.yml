@@ -34,6 +34,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+      # Use the same npm resolver as the verified local build; bundled npm 10 crashes on this workspace tree.
+      - run: npm install --global npm@11.19.0 --ignore-scripts
       - run: npm install --ignore-scripts
       - run: npm test
         working-directory: frontend
@@ -48,6 +50,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+      # Use the same npm resolver as the verified local build; bundled npm 10 crashes on this workspace tree.
+      - run: npm install --global npm@11.19.0 --ignore-scripts
       - run: npm install --ignore-scripts
       - run: npm test
         working-directory: api
