@@ -37,6 +37,8 @@ import { ExerciseTrendBadge, ExerciseTrendMini } from './components/ExerciseTren
 import SwipeToDelete from './components/SwipeToDelete.jsx'
 import CalendarSyncModal, { SingleWorkoutCalendarModal } from './components/CalendarSyncModal.jsx'
 import WorkoutProgressionComparison from './components/WorkoutProgressionComparison.jsx'
+import WorkoutRecap from './components/WorkoutRecap.jsx'
+import { nextScheduledWorkout, previousComparableWorkout } from './lib/workout-recap.js'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -2121,7 +2123,7 @@ export const workoutCompleteSheet = () => ui().openSheet(close => <WorkoutComple
 function SessionRating({ w }) {
   const update = useStore(s => s.update)
   const [rating, setRating] = useState(w.rating || null)
-  const [note, setNote] = useState('')
+  const [note, setNote] = useState(w.note || '')
   const onWorkout = (s, fn) => { const rec = (s.workouts || []).find(x => x.id === w.id); if (rec) fn(rec) }
   const pick = v => {
     const next = v === rating ? null : v
@@ -2145,43 +2147,35 @@ function SessionRating({ w }) {
   </div>
 }
 
-function FinishSummary({ w, prs, e1prs = [], close }) {
+function FinishSummary({ w, prs, e1prs = [], plannedSets, close }) {
   const st = useStore(s => s.S)
   const coachOn = !!useStore(s => s.config)?.coach?.enabled && !!st.coach?.consent?.agreedAt
-  const cal = estimateCalories(w, lastBW(st)?.w || 75)
-  const timedSeconds = w.entries.reduce((sum, entry) => sum + (modeOf(entry.target || {}, EXIDX[entry.id]) === 'time'
-    ? entry.sets.filter(set => set.done).reduce((n, set) => n + (Number(set.sec) || 0), 0)
-    : 0), 0)
+  const next = nextScheduledWorkout(st, todayISO())
+  const comparableHistory = st.workouts.filter(previous => previous.id === w.id || previousComparableWorkout(w, [previous]))
 
-  return <div className="pws-summary-body" style={{ textAlign: 'center', padding: '4px 0 2px' }}>
-    <div className="pws-trophy-wrap">
-      <div className="pws-trophy-badge">
-        <Icon name="trophy" />
-      </div>
-    </div>
-    <h3 className="pws-summary-title" style={{ margin: '8px 0 12px' }}>{t('Workout complete!')}</h3>
-    <div className="tiles pws-tiles-wrap" style={{ textAlign: 'left' }}>
-      <div className="tile"><div className="l">{t('Duration')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{fmtDur(w.end - w.start)}</div></div>
-      <div className="tile"><div className="l">{t('Volume')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{fmtVol(w.vol, st.unit)}</div></div>
-      <div className="tile"><div className="l">{t('Sets')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{setsDone(w)}</div></div>
-      {timedSeconds > 0 && <div className="tile"><div className="l">{t('Seconds')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{timedSeconds} s</div></div>}
-      <div className="tile"><div className="l">{t('Est. Burn')}</div><div className="v" style={{ fontSize: '1.1rem' }}>{cal} kcal</div></div>
-    </div>
-    {(prs.length > 0 || e1prs.length > 0) && <div className="pws-prs-wrap" style={{ textAlign: 'left', marginBottom: 12 }}>
-      {prs.map(id => <div key={id} className="small accent capitalize row pr pr-tada" style={{ gap: 5, marginBottom: 4 }}><Icon name="trophy" style={{ fontSize: 13 }} />{t('New PR:')} {(EXIDX[id] || {}).n || id}</div>)}
-      {e1prs.map(p => <div key={p.id} className="small accent capitalize row pr pr-tada" style={{ gap: 5, marginBottom: 4 }}><Icon name="chartLine" style={{ fontSize: 13 }} />{t('Best estimated 1RM:')} {(EXIDX[p.id] || {}).n || p.id} · {fmtNum(p.est)} {st.unit}</div>)}
-    </div>}
-
-    <WorkoutProgressionComparison workout={w} allWorkouts={st.workouts} unit={st.unit} />
-
-    <div className="pws-details-wrap">
-      <h4 className="sec" style={{ textAlign: 'left' }}>{t('What you just trained')}</h4>
+  return <div className="pws-summary-body training-recap">
+    <WorkoutRecap workout={w} history={st.workouts} unit={st.unit} plannedSets={plannedSets} />
+    {(prs.length > 0 || e1prs.length > 0) && <section className="recap-records">
+      <h4>{t('Personal records')}</h4>
+      {prs.map(id => <div key={id} className="accent row pr pr-tada"><Icon name="trophy" />{t('New PR:')} {t(exOr(id).n)}</div>)}
+      {e1prs.map(p => <div key={p.id} className="accent row"><Icon name="chartLine" />{t('Best estimated 1RM:')} {t(exOr(p.id).n)} · {fmtNum(p.est)} {st.unit}</div>)}
+    </section>}
+    {coachOn && <SessionRating w={w} />}
+    <section className="recap-next">
+      <h4>{t('Next workout')}</h4>
+      {next ? <><strong>{next.routine.name}</strong><p>{fmtDate(next.date, true)}</p></> : <p>{t('No workout scheduled for the next 7 days. Set up your week in the plan.')}</p>}
+      <Button variant="ghost" onClick={() => { close(); nav('/plan') }}>{t('View plan')}</Button>
+    </section>
+    <details className="recap-details">
+      <summary>{t('Session details')}</summary>
+      {comparableHistory.some(previous => previous.id !== w.id) && <WorkoutProgressionComparison workout={w} allWorkouts={comparableHistory} unit={st.unit} />}
+      <h4>{t('What you just trained')}</h4>
       <BodyMap load={loadOfWorkouts([w])} body={st.body} />
-      {coachOn && <SessionRating w={w} />}
-    </div>
-    <div style={{ height: 14 }} />
-    <div className="pws-action-wrap">
-      <Button variant="primary" onClick={() => { close(); nav('/home') }}>{t('Nice!')}</Button>
+      <div className="recap-calories">{t('Est. Burn')}: {fmtNum(w.calories || 0)} kcal</div>
+    </details>
+    <div className="recap-actions">
+      <Button variant="primary" onClick={() => { close(); nav('/home') }}>{t('Back to training')}</Button>
+      <Button variant="ghost" onClick={() => { close(); nav('/history') }}>{t('View history')}</Button>
     </div>
   </div>
 }
@@ -2283,7 +2277,7 @@ function doFinishWorkout() {
   import('./lib/notifications.js').then(module => module.scheduleInactivityReminder()).catch(console.error)
 
   beep(snd(), 880, 0.15); beep(snd(), 1100, 0.15, 0.18); beep(snd(), 1320, 0.3, 0.36)
-  ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} close={close} />, { kind: 'center', locked: false, className: 'pws-modal workout-summary-modal' })
+  ui().openSheet(close => <FinishSummary w={w} prs={prs} e1prs={e1prs} plannedSets={A.entries.reduce((n, e) => n + e.sets.length, 0)} close={close} />, { kind: 'center', locked: false, className: 'pws-modal workout-summary-modal' })
 }
 
 /* ============================ Google Health Sheet ============================ */

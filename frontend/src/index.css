@@ -3741,3 +3741,140 @@ body.workout-active #timer .t {
   font-weight: 700;
   letter-spacing: -0.04em;
 }
+
+
+/* The training surface keeps the current set above supporting information. */
+.training-console, .training-home {
+  --surface: #171b18;
+  --surface-2: #222823;
+  --surface-3: #303931;
+  --label: #f4f2eb;
+  --label-2: #abb0a8;
+  --label-3: #abb0a8;
+  --on-acc: #101210;
+  color: var(--label);
+}
+:root[data-accent="lime"] .training-console,
+:root[data-accent="lime"] .training-home { --acc: #d6f84a; --acc-2: #c2e334; }
+:root[data-theme="light"] .training-console,
+:root[data-theme="light"] .training-home {
+  --surface: #fff;
+  --surface-2: #edf0e9;
+  --surface-3: #dce2d7;
+  --label: #101210;
+  --label-2: #50584e;
+  --label-3: #50584e;
+}
+:root[data-theme="light"][data-accent="lime"] .training-console,
+:root[data-theme="light"][data-accent="lime"] .training-home { --acc: #506300; --on-acc: #fff; }
+.training-console .hdr > div { min-width: 0; overflow-wrap: anywhere; }
+.training-console .hdr .iconbtn { flex-shrink: 0; min-width: 48px; min-height: 48px; }
+.training-session-status {
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px;
+  padding: 12px 0 20px; font-size: 12px; color: var(--label-2);
+}
+.training-session-status > span { display: flex; align-items: center; gap: 6px; }
+.training-session-status .training-save-error { color: var(--red); }
+.exercise-heading { flex-wrap: wrap; gap: 12px; padding: 8px 0; }
+.exercise-heading > div:first-child { font-size: 28px !important; overflow-wrap: anywhere; }
+.exercise-heading .iconbtn, .exercise-heading button { min-height: 48px; }
+.training-focus {
+  border-top: 3px solid var(--acc); background: var(--surface);
+  padding: 16px; margin: 12px 0 20px;
+}
+.training-focus-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+.training-focus-header button { min-height: 48px; }
+.training-set-tag { padding: 4px 0; color: var(--label-2); }
+.training-focus-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin: 20px 0; }
+.training-focus-field { display: block; min-width: 0; }
+.training-focus-field > span { display: block; color: var(--label-2); font-size: 13px; margin-bottom: 8px; }
+.training-focus .stp { height: 64px; border-radius: 4px; background: var(--surface-2); }
+.training-focus .stp button { width: 48px; height: 64px; flex-shrink: 0; }
+.training-focus .stp .val { flex: 1; min-width: 0; }
+.training-focus .stp .num { width: 100%; min-width: 0; text-align: center; font-size: 32px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.training-focus > .btn { width: 100%; min-height: 56px; border-radius: 4px; font-size: 17px; box-shadow: none; }
+.training-focus-note { overflow-wrap: anywhere; color: var(--label-2); }
+.training-rest-cue { padding: 0 0 12px; font-size: 16px; font-variant-numeric: tabular-nums; }
+.training-technique, .training-journal { border-top: 1px solid var(--sep); margin-top: 16px; }
+.training-technique > summary, .training-journal > summary { padding: 16px 4px; min-height: 48px; cursor: pointer; font-weight: 600; }
+.training-journal > summary span { float: right; color: var(--label-2); font-variant-numeric: tabular-nums; }
+.training-journal .sets-card { background: transparent; border: 0; box-shadow: none; }
+.training-journal .setrow-main { flex-wrap: wrap; }
+.training-journal .sethead { display: none; }
+.training-journal .setrow .setrow-main > .stp { flex: 1 1 160px; margin-top: 24px; position: relative; overflow: visible; }
+.training-journal .setrow .stp::before { content: attr(data-label); position: absolute; top: -22px; left: 0; font-size: 12px; color: var(--label-2); }
+.training-next { border-top: 1px solid var(--sep); margin-top: 24px; padding: 16px 0; display: grid; gap: 6px; }
+.training-next span { font-size: 12px; color: var(--label-2); }
+.training-next strong { font-weight: 500; overflow-wrap: anywhere; }
+.training-alternatives > summary { min-height: 48px; padding: 16px 0; cursor: pointer; }
+.training-start .fl-card, .training-start .workout-grid-card { background: var(--surface); border-radius: 4px; box-shadow: none; }
+.training-start .big { overflow-wrap: anywhere; }
+.training-start > .card .row { flex-wrap: wrap; }
+.training-journal .setrow .stp button { min-width: 32px; }
+.training-home .hero-workout-card {
+  background: var(--surface); border: 0; border-top: 3px solid var(--acc);
+  border-radius: 0; box-shadow: none; padding: 24px 20px;
+}
+.training-home .hero-title { font-size: clamp(28px, 6vw, 40px); line-height: 1.1; overflow-wrap: anywhere; }
+.training-home .hero-badge { font-size: 12px; font-weight: 500; letter-spacing: .04em; }
+.training-home .hero-actions { gap: 12px; }
+.training-home .hero-btn-primary, .training-home .hero-workout-card > .btn { min-height: 56px; border-radius: 4px; box-shadow: none; }
+.training-home .hero-actions-aux { flex-wrap: wrap; }
+.training-home .hero-actions-aux .btn { min-height: 48px; }
+.training-console :focus-visible, .training-home :focus-visible { outline: 2px solid var(--label); outline-offset: 4px; }
+body.workout-active #timer { border-radius: 8px; box-shadow: none; }
+body.workout-active #timer .head { flex-wrap: wrap; }
+@media (max-width: 380px) {
+  .training-focus { padding: 12px; }
+  .training-focus-fields { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .training-console *, .training-home * { animation: none !important; transition: none !important; }
+}
+
+.center.workout-summary-modal {
+  --surface: #171b18;
+  --surface-2: #222823;
+  --surface-3: #303931;
+  --label: #f4f2eb;
+  --label-2: #abb0a8;
+  --label-3: #abb0a8;
+  --on-acc: #101210;
+  background: var(--surface);
+  color: var(--label);
+  border-radius: 8px;
+  text-align: left;
+}
+:root[data-accent="lime"] .center.workout-summary-modal { --acc: #d6f84a; }
+:root[data-theme="light"] .center.workout-summary-modal {
+  --surface: #fff;
+  --surface-2: #edf0e9;
+  --surface-3: #dce2d7;
+  --label: #101210;
+  --label-2: #50584e;
+  --label-3: #50584e;
+  background: var(--surface);
+}
+:root[data-theme="light"][data-accent="lime"] .center.workout-summary-modal { --acc: #506300; --on-acc: #fff; }
+.training-recap { text-align: left; overflow-wrap: anywhere; }
+.recap-eyebrow { color: var(--acc); font-size: 12px; padding: 4px 32px 12px 0; }
+.workout-recap h3 { font-size: 28px; line-height: 1.15; margin: 0 0 12px; }
+.recap-status, .recap-comparison p, .recap-next p { color: var(--label-2); font-size: 13px; line-height: 1.5; }
+.recap-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 16px; border-top: 3px solid var(--acc); padding-top: 20px; margin: 20px 0; }
+.recap-metrics dt { color: var(--label-2); font-size: 12px; margin-bottom: 6px; }
+.recap-metrics dd { font-size: 24px; line-height: 1.2; margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.recap-comparison, .recap-records, .recap-next, .recap-details { border-top: 1px solid var(--sep); padding: 16px 0; }
+.training-recap h4 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+.recap-comparison > div { padding: 4px 0; font-variant-numeric: tabular-nums; }
+.recap-records .row { flex-wrap: wrap; padding: 6px 0; font-size: 13px; }
+.training-recap .recap-records .pr { animation: none; box-shadow: none; background: transparent; border: 0; border-radius: 0; }
+.recap-next strong { font-size: 18px; font-weight: 500; }
+.recap-next .btn { width: 100%; min-height: 48px; }
+.recap-details > summary { cursor: pointer; min-height: 48px; padding: 12px 0; font-weight: 500; }
+.recap-calories { font-size: 12px; color: var(--label-2); margin-top: 12px; }
+.recap-actions { display: grid; gap: 8px; padding-top: 12px; }
+.recap-actions .btn { min-height: 48px; border-radius: 4px; box-shadow: none; }
+.training-recap :focus-visible { outline: 2px solid var(--label); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .training-recap * { animation: none !important; transition: none !important; }
+}

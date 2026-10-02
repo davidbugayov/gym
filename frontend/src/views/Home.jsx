@@ -128,7 +128,7 @@ export default function Home() {
   }
 
   return (
-    <div className="narrow">
+    <div className="narrow training-home">
       {/* Top Header with athletic styling and streak indicator */}
       <div className="hdr" style={{ alignItems: 'center' }}>
         <div>
@@ -184,13 +184,11 @@ export default function Home() {
         <div className="hero-workout-card">
           <div className="hero-badge">
             <Icon name={glyphOf(routine.emoji)} />
-            <span>{t("Today's mission")}{todayOvr ? ' · ' + t('rescheduled') : ''}</span>
+            <span>{t("Today's workout")}{todayOvr ? ' · ' + t('rescheduled') : ''}</span>
           </div>
           <div className="hero-title">{routine.name}</div>
           <div className="hero-meta">
             <span>{t('{0} exercises', routine.ex?.length || 0)}</span>
-            <span>·</span>
-            <span>~45 {t('min')}</span>
           </div>
           <div className="hero-actions">
             <Button variant="primary" icon="play" className="hero-btn-primary" onClick={() => startFlow(routine.id)}>

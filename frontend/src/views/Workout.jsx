@@ -25,13 +25,22 @@ function StartChooser() {
   const todayR = effectiveRoutine(S, todayISO())
   const todayOvr = S.dayPlan[todayISO()] !== undefined
   const others = S.routines.filter(r => r !== todayR)
-  return <div className="narrow">
+  return <div className="narrow training-home training-start">
     <div className="hdr">
       <div>
         <h1>{t('Start workout')}</h1>
         <div className="sub">{t(DAYN[new Date().getDay()])} — {todayR ? t('today is {0}', todayR.name) : t('rest day, but no one’s stopping you')}</div>
       </div>
     </div>
+
+    {todayR && <div className="card hero-workout-card" style={{ borderColor: 'var(--acc)' }}>
+      <h2 className="accent">{t("Today's plan")}{todayOvr ? ' · ' + t('rescheduled') : ''}</h2>
+      <div className="row between" style={{ marginBottom: 12 }}>
+        <div><div className="big">{todayR.name}</div><div className="muted small">{exCount(todayR.ex.length)}</div></div>
+        <span className="lrow-i" style={{ width: 38, height: 38, borderRadius: 9, fontSize: 22 }}><Icon name={glyphOf(todayR.emoji)} /></span>
+      </div>
+      <Button variant="primary" icon="play" onClick={() => startFlow(todayR.id)}>{t('Start {0}', todayR.name)}</Button>
+    </div>}
 
     {/* Quick program info & switch banner */}
     <div className="card" style={{ padding: '10px 14px', marginBottom: 12 }}>
@@ -46,15 +55,8 @@ function StartChooser() {
       </div>
     </div>
 
-    {todayR && <div className="card" style={{ borderColor: 'var(--acc)' }}>
-      <h2 className="accent">{t("Today's plan")}{todayOvr ? ' · ' + t('rescheduled') : ''}</h2>
-      <div className="row between" style={{ marginBottom: 12 }}>
-        <div><div className="big">{todayR.name}</div><div className="muted small">{exCount(todayR.ex.length)}</div></div>
-        <span className="lrow-i" style={{ width: 38, height: 38, borderRadius: 9, fontSize: 22 }}><Icon name={glyphOf(todayR.emoji)} /></span>
-      </div>
-      <Button variant="primary" icon="play" onClick={() => startFlow(todayR.id)}>{t('Start {0}', todayR.name)}</Button>
-    </div>}
-
+    <details className="training-alternatives" open={!todayR}>
+      <summary>{t('Choose another workout')}</summary>
     {/* Hero Rounds Training Section */}
     <div className="fl-card" style={{ borderColor: 'var(--acc)', marginTop: 14 }}>
       <div className="fl-badge"><Icon name="bolt" /> {t('Hero Rounds Training')}</div>
@@ -100,6 +102,7 @@ function StartChooser() {
     </>}
     <div style={{ height: 14 }} />
     <Button icon="shuffle" onClick={() => startFlow(null)}>{t('Freestyle workout (pick as you go)')}</Button>
+    </details>
     {!S.routines.length && <><div style={{ height: 10 }} /><Button variant="primary" onClick={() => nav('/plan')}>{t('Build a plan first')}</Button></>}
   </div>
 }
@@ -604,6 +607,7 @@ function Elapsed({ start, label, showIcon = false }) {
 function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemoveSet, onStartTimed, onChangeSet, onChangeExercise, onQuickSwap, onToggleWeight }) {
   const S = useStore(s => s.S)
   const working = useUI(s => s.work)
+  const resting = useUI(s => s.timer)
   const entry = S.active.entries[entryIdx]
   const ex = exOr(entry.id)
   const mode = modeOf({ ...(entry.target || {}), id: entry.id })
@@ -703,18 +707,17 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
   const cell = (s, i, col, cls) => {
     if (!col) return null
     return (
-      <div className={'stp ' + cls}>
+      <div className={'stp ' + cls} data-label={col.hd}>
         <button type="button" aria-label="Decrease" onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>
         {/* a typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up */}
-        <span className="val"><NumberField decimal={col.dec} nullable={col.opt} value={s[col.f] ?? ''}
+        <span className="val"><NumberField aria-label={col.hd} decimal={col.dec} nullable={col.opt} value={s[col.f] ?? ''}
           onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v)} /></span>
         <button type="button" aria-label="Increase" onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
       </div>
     )
   }
   return <>
-    <Media ex={ex} key={entry.id} compact={compact} minimizable />
-    <div className="row between" style={{ marginBottom: 6, alignItems: 'center' }}>
+    <div className="exercise-heading row between" style={{ marginBottom: 6, alignItems: 'center' }}>
       <div style={{ fontSize: compact ? 17 : 20, fontWeight: 600, letterSpacing: '-.02em', textTransform: 'capitalize', lineHeight: 1.2 }}>{t(ex.n)}</div>
       <div className="row" style={{ gap: 6, alignItems: 'center' }}>
         <button
@@ -729,6 +732,29 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
         <button className="iconbtn" aria-label={t('Details')} onClick={() => exerciseDetailSheet(ex)}><Icon name="info" /></button>
       </div>
     </div>
+    {entry.sets[workingSetIdx] && !entry.sets.every(s => s.done) && <section className="training-focus" aria-label={t('Current set')}>
+      <div className="training-focus-header">
+        <span>{t('Set {0} of {1} · Working', workingSetIdx + 1, entry.sets.length)}</span>
+        <button type="button" className="btn-ws-change" onClick={() => onChangeSet?.(workingSetIdx)}>
+          <Icon name="pencil" /><span>{t('Change set')}</span>
+        </button>
+      </div>
+      {entry.sets[workingSetIdx].tag && <div className="training-set-tag">{t(entry.sets[workingSetIdx].tag === 'W' ? 'Warm-up' : entry.sets[workingSetIdx].tag === 'D' ? 'Drop' : 'Failure')}</div>}
+      <div className="training-focus-fields">
+        {[col1, col2, col3].filter(Boolean).map((col, i) => <label className="training-focus-field" key={col.f}>
+          <span>{col.hd}</span>
+          {cell(entry.sets[workingSetIdx], workingSetIdx, col, 'focus-value-' + i)}
+        </label>)}
+      </div>
+      {entry.sets[workingSetIdx].note && <p className="training-focus-note">{entry.sets[workingSetIdx].note}</p>}
+      {resting && !working && <div className="training-rest-cue">{t('Rest')} · {fmtSec(resting.left)}</div>}
+      {timed ? <Button variant="primary" icon="play" disabled={!!working} onClick={() => onStartTimed(workingSetIdx)}>
+        {working?.entryIdx === entryIdx && working?.setIdx === workingSetIdx ? t('Set in progress') : t('Start set')}
+      </Button> : <Button variant="primary" icon="check" disabled={!!working || entry.sets[workingSetIdx].done} onClick={() => onToggle(workingSetIdx)}>
+        {t('Log set')}
+      </Button>}
+    </section>}
+
     <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8, alignItems: 'center' }}>
       {cardio && <span className="tag acc"><Icon name="figureRun" />{t('Cardio')}</span>}
       {(ex.tg || ex.bp) && <span className="tag">{t(ex.tg || ex.bp)}</span>}
@@ -799,23 +825,12 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
       <span>{t(...plan.why)}</span>
     </div>}
 
-    {/* Working set indicator banner */}
-    <div className="ws-bar">
-      <div className="ws-pill">
-        <span className="ws-dot" />
-        <span>{t('Set {0} of {1} · Working', workingSetIdx + 1, entry.sets.length)}</span>
-        {entry.sets[workingSetIdx]?.tag && (
-          <span className="tag small" style={{ marginLeft: 4 }}>
-            {entry.sets[workingSetIdx].tag === 'W' ? t('Warm-up') : entry.sets[workingSetIdx].tag === 'D' ? t('Drop') : t('Failure')}
-          </span>
-        )}
-      </div>
-      <button type="button" className="btn-ws-change" onClick={() => onChangeSet?.(workingSetIdx)}>
-        <Icon name="pencil" style={{ fontSize: 13 }} />
-        <span>{t('Change set')}</span>
-      </button>
-    </div>
-
+    <details className="training-technique" key={'technique-' + entry.id}>
+      <summary>{t('Exercise technique')}</summary>
+      <Media ex={ex} key={entry.id} compact={compact} minimizable />
+    </details>
+    <details className="training-journal" key={'journal-' + entry.id}>
+      <summary>{t('All sets')} <span>{entry.sets.filter(s => s.done).length} / {entry.sets.length}</span></summary>
     <div className="card sets-card" style={{ marginTop: 0, marginBottom: 0 }}>
       {/* the header carries the same eff3 sizing as the rows, or the labels drift off their columns */}
       <div className={'sethead' + (isEff3 ? ' eff3' : '') + (!hasWeight ? ' no-weight' : '') + (timed ? ' timed' : '')}>
@@ -986,6 +1001,7 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
         <Button size="sm" icon="plus" onClick={onAddSet}>{t('Add set')}</Button>
       </div>
     </div>
+    </details>
   </>
 }
 
@@ -1232,7 +1248,7 @@ function ActiveWorkout() {
     }
   }, [])
 
-  return <div className="narrow">
+  return <div className="narrow training-console">
     <div className="hdr">
       <button className="iconbtn" aria-label={t('Discard')} onClick={() => confirmSheet({ title: t('Discard workout?'), message: t('The sets you logged in this session will be lost.'), confirmText: t('Discard'), danger: true, onConfirm: () => { clearActiveSessionBackup(); stopWork(); update(s => { s.active = null }); stopRest(); nav('/home') } })}><Icon name="xmark" /></button>
       <div style={{ textAlign: 'center' }}>
@@ -1240,7 +1256,7 @@ function ActiveWorkout() {
           <span style={{ fontWeight: 600 }}>{A.name}</span>
           <HeaderSyncInline />
         </div>
-        <div className="sub"><Elapsed start={A.start} label={t('Active duration')} showIcon /> · {t('{0} sets', done + '/' + total)}</div>
+        <div className="sub">{t('{0} sets', done + '/' + total)}</div>
       </div>
       <button className="iconbtn" style={{ color: 'var(--acc)' }} aria-label={t('Finish')} onClick={finishWorkout}><Icon name="check" /></button>
     </div>
@@ -1277,75 +1293,12 @@ function ActiveWorkout() {
       </div>
     )}
 
-    {/* Real-time total active duration field */}
-    <div id="workout-active-duration-field" className="card" style={{
-      padding: '8px 12px',
-      margin: '10px 0 8px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 32,
-          height: 32,
-          borderRadius: 'var(--r-sm, 8px)',
-          background: 'rgba(99, 102, 241, 0.14)',
-          color: 'var(--acc)'
-        }}>
-          <Icon name="timer" />
-        </span>
-        <div>
-          <div className="muted small" style={{ fontWeight: 500, lineHeight: 1.2 }}>
-            {t('Active duration')}
-          </div>
-          <div style={{
-            fontSize: '1.05rem',
-            fontWeight: 700,
-            fontVariantNumeric: 'tabular-nums',
-            letterSpacing: '0.02em',
-            color: 'var(--fg)',
-            marginTop: 1
-          }}>
-            <Elapsed start={A.start} />
-          </div>
-        </div>
-      </div>
-
-      <div style={{ textAlign: 'right' }}>
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 5,
-          fontSize: '0.72rem',
-          color: saveStatus.status === 'error' ? 'var(--red, #ef4444)' : saveStatus.status === 'saving' ? 'var(--label-2)' : '#10b981',
-          fontWeight: 600,
-          background: saveStatus.status === 'error' ? 'rgba(239, 68, 68, 0.12)' : saveStatus.status === 'saving' ? 'var(--surface-2)' : 'rgba(16, 185, 129, 0.1)',
-          padding: '2px 7px',
-          borderRadius: 4,
-          marginBottom: 3
-        }}>
-          {saveStatus.status === 'saving' ? (
-            <Icon name="sync" size={10} className="sync-spin" />
-          ) : (
-            <span style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: saveStatus.status === 'error' ? 'var(--red, #ef4444)' : '#10b981',
-              display: 'inline-block'
-            }} />
-          )}
-          <span>{saveStatus.status === 'error' ? t('Save error') : saveStatus.status === 'saving' ? t('Auto-saving…') : t('Auto-saved')}</span>
-        </div>
-        <div style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--fg)' }}>
-          {done} / {total} {t('sets')}
-        </div>
-      </div>
+    <div id="workout-active-duration-field" className="training-session-status" role="status">
+      <span>{t('Active duration')} <Elapsed start={A.start} /></span>
+      <span className={saveStatus.status === 'error' ? 'training-save-error' : ''}>
+        <Icon name={saveStatus.status === 'error' ? 'xmark' : saveStatus.status === 'saving' ? 'sync' : 'check'} />
+        {saveStatus.status === 'error' ? t('Save error') : saveStatus.status === 'saving' ? t('Auto-saving…') : t('Auto-saved')}
+      </span>
     </div>
 
     {A.entries.length ? <>
@@ -1406,6 +1359,10 @@ function ActiveWorkout() {
       )}
     </> : <div className="empty"><div className="ico"><Icon name="shuffle" /></div>{t('Freestyle workout — add your first exercise.')}</div>}
 
+    {unitIdx >= 0 && unitIdx < units.length - 1 && <div className="training-next">
+      <span>{t('Up next')}</span>
+      <strong>{units[unitIdx + 1].map(idx => t(exOr(A.entries[idx].id).n)).join(' + ')}</strong>
+    </div>}
     <div style={{ height: 12 }} />
     <div className="row">
       <Button icon="chevronLeft" disabled={unitIdx <= 0} onClick={() => update(s => { s.active.cur = units[unitIdx - 1][0] })}>{t('Prev')}</Button>
