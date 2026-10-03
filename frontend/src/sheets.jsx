@@ -26,7 +26,7 @@ import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLIC
 import { MOBILE, shareExport } from './lib/mobile.js'
 import { estimateCalories, exportGoogleHealthJSON, exportGoogleHealthCSV } from './lib/googleHealth.js'
 import { readWorkoutsFromGoogleHealth } from './lib/google-fit-api.js'
-import { ATHLETE_RU_URL, ATHLETE_PROGRAMS, parseProgramUrl, applyImportedProgram, isAthleteRuUrl } from './lib/import-url.js'
+import { ATHLETE_RU_URL, ATHLETE_PROGRAMS, parseProgramUrl, applyImportedProgram } from './lib/import-url.js'
 import { GoogleAuth } from '@southdevs/capacitor-google-auth'
 import { Capacitor } from '@capacitor/core'
 import { getHealthStatus, initHealth, getRecentWeightFromHealth, getRecentActivityFromHealth } from './lib/health.js'
@@ -38,6 +38,7 @@ import SwipeToDelete from './components/SwipeToDelete.jsx'
 import CalendarSyncModal, { SingleWorkoutCalendarModal } from './components/CalendarSyncModal.jsx'
 import WorkoutProgressionComparison from './components/WorkoutProgressionComparison.jsx'
 import WorkoutRecap from './components/WorkoutRecap.jsx'
+import { advanceCycle, cycleWeight, cycleSessionCompleted } from './lib/program-cycle.js'
 import { nextScheduledWorkout, previousComparableWorkout } from './lib/workout-recap.js'
 
 const S = () => useStore.getState().S
@@ -1168,9 +1169,9 @@ export const calendarSyncSheet = () => ui().openSheet(close => <CalendarSyncModa
 export const singleWorkoutCalendarSheet = (routine, isoDate) => ui().openSheet(close => <SingleWorkoutCalendarModal routine={routine} isoDate={isoDate} close={close} />)
 
 /* ============================ share / print / import a plan ============================ */
-export const planToolsSheet = () => ui().openSheet(close => <PlanTools close={close} />)
+export const planToolsSheet = (options = {}) => ui().openSheet(close => <PlanTools close={close} allowImport={options.allowImport === true} />)
 
-function PlanTools({ close }) {
+function PlanTools({ close, allowImport = false }) {
   const st = useStore(s => s.S)
   const user = useStore(s => s.user)
   const fileRef = useRef(null)
@@ -1209,9 +1210,9 @@ function PlanTools({ close }) {
       <div className="dim small" style={{ margin: '7px 2px 0', lineHeight: 1.4 }}>{t('A clean one-page-per-plan printout — no exercise ever splits across a page.')}</div>
     </>}
     {!hasRoutines && <div className="dim small" style={{ margin: '12px 2px 0' }}>{t('Add an exercise to a routine first — an empty plan has nothing to share.')}</div>}
-    <h4 className="sec">{t('Got a plan from a friend?')}</h4>
+    {allowImport && <><h4 className="sec">{t('Got a plan from a friend?')}</h4>
     <Button variant="ghost" icon="folder" onClick={() => fileRef.current?.click()}>{t('Import a plan file')}</Button>
-    <input ref={fileRef} type="file" accept="application/json,.json" onChange={pickFile} hidden />
+    <input ref={fileRef} type="file" accept="application/json,.json" onChange={pickFile} hidden /></>}
   </>
 }
 
@@ -1968,7 +1969,7 @@ async function fetchAutoHealthParams() {
 function StartingLoads({ routineId, close, onStart }) {
   const st = useStore(s => s.S)
   const routine = st.routines.find(r => r.id === routineId)
-  const configs = (routine?.ex || []).filter(cfg => modeOf(cfg) === 'reps' && exOr(cfg.id).eq !== 'body weight')
+  const configs = (routine?.ex || []).filter(cfg => !cfg.prescribedSets && modeOf(cfg) === 'reps' && exOr(cfg.id).eq !== 'body weight')
   const [loads, setLoads] = useState(() => configs.map(cfg => {
     const sets = applyPrescription(buildSets(st, cfg), nextPrescription(st, cfg, routine))
     return Number(sets[0]?.w) || 0
@@ -1988,12 +1989,12 @@ function StartingLoads({ routineId, close, onStart }) {
       update(s => {
         let i = 0
         s.active.entries.forEach(entry => {
-          if (entry.phase || modeOf(entry.target) !== 'reps' || exOr(entry.id).eq === 'body weight') return
+          if (entry.phase || entry.target.prescribedSets || modeOf(entry.target) !== 'reps' || exOr(entry.id).eq === 'body weight') return
           const weight = loads[i++]
           if (entry.sets[0]?.w !== weight) {
             entry.plan = { ...entry.plan, weight, why: ['Starting weight set by you: {0} {1}.', weight, s.unit] }
           }
-          entry.sets.forEach(set => { set.w = weight })
+          if (entry.sets[0]?.w !== weight) entry.sets.forEach(set => { set.w = weight })
           entry.target.weight = weight
         })
       })
@@ -2004,7 +2005,9 @@ function StartingLoads({ routineId, close, onStart }) {
 
 export async function startFlow(routineId) {
   const routine = S().routines.find(r => r.id === routineId)
-  if (routine?.ex?.some(cfg => modeOf(cfg) === 'reps' && exOr(cfg.id).eq !== 'body weight')) {
+  if (routine?.cycle && routine.cycle.unit !== S().unit) { toast(t('This cycle uses {0}. Change the weight unit in Settings before starting.', routine.cycle.unit)); return }
+  if (routine?.cycle?.complete) { toast(t('Cycle complete. Choose a new cycle in Settings.')); return }
+  if (routine?.ex?.some(cfg => !cfg.prescribedSets && modeOf(cfg) === 'reps' && exOr(cfg.id).eq !== 'body weight')) {
     ui().openSheet(close => <StartingLoads routineId={routineId} close={close} onStart={async () => {
       const autoWeight = await fetchAutoHealthParams()
       if (autoWeight) saveAutoWeight(autoWeight)
@@ -2082,7 +2085,7 @@ export function beginWorkout(routineId, bw) {
     ...buildPhaseEntries(cooldownList, 'cooldown')
   ]
   update(s => {
-    s.active = { id: uid(), d: todayISO(), start: Date.now(), routineId, name: r ? r.name : t('Freestyle'), bw: bw || null, cur: 0, entries }
+    s.active = { id: uid(), d: todayISO(), start: Date.now(), routineId, name: r ? (r.cycle ? `${r.name} · ${t('Week {0} · day {1}', r.cycle.sessions[r.cycle.cursor].week, r.cycle.sessions[r.cycle.cursor].day)}` : r.name) : t('Freestyle'), cycleStep: r?.cycle?.cursor, bw: bw || null, cur: 0, entries }
   })
   useUI.getState().stopRest()
   nav('/workout')
@@ -2288,7 +2291,9 @@ function doFinishWorkout() {
     // finished workout cannot say whether it hit its reps, and a timed session reads back
     // as "0 reps". It is what the progression engine works from.
     entries: A.entries.map(e => ({ id: e.id, sets: e.sets, topW: e.topW || null, target: e.target || null })).filter(e => e.sets.some(s => s.done)),
-    prs
+    prs,
+    cycleStep: A.cycleStep,
+    cycleCompleted: A.cycleStep != null && cycleSessionCompleted(A, st.routines.find(r => r.id === A.routineId))
   }
   w.calories = estimateCalories(w, st.unit === 'lb'
     ? (st.bodyweight?.at(-1)?.w || 165) * 0.45359237
@@ -2306,6 +2311,7 @@ function doFinishWorkout() {
       if (mx > 0) { const cur = s.exWeights[e.id]; if (!cur || mx > cur.w) s.exWeights[e.id] = { w: mx, d: w.d } }
     })
     s.workouts.push(w)
+    advanceCycle(s, w)
     s.active = null
   })
 
@@ -2809,7 +2815,7 @@ function ShowProgramSheet({ close }) {
 
   const matched = READY_PROGRAMS.find(p =>
     p.spec && p.spec.length === st.routines.length &&
-    st.routines.every(r => p.spec.some(ps => ps.name.toLowerCase() === r.name.toLowerCase() || ps.id === r.id))
+    st.routines.every(r => p.spec.some(ps => (Array.isArray(ps) ? ps[0] : ps.name || '').toLowerCase() === r.name.toLowerCase() || ps.id === r.id))
   )
 
   const totalExercises = st.routines.reduce((sum, r) => sum + r.ex.length, 0)
@@ -3051,178 +3057,83 @@ export const switchTrainingSheet = () => ui().openSheet(close => <SwitchTraining
 /* ============================ Import Program from Web / athlete.ru ============================ */
 function ImportUrlSheet({ initialUrl = ATHLETE_RU_URL, close }) {
   const [url, setUrl] = useState(initialUrl)
-  const [loading, setLoading] = useState(false)
-  const [data, setData] = useState({
-    source: ATHLETE_RU_URL,
-    sourceName: 'athlete.ru (Тема t7249: Циклы Excel)',
-    programs: ATHLETE_PROGRAMS
+  const [programs, setPrograms] = useState(ATHLETE_PROGRAMS)
+  const [selectedId, setSelectedId] = useState(ATHLETE_PROGRAMS[0].id)
+  const [maximums, setMaximums] = useState({})
+  const [previewIndex, setPreviewIndex] = useState(0)
+  const [error, setError] = useState('')
+  const [applyWeek, setApplyWeek] = useState(() => defaultUseSchedule(S().week) && !Object.keys(S().dayPlan || {}).length)
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date(todayISO() + 'T12:00:00')
+    date.setDate(date.getDate() + (8 - date.getDay()) % 7)
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
   })
-  const [selectedId, setSelectedId] = useState('russian-cycle')
-  const [applyWeek, setApplyWeek] = useState(true)
-
-  const handleAnalyze = async () => {
-    setLoading(true)
+  const selected = programs.find(p => p.id === selectedId) || programs[0]
+  const validMax = !selected?.sessions || selected.lifts.every(id => Number.isFinite(maximums[id]) && maximums[id] > 0)
+  const session = selected?.sessions?.[previewIndex]
+  const choose = id => { setSelectedId(id); setPreviewIndex(0); setError('') }
+  const analyze = async () => {
     try {
-      const res = await parseProgramUrl(url)
-      setData(res)
-      if (res.programs?.length) {
-        setSelectedId(res.programs[0].id)
-      }
-      toast(t('Detect cycles') + ': ' + (res.programs?.length || 0))
-    } catch (e) {
-      toast(t('Could not read that file'))
-    } finally {
-      setLoading(false)
-    }
+      const data = await parseProgramUrl(url)
+      setPrograms(data.programs)
+      choose(data.programs[0].id)
+    } catch { setError(t('This link is not supported. Choose a verified cycle below or paste program JSON.')) }
   }
-
-  const selectedProgram = data.programs.find(p => p.id === selectedId) || data.programs[0]
-
-  const handleImport = () => {
-    if (!selectedProgram) return
-    const st = S()
-    const { routines } = applyImportedProgram(st, update, selectedProgram, { applyWeek })
-    toast(t('Imported {0} to your plan', selectedProgram.title || selectedProgram.titleEn || selectedProgram.id))
-    close()
-    nav('/plan')
+  const install = () => {
+    try {
+      applyImportedProgram(S(), update, selected, { applyWeek, maximums, startDate })
+      toast(t('Imported {0} to your plan', selected.title))
+      close()
+      nav('/plan')
+    } catch { setError(t('Enter positive maximums and choose a Monday for the cycle start.')) }
   }
-
-  const lang = getLang()
-  const isRu = lang === 'ru'
-
   return <>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-      <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
-        <Icon name="globe" />
-      </div>
-      <div>
-        <h3 style={{ margin: 0 }}>{t('Import program from Web / athlete.ru')}</h3>
-        <div className="muted small">{t('athlete.ru, web links, or powerlifting cycles')}</div>
-      </div>
+    <h3>{t('Programs from athlete.ru')}</h3>
+    <p className="muted">{t('Verified Excel cycles. Choose a program, enter your current one-rep maximums, then review the sessions.')}</p>
+    <div style={{ display: 'grid', gap: 8, margin: '16px 0' }}>
+      {programs.map(program => <button type="button" key={program.id} className={'item' + (selected.id === program.id ? ' accent' : '')}
+        style={{ textAlign: 'left', border: '1px solid var(--sep)', borderColor: selected.id === program.id ? 'var(--acc)' : undefined }}
+        aria-pressed={selected.id === program.id} onClick={() => choose(program.id)}>
+        <span className="grow"><strong>{getLang() === 'ru' ? program.title : program.titleEn || program.title}</strong><br /><span className="muted small">{program.duration} · {program.sessions ? t('{0} sessions', program.sessions.length) : t('Custom program')}</span></span>
+        {selected.id === program.id && <Icon name="check" />}
+      </button>)}
     </div>
-
-    {/* URL input bar */}
-    <div style={{ marginBottom: 12 }}>
-      <div className="row" style={{ gap: 6 }}>
-        <input
-          type="text"
-          value={url}
-          onChange={e => setUrl(e.target.value)}
-          placeholder="http://forum.athlete.ru/t7249/..."
-          style={{
-            flex: 1,
-            padding: '8px 12px',
-            fontSize: '0.88rem',
-            background: 'var(--surface-2)',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            color: 'var(--fg)'
-          }}
-        />
-        <Button size="sm" variant="tinted" loading={loading} onClick={handleAnalyze}>
-          {t('Detect cycles')}
-        </Button>
+    <p className="small muted">{selected.description}</p>
+    {selected.sessions && <>
+      <p className="small muted">{t('The cycle keeps its original percentages; session ratings do not override them. Incomplete sessions repeat. All prescribed sets are retained.')}</p>
+      <h4 className="sec">{t('Your current one-rep maximums')}</h4>
+      {selected.lifts.map(id => <label key={id} className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+        <span style={{ flex: '1 1 160px' }}>{t(exOr(id).n)}</span>
+        <input type="number" inputMode="decimal" min="1" step="0.5" value={maximums[id] ?? ''} style={{ width: 96 }}
+          onChange={e => setMaximums(values => ({ ...values, [id]: e.target.value === '' ? '' : Number(e.target.value) }))} />
+        <span>{S().unit}</span>
+      </label>)}
+      <label className="row" style={{ gap: 8, margin: '16px 0' }}><span>{t('Session preview')}</span>
+        <select value={previewIndex} onChange={e => setPreviewIndex(Number(e.target.value))} style={{ minWidth: 0, flex: 1 }}>
+          {selected.sessions.map((item, index) => <option key={index} value={index}>{t('Week {0} · day {1}', item.week, item.day)}</option>)}
+        </select>
+      </label>
+      <div className="card" style={{ padding: 12 }}>
+        {session?.ex.map((entry, i) => <div key={i} style={{ marginBottom: 12 }}><strong>{t(exOr(entry.id).n)}{session.ex.filter(e => e.id === entry.id).length > 1 ? ` · ${i + 1}` : ''}</strong>
+          <div className="small muted">{entry.sets.map((set, n) => `${n + 1}: ${set.reps} × ${validMax ? fmtNum(cycleWeight(maximums[entry.id], set.pct, S().unit, selected.rounding)) + ' ' + S().unit : set.pct + '%'}`).join(' · ')}</div>
+        </div>)}
       </div>
-
-      <div className="row" style={{ gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-        <button
-          className="chip"
-          style={{ fontSize: '0.78rem', padding: '3px 8px' }}
-          onClick={() => { setUrl(ATHLETE_RU_URL); handleAnalyze(); }}
-        >
-          🇷🇺 athlete.ru (t7249)
-        </button>
+      <div className="small muted" style={{ marginBottom: 16 }}>{t('Source')}: <a href={selected.source} target="_blank" rel="noopener noreferrer">athlete.ru</a> · {selected.file} · {selected.sheet}<br />
+        <a href={selected.download} target="_blank" rel="noopener noreferrer">{t('Open original Excel')}</a>
       </div>
-    </div>
-
-    {/* Source badge */}
-    <div style={{ padding: '8px 12px', background: 'var(--surface-2)', borderRadius: 8, marginBottom: 12, fontSize: '0.84rem' }}>
-      <div className="muted">{t('Source')}:</div>
-      <div style={{ fontWeight: 600, color: 'var(--fg)', marginTop: 2 }}>{data.sourceName}</div>
-      <a href={data.source} target="_blank" rel="noopener noreferrer" className="dim small" style={{ wordBreak: 'break-all', display: 'inline-block', marginTop: 2 }}>
-        {data.source}
-      </a>
-    </div>
-
-    {/* Program selector pills */}
-    <div style={{ marginBottom: 14 }}>
-      <div className="sec-t" style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, color: 'var(--fg-muted)' }}>
-        {t('athlete.ru Powerlifting Cycles')} ({data.programs.length})
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {data.programs.map(prog => {
-          const active = prog.id === selectedId
-          return (
-            <div
-              key={prog.id}
-              onClick={() => setSelectedId(prog.id)}
-              style={{
-                padding: '10px 12px',
-                borderRadius: 10,
-                border: active ? '2px solid var(--acc)' : '1px solid var(--border)',
-                background: active ? 'var(--surface-2)' : 'transparent',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <div className="row between" style={{ alignItems: 'center' }}>
-                <b style={{ fontSize: '0.92rem', color: active ? 'var(--acc)' : 'var(--fg)' }}>
-                  {isRu ? prog.title : (prog.titleEn || prog.title)}
-                </b>
-                <span className="tag" style={{ fontSize: '0.75rem' }}>{prog.duration || '9 недель'}</span>
-              </div>
-              <div className="small muted" style={{ marginTop: 4 }}>
-                {isRu ? prog.description : (prog.descriptionEn || prog.description)}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-
-    {/* Details for chosen program */}
-    {selectedProgram && (
-      <div style={{ background: 'var(--surface-2)', padding: 12, borderRadius: 10, marginBottom: 14 }}>
-        <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 6 }}>
-          📋 {t('Routines in this program')}:
-        </div>
-        <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>
-          {selectedProgram.spec.map(([rName, emoji, exList], i) => (
-            <div key={i} style={{ fontSize: '0.85rem', padding: '6px 8px', background: 'var(--surface-1)', borderRadius: 6 }}>
-              <b>{rName}</b>: {exList.map(e => {
-                const ex = EXIDX[Array.isArray(e) ? e[0] : e.id]
-                const name = ex ? t(ex.n) : (Array.isArray(e) ? e[0] : e.id)
-                const sets = Array.isArray(e) ? `${e[1]}×${e[2]}` : `${e.sets}×${e.reps || 'reps'}`
-                return `${name} (${sets})`
-              }).join(', ')}
-            </div>
-          ))}
-        </div>
-
-        {selectedProgram.notes && selectedProgram.notes.length > 0 && (
-          <div style={{ fontSize: '0.8rem', color: 'var(--fg-muted)', borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-            <b>💡 {t('Progression')}:</b>
-            <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
-              {selectedProgram.notes.slice(0, 3).map((n, i) => <li key={i} style={{ marginBottom: 2 }}>{n}</li>)}
-            </ul>
-          </div>
-        )}
-      </div>
-    )}
-
-    {/* Weekly schedule toggle */}
-    <div className="row between" style={{ alignItems: 'center', marginBottom: 16, padding: '4px 0' }}>
-      <span style={{ fontSize: '0.92rem' }}>{t('Assign to Mon / Wed / Fri schedule')}</span>
-      <Switch checked={applyWeek} onChange={setApplyWeek} />
-    </div>
-
-    {/* Buttons */}
-    <Button variant="primary" icon="download" onClick={handleImport} style={{ marginBottom: 8 }}>
-      {t('Import to My Plan')}
-    </Button>
-    <Button variant="ghost" className="dim" onClick={close}>
-      {t('Cancel')}
-    </Button>
+    </>}
+    {!selected.sessions && <p className="small">{selected.spec?.map(([name]) => name).join(' · ')}</p>}
+    <div className="row between" style={{ gap: 12, margin: '16px 0' }}><span>{t('Use cycle schedule')}</span><Switch checked={applyWeek} onChange={setApplyWeek} /></div>
+    {applyWeek && <>
+      <p className="small muted">{t('Replaces weekly assignments with the dated cycle sessions. Existing workouts and routines are kept.')}</p>
+      {selected.sessions && <label className="row" style={{ gap: 8, flexWrap: 'wrap', margin: '12px 0' }}><span>{t('First Monday')}</span><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></label>}
+    </>}
+    {error && <p role="alert" style={{ color: 'var(--red)', marginBottom: 12 }}>{error}</p>}
+    <Button variant="primary" disabled={!validMax} onClick={install}>{t('Import to My Plan')}</Button>
+    <details style={{ margin: '16px 0' }}><summary>{t('Import another program')}</summary>
+      <label style={{ display: 'block', margin: '12px 0' }}>{t('Program link or JSON')}<TextArea rows={3} value={url} onChange={e => setUrl(e.target.value)} /></label>
+      <Button variant="ghost" onClick={analyze}>{t('Detect cycles')}</Button>
+    </details>
   </>
 }
 export const importUrlSheet = (url) => ui().openSheet(close => <ImportUrlSheet initialUrl={url} close={close} />)

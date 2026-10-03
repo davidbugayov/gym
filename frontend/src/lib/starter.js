@@ -91,27 +91,6 @@ const CONDITIONING_SPEC = [
   ['Ergometer Medley', 'cardio', [{ id: '9008', sets: 3, min: 5, speed: 22 }, { id: '9009', sets: 4, min: 3, speed: 60 }, ['0001', 3, 25]]]
 ]
 
-// Russian Powerlifting Cycle (Русский цикл — 9 недель) from forum.athlete.ru/t7249
-export const RUSSIAN_CYCLE_SPEC = [
-  ['Русский цикл: Присед / Жим', 'barbell', [['0043', 6, 2], ['0025', 6, 2], ['0001', 3, 20]]],
-  ['Русский цикл: Тяга / Спина', 'barbell', [['0032', 5, 3], ['0030', 4, 6], ['0027', 4, 8]]],
-  ['Русский цикл: Жим / Брусья', 'barbell', [['0025', 6, 3], ['0043', 6, 2], ['0251', 4, 8]]]
-]
-
-// Muravyov Powerlifting System (Цикл Муравьева) from forum.athlete.ru/t7249
-export const MURAVYOV_CYCLE_SPEC = [
-  ['Муравьев: День 1 (Ноги / Грудь)', 'barbell', [['0043', 5, 5], ['0025', 4, 8], ['0289', 3, 10], ['0001', 3, 20]]],
-  ['Муравьев: День 2 (Тяга / Плечи)', 'barbell', [['0032', 4, 5], ['0027', 4, 8], ['0047', 4, 8], ['0031', 3, 10]]],
-  ['Муравьев: День 3 (Жим средний хват)', 'barbell', [['0025', 5, 5], ['0043', 4, 6], ['0251', 3, 10], ['0030', 3, 10]]]
-]
-
-// Butenko Bench Press Specialization (Жим по Бутенко) from forum.athlete.ru/t7249
-export const BUTENKO_BENCH_SPEC = [
-  ['Бутенко: Жим тяжелый', 'barbell', [['0025', 5, 3], ['0047', 4, 6], ['0030', 3, 8]]],
-  ['Бутенко: База и Спина', 'barbell', [['0043', 4, 6], ['0032', 3, 5], ['0027', 4, 8], ['0031', 3, 10]]],
-  ['Бутенко: Жим скоростной / Брусья', 'barbell', [['0025', 6, 4], ['0251', 4, 8], ['9006', 4, 12]]]
-]
-
 /* ---- Program Wizard programs (see lib/program-match.js for the matching logic) ----
    Every exercise id below comes from the local exercises database. */
 
@@ -226,9 +205,6 @@ export const SPECIAL_PROGRAMS = [
 ]
 
 export const POWERLIFTING_CYCLES = [
-  { id: 'russian-cycle', name: 'Russian Powerlifting Cycle (Русский цикл)', detail: '3 days · 9-week classic strength cycle from athlete.ru', spec: RUSSIAN_CYCLE_SPEC, days: [1, 3, 5], goals: ['muscle', 'fitness'], equip: ['barbell', 'gym'], requiredEquip: ['barbell'], altEquipGroups: [], levels: ['regular', 'advanced'], freq: [3, 3], minutes: 60, source: 'http://forum.athlete.ru/t7249/' },
-  { id: 'muravyov-cycle', name: 'Muravyov Powerlifting System (Цикл Муравьева)', detail: '3 days · powerlifting periodization for natural lifters (athlete.ru)', spec: MURAVYOV_CYCLE_SPEC, days: [1, 3, 5], goals: ['muscle', 'fitness'], equip: ['barbell', 'gym'], requiredEquip: ['barbell'], altEquipGroups: [], levels: ['regular', 'advanced'], freq: [3, 3], minutes: 60, source: 'http://forum.athlete.ru/t7249/' },
-  { id: 'butenko-bench', name: 'Butenko Bench Press Specialization (Жим по Бутенко)', detail: '3 days · bench press peak & hypertrophy cycle (athlete.ru)', spec: BUTENKO_BENCH_SPEC, days: [1, 3, 5], goals: ['muscle', 'fitness'], equip: ['barbell', 'gym'], requiredEquip: ['barbell'], altEquipGroups: [], levels: ['regular', 'advanced'], freq: [3, 3], minutes: 55, source: 'http://forum.athlete.ru/t7249/' }
 ]
 
 export const ALL_PROGRAMS = [...READY_PROGRAMS, ...SPECIAL_PROGRAMS, ...POWERLIFTING_CYCLES]

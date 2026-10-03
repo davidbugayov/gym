@@ -12,6 +12,8 @@ import { EXIDX } from './exercises.js'
 import { modeOf, fmtSec } from './history.js'
 import { uid, todayISO, DAYN, fmtNum, exCount } from './format.js'
 import { t } from './i18n.js'
+import cycles from '../catalog/athlete-cycles.json'
+import { createCycleRoutine } from './program-cycle.js'
 
 const PLAN_FMT = 1
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]   // Mon-first, matching the Plan screen
@@ -44,9 +46,15 @@ function cleanEx(e) {
 
 /** Build the shareable bundle: every routine, the week schedule, referenced customs. */
 export function buildPlanBundle(S, name) {
-  const routines = (S.routines || []).map(r => ({
-    id: r.id, name: r.name, emoji: r.emoji, ...(r.prog ? { prog: r.prog } : {}), ex: (r.ex || []).map(cleanEx)
-  }))
+  const routines = (S.routines || []).map(r => {
+    if (r.cycle) {
+      const program = cycles.find(p => p.id === r.cycle.programId)
+      if (!program) throw new Error('unsupported_cycle')
+      const fresh = createCycleRoutine(program, r.cycle.maximums, r.cycle.unit)
+      return { ...fresh, id: r.id, name: r.name }
+    }
+    return { id: r.id, name: r.name, emoji: r.emoji, ...(r.prog ? { prog: r.prog } : {}), ex: (r.ex || []).map(cleanEx) }
+  })
   const usedIds = new Set(routines.flatMap(r => r.ex.map(e => e.id)))
   const customEx = (S.customEx || [])
     .filter(c => usedIds.has(c.id))
@@ -81,6 +89,12 @@ export function parsePlan(raw) {
       return ok
     })
   }))
+  routines.forEach((r, index) => {
+    if (!r.cycle) return
+    const program = cycles.find(p => p.id === r.cycle.programId)
+    if (!program) throw new Error('unsupported_cycle')
+    routines[index] = { ...createCycleRoutine(program, r.cycle.maximums, r.cycle.unit), id: r.id, name: r.name }
+  })
   return {
     name: (data.name || '').trim(),
     routines,

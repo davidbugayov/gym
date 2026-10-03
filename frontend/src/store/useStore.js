@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { api } from '../lib/api.js'
 import { localTZ } from '../lib/format.js'
+import { normalizeAccent } from '../lib/appearance.js'
 import { registerCustom } from '../lib/exercises.js'
 import { normalizeActiveSession } from '../lib/history.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
@@ -35,6 +36,7 @@ function loadState() {
   try {
     const raw = localStorage.getItem(KEY)
     const loaded = raw ? Object.assign(clone(DEF), JSON.parse(raw)) : clone(DEF)
+    loaded.accent = normalizeAccent(loaded.accent)
     // Synchronize language with central localStorage system
     const savedLang = readPersistedLanguage()
     if (savedLang) loaded.lang = savedLang
@@ -83,6 +85,7 @@ export const useStore = create((set, get) => {
   }
 
   const persist = (S, push = true) => {
+    S.accent = normalizeAccent(S.accent)
     if (S.active) S.active = normalizeActiveSession(S.active, S)
     S._ts = Date.now()
     registerCustom(S.customEx)

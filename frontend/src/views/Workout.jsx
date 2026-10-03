@@ -1139,7 +1139,7 @@ function ActiveWorkout() {
 
         // Only reps training has a "working weight" worth confirming — a bodyweight plank
         // has nothing to put in that slider.
-        if (e.sets.every(x => x.done)) { exJustDone = true; if (m === 'reps' && !e.asked) { e.asked = true; askTop = true } }
+        if (e.sets.every(x => x.done)) { exJustDone = true; if (m === 'reps' && !e.asked && A.cycleStep == null) { e.asked = true; askTop = true } }
 
         if (workoutDone) {
           hapticSetComplete('workout')

@@ -198,6 +198,9 @@ export function effectiveRoutine(S, iso) {
   return id ? S.routines.find(r => r.id === id) || null : null
 }
 export function buildSets(S, cfg) {
+  if (Array.isArray(cfg.prescribedSets) && cfg.prescribedSets.length) {
+    return cfg.prescribedSets.map(set => ({ w: set.w, r: set.r, pct: set.pct, done: false }))
+  }
   const last = lastEntryFor(S, cfg.id)
   const n = Math.max(1, cfg.sets || 1)
   const mode = modeOf(cfg)

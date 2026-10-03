@@ -2,11 +2,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useStore } from '../store/useStore.js'
 import { exOr } from '../lib/exercises.js'
-import { uid } from '../lib/format.js'
+import { uid, fmtNum } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import { supersetUnits, cleanupSg, exLine } from '../lib/history.js'
 import { Thumb } from '../components/Media.jsx'
-import { glyphPicker, exercisePicker, exConfigSheet, confirmSheet, changeExerciseSheet } from '../sheets.jsx'
+import { glyphPicker, exercisePicker, exConfigSheet, confirmSheet, changeExerciseSheet, startFlow } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { glyphOf } from '../lib/glyphs.js'
 import { Button, SelectRow } from '../components/ui.jsx'
@@ -213,6 +213,30 @@ export default function RoutineEdit() {
   const units = supersetUnits(r.ex)
   const unitFirst = new Set(units.filter(u => u.length > 1).map(u => u[0]))
   const inSS = new Set(units.filter(u => u.length > 1).flat())
+
+  if (r.cycle) {
+    const current = r.cycle.sessions[r.cycle.cursor]
+    return <div className="narrow">
+      <div className="hdr"><button className="iconbtn" aria-label={t('Back')} onClick={() => nav('/plan')}><Icon name="chevronLeft" /></button><h1>{r.name}</h1></div>
+      <p className="muted">{current ? t('Week {0} · day {1}', current.week, current.day) : t('Cycle complete')}</p>
+      <p className="small muted" style={{ margin: '12px 0' }}>{t('The cycle keeps its original percentages; session ratings do not override them. Incomplete sessions repeat. All prescribed sets are retained.')}</p>
+      {(current?.ex || []).map((cfg, index) => <section className="card" key={index} style={{ padding: 16 }}>
+        <h3>{t(exOr(cfg.id).n)}</h3>
+        <p className="small muted">{cfg.prescribedSets.map((set, i) => `${i + 1}: ${set.r} × ${fmtNum(set.w)} ${r.cycle.unit}`).join(' · ')}</p>
+      </section>)}
+      <Button variant="primary" disabled={!current} onClick={() => startFlow(r.id)}>{t('Start workout')}</Button>
+      <details style={{ margin: '20px 0' }}><summary>{t('Full cycle')}</summary>
+        {r.cycle.sessions.map((session, index) => <p key={index} className="small" style={{ marginTop: 12 }}>
+          <strong>{t('Week {0} · day {1}', session.week, session.day)}</strong><br />
+          {session.ex.map(cfg => `${t(exOr(cfg.id).n)}: ${cfg.prescribedSets.map(set => `${set.r} × ${fmtNum(set.w)} ${r.cycle.unit}`).join(' · ')}`).join('; ')}
+        </p>)}
+      </details>
+      <p className="small muted">{t('Source')}: <a href={r.cycle.source} target="_blank" rel="noopener noreferrer">athlete.ru</a> · {r.cycle.file} · {r.cycle.sheet}</p>
+      <Button variant="danger" onClick={() => confirmSheet({ title: t('Delete routine?'), message: t('“{0}” and its exercises will be removed.', r.name), confirmText: t('Delete'), danger: true,
+        onConfirm: () => { update(s => { s.routines = s.routines.filter(x => x.id !== id); Object.keys(s.week).forEach(k => { if (s.week[k] === id) delete s.week[k] }); Object.keys(s.dayPlan).forEach(k => { if (s.dayPlan[k] === id) delete s.dayPlan[k] }) }); nav('/plan') }
+      })}>{t('Delete routine')}</Button>
+    </div>
+  }
 
   return <div className="narrow">
     <div className="hdr">

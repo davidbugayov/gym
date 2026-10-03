@@ -3391,3 +3391,11 @@ body.workout-active #timer .head { flex-wrap: wrap; }
   .grid2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media(prefers-reduced-motion:reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+
+
+.accent-choice{display:flex;align-items:center;gap:10px;min-height:52px;padding:8px 10px;border:2px solid var(--sep);border-radius:6px;text-align:left;flex:1 1 140px;min-width:0}
+.accent-choice.on{border-color:var(--acc);background:var(--acc-soft)}
+.accent-choice .swatch{width:28px;height:28px;display:grid;place-items:center;color:#101210}
+.accent-choice .swatch .icn{width:20px;height:20px;stroke-width:3}
+.accent-choice small{display:block;color:var(--label-2);font-size:12px}
+.accent-preview{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--label-2);font-size:13px}

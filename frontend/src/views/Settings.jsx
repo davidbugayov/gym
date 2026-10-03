@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore, DEF, hasData } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { ACCENTS, todayISO, localTZ, fmtDateFromTs } from '../lib/format.js'
+import { ACCENT_LABELS, normalizeAccent } from '../lib/appearance.js'
 import { effortOf } from '../lib/history.js'
 import { webauthnOK, passkeyLogin, passkeyRegister, IS_ANDROID } from '../lib/api.js'
 import { pushSupported, enablePush, disablePush, sendTestPush } from '../lib/push.js'
@@ -10,7 +11,7 @@ import { wakeLockSupported } from '../lib/wakelock.js'
 import { t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, shareExport, syncReminder, isBackupOverdue, getDaysSinceLastBackup, BACKUP_PROMPT_INTERVAL_DAYS } from '../lib/mobile.js'
-import { programWizardSheet, confirmSheet, importFromApp, googleHealthSheet, importUrlSheet, warmupCooldownSheet, calendarSyncSheet } from '../sheets.jsx'
+import { programWizardSheet, confirmSheet, importFromApp, googleHealthSheet, importUrlSheet, planToolsSheet, warmupCooldownSheet, calendarSyncSheet } from '../sheets.jsx'
 import { coachAvailable, hasConsent } from '../lib/coach.js'
 import { forgetCoach } from '../lib/coach-api.js'
 import { playRestTimerAlert, hapticSetComplete } from '../lib/sound.js'
@@ -366,12 +367,17 @@ export default function Settings() {
       </Row>
       <div className="lrow" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12, paddingTop: 13, paddingBottom: 14 }}>
         <span className="lrow-t">{t('Accent color')}</span>
-        <div className="swatches">
-          {Object.entries(ACCENTS).map(([k, c]) => (
-            <button key={k} className={'swatch' + ((S.accent || 'lime') === k ? ' on' : '')}
-              style={{ background: c }} onClick={() => update(s => { s.accent = k })} aria-label={k} />
-          ))}
+        <div className="swatches" role="group" aria-label={t('Accent color')}>
+          {Object.entries(ACCENTS).map(([k, c]) => {
+            const selected = normalizeAccent(S.accent) === k
+            return <button type="button" key={k} className={'accent-choice' + (selected ? ' on' : '')}
+              onClick={() => update(s => { s.accent = k })} aria-pressed={selected}>
+              <span className="swatch" style={{ background: c }} aria-hidden="true">{selected && <Icon name="check" />}</span>
+              <span>{t(ACCENT_LABELS[k])}{k === 'lime' && <small>{t('Default')}</small>}</span>
+            </button>
+          })}
         </div>
+        <div className="accent-preview" aria-live="polite"><span>{t('Selected')}: {t(ACCENT_LABELS[normalizeAccent(S.accent)])}</span><span className="tag acc">{t('Training accent')}</span></div>
       </div>
     </Section>
 
@@ -397,9 +403,10 @@ export default function Settings() {
     {/* ---------- data: fill it, bring things over, back it up, wipe it ---------- */}
     <Section title={t('Data')}>
       <Row icon="sparkles" iconTint="var(--acc)" title={t('Ready-made programs')} accessory="chevron" onClick={programWizardSheet} />
-      <Row icon="globe" iconTint="#6366f1" title={t('Import program from URL')}
-        subtitle={t('athlete.ru, web links, or powerlifting cycles')}
+      <Row icon="globe" iconTint="#6366f1" title={t('Import programs')}
+        subtitle={t('Verified athlete.ru cycles and program JSON')}
         accessory="chevron" onClick={() => importUrlSheet()} />
+      <Row icon="folder" title={t('Import a plan file')} accessory="chevron" onClick={() => planToolsSheet({ allowImport: true })} />
       <Row icon="shuffle" iconTint="var(--teal)" title={t('Import from another app')}
         subtitle={t('Google Fit, FitNotes, Strong, Hevy — or body weight from Apple Health')}
         accessory="chevron" onClick={() => importRef.current.click()} />
