@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT_DIR = resolve(__dirname, '..')
 const ANDROID_DIR = resolve(ROOT_DIR, 'android')
-const DIST_DIR = resolve(ROOT_DIR, 'dist')
 const ANDROID_ASSETS_DIR = resolve(ANDROID_DIR, 'app', 'src', 'main', 'assets', 'public')
 
 const args = process.argv.slice(2)

@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "build": "npm run build --workspace=frontend",
-    "start": "node server.js",
-    "lint": "echo 'No lint errors'"
+    "start": "node server.js"
   },
   "workspaces": [
     "frontend",

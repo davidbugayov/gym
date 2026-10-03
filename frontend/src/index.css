@@ -2303,60 +2303,6 @@ h4.sec{
 .cal-legend{display:flex;gap:14px;justify-content:center;margin-top:12px;font-size:12px;color:var(--label-3)}
 .cal-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px}
 
-/* --- Full-Screen Plan Calendar View --- */
-.plan-cal-wrap{display:flex;flex-direction:column;gap:14px;width:100%}
-.plan-cal-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.plan-cal-month-nav{display:flex;align-items:center;gap:6px}
-.plan-cal-stats{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;
-  background:var(--surface);border-radius:var(--r-card);padding:10px 14px;border:1px solid var(--sep-op);
-}
-.plan-cal-stat-item{display:flex;flex-direction:column;gap:2px}
-.plan-cal-stat-num{font-size:18px;font-weight:700;letter-spacing:-.02em;color:var(--label)}
-.plan-cal-stat-lbl{font-size:11px;color:var(--label-2);text-transform:uppercase;letter-spacing:.02em}
-.plan-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-.plan-cal-th{text-align:center;font-size:12px;font-weight:600;color:var(--label-2);padding:4px 0;text-transform:uppercase}
-.plan-cal-cell{
-  min-height:64px;border-radius:12px;background:var(--surface);border:1px solid var(--sep-op);
-  display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:6px 4px;
-  cursor:pointer;position:relative;transition:all var(--fast) var(--ease);user-select:none;
-}
-.plan-cal-cell:active{transform:scale(.98)}
-.plan-cal-cell.today{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
-.plan-cal-cell.selected{outline:2.5px solid var(--acc);outline-offset:1px;z-index:2}
-.plan-cal-cell.completed{
-  background:color-mix(in srgb, var(--acc) 14%, var(--surface));
-  border-color:color-mix(in srgb, var(--acc) 45%, var(--surface));
-}
-.plan-cal-cell.planned{
-  background:color-mix(in srgb, var(--label-3) 8%, var(--surface));
-  border-style:dashed;
-}
-.plan-cal-cell-head{display:flex;width:100%;align-items:center;justify-content:space-between;padding:0 3px}
-.plan-cal-cell-num{font-size:13px;font-weight:600;color:var(--label)}
-.plan-cal-cell.completed .plan-cal-cell-num{color:var(--acc);font-weight:700}
-.plan-cal-cell-dot{width:6px;height:6px;border-radius:50%;background:var(--acc)}
-.plan-cal-cell-chip{
-  font-size:10px;font-weight:600;padding:1px 5px;border-radius:5px;
-  background:var(--acc);color:var(--on-acc);white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;max-width:100%;text-align:center;
-}
-.plan-cal-cell-plan-name{
-  font-size:9.5px;color:var(--label-2);white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;max-width:100%;padding:0 2px;
-}
-
-/* Day Summary card */
-.plan-day-summary{
-  background:var(--surface);border-radius:var(--r-card);border:1px solid var(--sep-op);
-  padding:14px;display:flex;flex-direction:column;gap:12px;animation:fade-in var(--med) var(--ease);
-}
-.plan-day-summary-hd{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.plan-day-workout-card{
-  background:var(--surface-2);border-radius:10px;padding:10px 12px;
-  display:flex;flex-direction:column;gap:8px;border:1px solid var(--sep-op);
-}
-
 /* Exercise preview in DayAssign & DayOverride */
 .day-routine-accordion{
   background:var(--surface-2);border-radius:10px;padding:10px;
@@ -2379,8 +2325,6 @@ h4.sec{
 .swatches{display:flex;gap:12px;flex-wrap:wrap}
 .swatch{width:32px;height:32px;border-radius:50%;flex:none;position:relative;transition:transform var(--fast)}
 .swatch:active{transform:scale(.9)}
-.swatch.on::after{content:'';position:absolute;inset:-4px;border-radius:50%;box-shadow:0 0 0 2px var(--label)}
-
 /* --- supersets --- */
 .ss-label{
   font-size:12px;font-weight:600;letter-spacing:-.004em;text-transform:none;
@@ -2762,20 +2706,6 @@ h4.sec{
   flex-shrink: 0;
 }
 
-/* --- Sparklines in history chips and cards --- */
-.exercise-sparkline-wrap {
-  cursor: help;
-  transition: opacity 0.15s ease;
-}
-
-.exercise-sparkline-wrap:hover {
-  opacity: 0.85;
-}
-
-.wrow-ex-chip .exercise-sparkline-wrap {
-  margin-left: 2px;
-}
-
 /* ===================== ATHLETIC MODERN FITNESS ADDITIONS ===================== */
 .streak-pill {
   display: inline-flex;
@@ -2935,19 +2865,6 @@ h4.sec{
   line-height: 1;
 }
 
-.plan-rest-card {
-  padding: 22px 16px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--surface) 92%, #2563eb) 0%, var(--surface) 100%);
-  border: 1px solid color-mix(in srgb, #60a5fa 28%, var(--sep));
-  border-radius: var(--r-card);
-  margin-top: 4px;
-}
-
 .rest-icon-avatar {
   width: 48px !important;
   height: 48px !important;
@@ -2966,20 +2883,6 @@ h4.sec{
   background: color-mix(in srgb, #3b82f6 18%, var(--surface-2));
   color: #93c5fd;
   border: 1px solid color-mix(in srgb, #60a5fa 35%, transparent);
-}
-
-.plan-cal-cell-moon {
-  font-size: 9px;
-  color: #60a5fa;
-  opacity: 0.75;
-}
-
-.plan-cal-cell-rest-label {
-  font-size: 10px;
-  color: var(--label-3);
-  text-align: center;
-  font-weight: 500;
-  line-height: 14px;
 }
 
 .hero-title {
@@ -3369,8 +3272,8 @@ body.workout-active #timer .head { flex-wrap: wrap; }
 #app { --fg:var(--label); --fg-muted:var(--label-2); }
 #app > *, .cols > *, .row > .grow { min-width:0; }
 #tabbar button { min-height:48px; }
-.workout-grid-card, .fl-card, .freeletics-card, .working-card, .wh-card, .plan-day-workout-card,
-.hero-workout-card, .plan-rest-card { background:var(--surface); border-radius:var(--r-card); box-shadow:none; }
+.workout-grid-card, .fl-card, .freeletics-card, .working-card, .wh-card,
+.hero-workout-card { background:var(--surface); border-radius:var(--r-card); box-shadow:none; }
 .workout-grid-card { border-top:3px solid var(--acc); text-align:left; }
 .workout-grid-name, .tt, .lrow-t { overflow-wrap:anywhere; }
 .tile { background:var(--surface); border-radius:var(--r-card); box-shadow:none; }

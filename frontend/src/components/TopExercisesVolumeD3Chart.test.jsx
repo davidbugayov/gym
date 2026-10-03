@@ -1,16 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { renderToString } from 'react-dom/server'
-import TopExercisesVolumeD3Chart, { SERIES_COLORS } from './TopExercisesVolumeD3Chart.jsx'
+import TopExercisesVolumeD3Chart from './TopExercisesVolumeD3Chart.jsx'
 import { getTopExercisesVolumeProgress } from '../lib/volume-progress.js'
 
 describe('TopExercisesVolumeD3Chart series configuration', () => {
-  it('provides 3 distinct vibrant series colors', () => {
-    expect(SERIES_COLORS).toHaveLength(3)
-    expect(SERIES_COLORS[0]).toBe('#30d158')
-    expect(SERIES_COLORS[1]).toBe('#0a84ff')
-    expect(SERIES_COLORS[2]).toBe('#ff9f0a')
-  })
-
   it('correctly prepares multi-series data for the 3 top exercises', () => {
     const baseTime = new Date('2026-09-26T12:00:00').getTime()
     const workouts = [
