@@ -391,3 +391,33 @@ describe('applyPrescription', () => {
     expect(applyPrescription(timed, { kind: 'up', sec: 50 })).toEqual([{ sec: 50, w: 0, done: false }])
   })
 })
+
+
+describe('session effort adjusts working loads', () => {
+  const cfg = { id: LIFT, sets: 3, reps: 5, weight: 60, prog: 'linear', inc: 2.5 }
+  const rated = (rating, reps = [5, 5, 5]) => {
+    const state = hist(LIFT, [[60, ...reps]])
+    Object.assign(state.workouts[0], { rating, adjustLoads: true })
+    return state
+  }
+  it('increases easy sessions only when all reps were logged', () => {
+    expect(nextPrescription(rated('easy'), cfg).weight).toBe(62.5)
+    expect(nextPrescription(rated('easy', [5, 5, 3]), cfg).weight).toBe(60)
+    expect(nextPrescription(rated('easy', [5, 5, null]), cfg).weight).toBe(60)
+  })
+  it('holds an appropriate load and reduces a hard load', () => {
+    expect(nextPrescription(rated('right'), cfg).weight).toBe(60)
+    expect(nextPrescription(rated('hard'), cfg).weight).toBe(57.5)
+  })
+  it('respects disabled progression and legacy coach ratings', () => {
+    expect(nextPrescription(rated('hard'), { ...cfg, prog: 'off' }).kind).toBe('off')
+    const state = rated('hard')
+    delete state.workouts[0].adjustLoads
+    expect(nextPrescription(state, cfg).weight).toBe(62.5)
+  })
+  it('uses corrected actual weights for the next prescription', () => {
+    const state = rated('hard')
+    state.workouts[0].entries[0].sets.forEach(set => { set.w = 55 })
+    expect(nextPrescription(state, cfg).weight).toBe(52.5)
+  })
+})

@@ -20,3 +20,12 @@ Health sync limitations and test evidence are tracked in [HEALTH-INTEGRATIONS-ST
 ## Evaluation after deployment
 
 Compare a baseline and the redesign on start-to-first-set time, completed/planned work sets, early finishes, accidental set corrections and next-session return. Segment timed, strength and cardio sessions; do not treat skipped preparation as completed work. Track Health write failures, retries and imported duplicates separately from workout completion. No usage improvement is claimed from local verification; no new analytics collection was introduced.
+
+
+## Working-load feedback (3 October 2026)
+
+Routine starts with weighted rep exercises now open a starting-load review. The user can override each working load before the timer starts and edit actual weights during sets. Bodyweight Hero Rounds retain their direct start.
+
+The completion effort question is available without AI Coach consent. New answers opt the session into load adjustment: about right repeats the actual load, hard lowers one configured increment, easy retains the existing policy and cannot raise a load on missed target repetitions. Explicitly disabled progression remains disabled. Existing Coach-only ratings do not retrospectively change prescriptions.
+
+Validated locally in demo: starting squat load 90 kg was applied, one 8-rep set saved 720 kg volume, and hard proposed 85 kg (default lower-body increment 5 kg). No real health export or personal account was used. All 402 frontend tests and production build passed. This is one session-wide effort answer; exercise-specific effort remains a future extension.

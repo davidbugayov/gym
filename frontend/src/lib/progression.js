@@ -128,7 +128,7 @@ export function sessionsFor(S, exId, fallback) {
   const out = []
   ;(S.workouts || []).forEach(w => {
     const entry = w.entries.find(e => e.id === exId)
-    if (entry && entry.sets.some(s => s.done)) out.push({ d: w.d, ...readSession(entry, fallback) })
+    if (entry && entry.sets.some(s => s.done)) out.push({ d: w.d, rating: w.adjustLoads ? w.rating : null, ...readSession(entry, fallback) })
   })
   return out
 }
@@ -178,6 +178,13 @@ export function nextPrescription(S, cfg, routine) {
   }
 
   const w = last.weight
+  if (w > 0 && last.rating === 'hard') {
+    const weight = Math.max(0, round1(w - inc))
+    return { policy, kind: 'deload', weight, why: ['Rated hard — reduce the next load by one step to {0} {1}.', weight, unit] }
+  }
+  if (w > 0 && last.rating === 'right') {
+    return { policy, kind: 'hold', weight: w, why: ['Rated about right — repeat this load before increasing it.'] }
+  }
   // Bodyweight work carries no external load, so there is nothing to add or take away —
   // "deload your push-ups to 2.5 kg" is not advice. Progress in reps instead. This runs
   // ahead of the individual policies because it is true for all of them; a rep range set on

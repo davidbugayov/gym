@@ -3,6 +3,14 @@ import EXERCISES_RU from './exercises-ru.js'
 
 export default {
   ...EXERCISES_RU,
+  "Starting weight set by you: {0} {1}.": "Выбранный тобой стартовый вес: {0} {1}.",
+  "Check starting weights": "Проверь стартовые веса",
+  "Set a working weight for each exercise. You can change it during the workout.": "Укажи рабочий вес для каждого упражнения. Во время тренировки его можно изменить.",
+  "Too hard": "Тяжело",
+  "Plan unchanged": "По плану",
+  "Rated hard — reduce the next load by one step to {0} {1}.": "Было тяжело — следующий вес ниже на один шаг: {0} {1}.",
+  "Rated about right — repeat this load before increasing it.": "Нагрузка подошла — повторяем вес перед повышением.",
+  "Your answer adjusts the next working weights. Easy increases only after all target reps; about right repeats; hard reduces one step. Automatic progression off keeps your plan unchanged.": "Ответ влияет на следующие рабочие веса. Легко — повышение только при выполненном плане; нормально — тот же вес; тяжело — снижение на один шаг. При отключённой прогрессии веса остаются по плану.",
   "Workout saved": "Тренировка сохранена",
   "Sets logged": "Записано подходов",
   "Timed work": "Работа на время",

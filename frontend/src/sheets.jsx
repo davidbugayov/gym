@@ -1965,7 +1965,52 @@ async function fetchAutoHealthParams() {
   return hw
 }
 
+function StartingLoads({ routineId, close, onStart }) {
+  const st = useStore(s => s.S)
+  const routine = st.routines.find(r => r.id === routineId)
+  const configs = (routine?.ex || []).filter(cfg => modeOf(cfg) === 'reps' && exOr(cfg.id).eq !== 'body weight')
+  const [loads, setLoads] = useState(() => configs.map(cfg => {
+    const sets = applyPrescription(buildSets(st, cfg), nextPrescription(st, cfg, routine))
+    return Number(sets[0]?.w) || 0
+  }))
+  const valid = loads.every(v => Number.isFinite(v) && v >= 0)
+  return <>
+    <h3>{t('Check starting weights')}</h3>
+    <p className="muted">{t('Set a working weight for each exercise. You can change it during the workout.')}</p>
+    {configs.map((cfg, i) => <label className="row" key={i} style={{ gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+      <span style={{ flex: '1 1 180px' }}>{t(exOr(cfg.id).n)}</span>
+      <input type="number" min="0" step="0.5" inputMode="decimal" value={loads[i]} style={{ width: 96 }} onChange={e => setLoads(values => values.map((v, j) => j === i ? (e.target.value === '' ? '' : Number(e.target.value)) : v))} />
+      <span>{st.unit}</span>
+    </label>)}
+    <Button variant="primary" disabled={!valid} onClick={() => {
+      close()
+      beginWorkout(routineId, lastBW(S())?.w || null)
+      update(s => {
+        let i = 0
+        s.active.entries.forEach(entry => {
+          if (entry.phase || modeOf(entry.target) !== 'reps' || exOr(entry.id).eq === 'body weight') return
+          const weight = loads[i++]
+          if (entry.sets[0]?.w !== weight) {
+            entry.plan = { ...entry.plan, weight, why: ['Starting weight set by you: {0} {1}.', weight, s.unit] }
+          }
+          entry.sets.forEach(set => { set.w = weight })
+          entry.target.weight = weight
+        })
+      })
+      onStart()
+    }}>{t('Start workout')}</Button>
+  </>
+}
+
 export async function startFlow(routineId) {
+  const routine = S().routines.find(r => r.id === routineId)
+  if (routine?.ex?.some(cfg => modeOf(cfg) === 'reps' && exOr(cfg.id).eq !== 'body weight')) {
+    ui().openSheet(close => <StartingLoads routineId={routineId} close={close} onStart={async () => {
+      const autoWeight = await fetchAutoHealthParams()
+      if (autoWeight) saveAutoWeight(autoWeight)
+    }} />)
+    return
+  }
   beginWorkout(routineId, lastBW(S())?.w || null)
   const autoWeight = await fetchAutoHealthParams()
   if (autoWeight) saveAutoWeight(autoWeight)
@@ -2126,11 +2171,12 @@ function SessionRating({ w }) {
   const update = useStore(s => s.update)
   const [rating, setRating] = useState(w.rating || null)
   const [note, setNote] = useState(w.note || '')
+  const st = useStore(s => s.S)
   const onWorkout = (s, fn) => { const rec = (s.workouts || []).find(x => x.id === w.id); if (rec) fn(rec) }
   const pick = v => {
     const next = v === rating ? null : v
     setRating(next)
-    update(s => onWorkout(s, rec => { if (next) rec.rating = next; else delete rec.rating }))
+    update(s => onWorkout(s, rec => { if (next) { rec.rating = next; rec.adjustLoads = true } else { delete rec.rating; delete rec.adjustLoads } }))
   }
   const saveNote = () => update(s => onWorkout(s, rec => {
     const v = note.trim()
@@ -2139,9 +2185,18 @@ function SessionRating({ w }) {
   return <div style={{ textAlign: 'left', marginTop: 16 }}>
     <h4 className="sec">{t('How did that feel?')}</h4>
     <Segmented
-      options={[{ value: 'easy', label: t('Too easy') }, { value: 'right', label: t('About right') }, { value: 'hard', label: t('Brutal') }]}
+      options={[{ value: 'easy', label: t('Too easy') }, { value: 'right', label: t('About right') }, { value: 'hard', label: t('Too hard') }]}
       value={rating} onChange={pick} />
+    <p className="muted small">{t('Your answer adjusts the next working weights. Easy increases only after all target reps; about right repeats; hard reduces one step. Automatic progression off keeps your plan unchanged.')}</p>
     {!!rating && <>
+      <div aria-live="polite">
+        {w.entries.filter(entry => modeOf(entry.target || { id: entry.id }) === 'reps' && entry.sets.some(set => set.done && set.w > 0)).map((entry, i) => {
+          const routine = st.routines.find(r => r.id === w.routineId)
+          const cfg = routine?.ex.find(e => e.id === entry.id) || { ...entry.target, id: entry.id }
+          const plan = nextPrescription(st, cfg, routine)
+          return <p className="small" key={i}><strong>{t(exOr(entry.id).n)}</strong>: {plan.weight != null ? `${fmtNum(plan.weight)} ${st.unit}` : t('Plan unchanged')}<br />{plan.why && t(...plan.why)}</p>
+        })}
+      </div>
       <div style={{ height: 8 }} />
       <TextArea rows={2} maxLength={300} value={note} onChange={e => setNote(e.target.value)} onBlur={saveNote}
         placeholder={t('Anything worth remembering? (optional)')} />
@@ -2151,7 +2206,6 @@ function SessionRating({ w }) {
 
 function FinishSummary({ w, prs, e1prs = [], plannedSets, close }) {
   const st = useStore(s => s.S)
-  const coachOn = !!useStore(s => s.config)?.coach?.enabled && !!st.coach?.consent?.agreedAt
   const next = nextScheduledWorkout(st, todayISO())
   const comparableHistory = st.workouts.filter(previous => previous.id === w.id || previousComparableWorkout(w, [previous]))
 
@@ -2162,7 +2216,7 @@ function FinishSummary({ w, prs, e1prs = [], plannedSets, close }) {
       {prs.map(id => <div key={id} className="accent row pr pr-tada"><Icon name="trophy" />{t('New PR:')} {t(exOr(id).n)}</div>)}
       {e1prs.map(p => <div key={p.id} className="accent row"><Icon name="chartLine" />{t('Best estimated 1RM:')} {t(exOr(p.id).n)} · {fmtNum(p.est)} {st.unit}</div>)}
     </section>}
-    {coachOn && <SessionRating w={w} />}
+    {w.entries.some(entry => entry.sets.some(set => set.done)) && <SessionRating w={w} />}
     <section className="recap-next">
       <h4>{t('Next workout')}</h4>
       {next ? <><strong>{next.routine.name}</strong><p>{fmtDate(next.date, true)}</p></> : <p>{t('No workout scheduled for the next 7 days. Set up your week in the plan.')}</p>}
