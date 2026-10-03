@@ -667,6 +667,8 @@ export default {
   "Welcome back, {0}": "С возвращением, {0}",
   "Registration failed": "Регистрация не удалась",
   "Sign-in failed": "Вход не удался",
+  "Profile": "Профиль",
+  "Profile & Settings": "Профиль и настройки",
   "Create your profile": "Создай свой профиль",
   "Pick a name, then confirm with {0}. The passkey is saved in your device — no password needed.": "Выбери имя и подтверди через {0}. Ключ доступа сохраняется на устройстве — пароль не нужен.",
   "Pick a name, then confirm with your device.": "Выбери имя и подтверди на устройстве.",

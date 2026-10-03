@@ -270,8 +270,25 @@ export function Section({ title, footer, children, className = '' }) {
   )
 }
 
-export function Row({ icon, iconTint, title, subtitle, value, accessory = 'none', onClick, danger, children, className = '' }) {
+export function Row({ icon, iconTint, title, subtitle, value, accessory = 'none', onClick, danger, children, className = '', stacked = false }) {
   const Tag = onClick ? 'button' : 'div'
+  if (stacked) {
+    return (
+      <Tag className={'lrow stacked' + (onClick ? ' tap' : '') + (danger ? ' danger' : '') + ' ' + className} onClick={onClick}>
+        <div className="lrow-header">
+          {icon && <span className="lrow-i" style={iconTint ? { '--tint': iconTint } : null}><Icon name={icon} /></span>}
+          <span className="lrow-m">
+            <span className="lrow-t">{title}</span>
+            {subtitle && <span className="lrow-s">{subtitle}</span>}
+          </span>
+          {value != null && <span className="lrow-v">{value}</span>}
+          {accessory === 'chevron' && <Icon name="chevronRight" className="lrow-c" />}
+          {accessory === 'check' && <Icon name="check" className="lrow-k" />}
+        </div>
+        {children && <div className="lrow-content">{children}</div>}
+      </Tag>
+    )
+  }
   return (
     <Tag className={'lrow' + (onClick ? ' tap' : '') + (danger ? ' danger' : '') + ' ' + className} onClick={onClick}>
       {icon && <span className="lrow-i" style={iconTint ? { '--tint': iconTint } : null}><Icon name={icon} /></span>}

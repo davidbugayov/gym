@@ -129,23 +129,43 @@ export default function Home() {
 
   return (
     <div className="narrow training-home">
-      {/* Top Header with athletic styling and streak indicator */}
-      <div className="hdr" style={{ alignItems: 'center' }}>
-        <div>
+      {/* Top Header with athletic styling: week & profile placed in one line on the right */}
+      <div className="hdr training-home-hdr">
+        <div className="home-hdr-title-wrap">
           <h1>{user ? t('Hi {0}', user.name) : 'Gymly'}</h1>
           <div className="sub">
-            {today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}
+            {today.toLocaleDateString(dateLocale(), { weekday: 'short', day: 'numeric', month: 'short' })}
           </div>
         </div>
-        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-          {streak > 0 && (
-            <div className="streak-pill" onClick={() => calendarSheet()} style={{ cursor: 'pointer' }} title={t('{0} week streak', streak)}>
-              <Icon name="flame" />
-              <span>{streak}w</span>
-            </div>
-          )}
-          <button className="iconbtn" onClick={() => nav('/settings')} aria-label={t('Settings')}>
-            <Icon name="gear" />
+        <div className="home-hdr-right">
+          <button
+            type="button"
+            className="home-week-pill"
+            onClick={() => calendarSheet()}
+            title={streak > 0 ? t('{0} week streak', streak) : `${wThisWeek}/${plannedPerWeek} ${t('this week')}`}
+            aria-label={streak > 0 ? t('{0} week streak', streak) : `${wThisWeek}/${plannedPerWeek} ${t('this week')}`}
+          >
+            <Icon name="flame" />
+            <span className="home-week-text">
+              {streak > 0
+                ? (S.lang === 'ru' ? `${streak} нед` : `${streak}w`)
+                : `${wThisWeek}/${plannedPerWeek} ${S.lang === 'ru' ? 'нед' : 'w'}`}
+            </span>
+          </button>
+          <button
+            type="button"
+            className="home-profile-btn"
+            onClick={() => nav('/settings')}
+            title={user?.name ? `${user.name} · ${t('Profile')}` : t('Profile')}
+            aria-label={t('Profile')}
+          >
+            {user?.name ? (
+              <span className="home-profile-avatar-initial">
+                {user.name.trim().charAt(0).toUpperCase()}
+              </span>
+            ) : (
+              <Icon name="personCircle" />
+            )}
           </button>
         </div>
       </div>

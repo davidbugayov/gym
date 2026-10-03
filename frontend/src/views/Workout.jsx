@@ -733,6 +733,12 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
         <button className="iconbtn" aria-label={t('Details')} onClick={() => exerciseDetailSheet(ex)}><Icon name="info" /></button>
       </div>
     </div>
+
+    <details open className="training-technique" key={'technique-' + entry.id} style={{ marginTop: 8, marginBottom: 12 }}>
+      <summary>{t('Exercise technique')}</summary>
+      <Media ex={ex} key={entry.id} compact={compact} minimizable />
+    </details>
+
     {entry.sets[workingSetIdx] && !entry.sets.every(s => s.done) && <section className="training-focus" aria-label={t('Current set')}>
       <div className="training-focus-header">
         <span>{t('Set {0} of {1} · Working', workingSetIdx + 1, entry.sets.length)}</span>
@@ -826,10 +832,6 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
       <span>{t(...plan.why)}</span>
     </div>}
 
-    <details className="training-technique" key={'technique-' + entry.id}>
-      <summary>{t('Exercise technique')}</summary>
-      <Media ex={ex} key={entry.id} compact={compact} minimizable />
-    </details>
     <details className="training-journal" key={'journal-' + entry.id}>
       <summary>{t('All sets')} <span>{entry.sets.filter(s => s.done).length} / {entry.sets.length}</span></summary>
     <div className="card sets-card" style={{ marginTop: 0, marginBottom: 0 }}>

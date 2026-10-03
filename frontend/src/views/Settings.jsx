@@ -207,8 +207,8 @@ export default function Settings() {
       <SelectRow icon="timer" iconTint="var(--orange)" title={t('Rest timer')}
         value={S.restSec} onChange={v => update(s => { s.restSec = v })}
         options={[30, 45, 60, 90, 120, 150, 180, 240, 300].map(v => ({ value: v, label: v + 's' }))} />
-      <Row icon="timer" iconTint="var(--orange)" title={t('Rest timer presets')} subtitle={t('Quick-select buttons available during workouts')}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 220 }}>
+      <Row icon="timer" iconTint="var(--orange)" title={t('Rest timer presets')} subtitle={t('Quick-select buttons available during workouts')} stacked>
+        <div className="rest-timer-presets-chips">
           {[30, 45, 60, 90, 120, 150, 180, 240, 300].map(sec => {
             const presets = S.restPresets && S.restPresets.length ? S.restPresets : [60, 90, 120]
             const active = presets.includes(sec)
@@ -217,13 +217,6 @@ export default function Settings() {
                 key={sec}
                 type="button"
                 className={'chip' + (active ? ' acc' : '')}
-                style={{
-                  fontSize: 12,
-                  padding: '4px 8px',
-                  cursor: 'pointer',
-                  borderRadius: 14,
-                  fontWeight: active ? 600 : 400
-                }}
                 onClick={() => update(s => {
                   const curr = (s.restPresets && s.restPresets.length) ? [...s.restPresets] : [60, 90, 120]
                   if (curr.includes(sec)) {
